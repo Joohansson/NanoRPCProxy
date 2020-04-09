@@ -1,0 +1,18 @@
+{
+  "node_url":               "http://[::1]:55000",
+  "http_port":              9950,
+  "https_port":             9951,
+  "cache_duration":         60,
+  "max_request_count":      500,
+  "use_auth":               false,
+  "use_speed_limiter":      false,
+  "use_ip_block":           false,
+  "use_cache":              false,
+  "use_http":               true,
+  "use_https":              true,
+  "cached_commands":        {
+    "block_count":  true
+  },
+  "https_cert":            "/etc/letsencrypt/live/example.com/fullchain.pem",
+  "https_key":             "/etc/letsencrypt/live/example.com/privkey.pem"
+}
