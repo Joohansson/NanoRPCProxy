@@ -3,16 +3,45 @@
   "http_port":              9950,
   "https_port":             9951,
   "cache_duration":         60,
-  "max_request_count":      500,
   "use_auth":               false,
   "use_speed_limiter":      false,
   "use_ip_block":           false,
-  "use_cache":              false,
+  "use_cache":              true,
   "use_http":               true,
-  "use_https":              true,
+  "use_https":              false,
+  "use_output_limiter":     true,
+  "use_ip_blacklist":       true,
+  "allowed_commands":       [
+      "account_history",
+      "account_info",
+      "account_representative",
+      "active_difficulty",
+      "available_supply",
+      "block_info",
+      "block_count",
+      "chain",
+      "delegators",
+      "delegators_count",
+      "frontiers",
+      "pending",
+      "process",
+      "representatives_online"
+  ],
   "cached_commands":        {
-    "block_count":  true
+    "block_count":            30,
+    "available_supply":       3600,
+    "active_difficulty":      30,
+    "representatives_online": 300
+  },
+  "limited_commands":       {
+    "account_history":      500,
+    "chain":                500,
+    "frontiers":            500,
+    "pending":              500
   },
   "https_cert":            "/etc/letsencrypt/live/example.com/fullchain.pem",
-  "https_key":             "/etc/letsencrypt/live/example.com/privkey.pem"
+  "https_key":             "/etc/letsencrypt/live/example.com/privkey.pem",
+  "ip_blacklist":          [
+    "8.8.8.8"
+  ]
 }

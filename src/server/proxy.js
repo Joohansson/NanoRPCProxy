@@ -12,23 +12,31 @@ const request =       require('request-promise-native')
 const cors =          require('cors')
 const { promisify } = require('util')
 
-// Default vars. DON'T CHANGE. Change in json file.
+// Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
 var usr = ''                        // access base64 username
 var psw = ''                        // access base64 password
 var node_url = 'http://[::1]:7076'  // nano node RPC url (default for beta network is 'http://[::1]:55000')
 var http_port = 9950                // port to listen on for http (enabled default with use_http)
 var https_port = 9951               // port to listen on for https (disabled default with use_https)
-var cache_duration = 60             // how long to store cache if not specified
-var max_request_count = 500                 // max count of various rpc responses like pending transactions
+var cache_duration = 60             // how long to store cache if not specified [seconds]
+var max_request_count = 500         // max count of various rpc responses like pending transactions
 var use_auth = false                // if require username and password when connecting to proxy
 var use_speed_limiter = false       // if slowing down IPs when they request above set limit
 var use_ip_block = false            // if blocking IPs for a certain amount of time when they request above set limit
 var use_cache = false               // if caching certain commands set in cached_commands
+var use_output_limiter = false      // if limiting number of response objects, like pending transactions, to a certain max amount set in limited_commands. Only supported for RPC actions that have a "count" key
 var use_http = true                 // listen on http (active by default)
 var use_https = false               // listen on https (inactive by default) (a valid cert and key file is needed via https_cert and https_key)
-var myCache = null
-var https_cert = ""
-var https_key = ""
+var https_cert = ""                 // file path for pub cert file
+var https_key = ""                  // file path for private key file
+var cached_commands = []            // commands that will be cached with corresponding specified duration in seconds as value
+var allowed_commands = []           // only allow RPC actions in this list
+var limited_commands = []           // a list of commands to limit the output response for with max count as value
+
+// default vars
+cache_duration_default = 60
+var rpcCache = null
+var cacheKeys = []
 
 // Read credentials from file
 try {
@@ -37,7 +45,7 @@ try {
   psw = creds.password
 }
 catch(e) {
-  console.log("Could not read creds.json")
+  console.log("Could not read creds.json", e)
 }
 
 // Read settings from file
@@ -47,33 +55,40 @@ try {
   http_port = settings.http_port
   https_port = settings.https_port
   cache_duration = settings.cache_duration
-  max_request_count = settings.max_request_count
   use_auth = settings.use_auth
   use_speed_limiter = settings.use_speed_limiter
   use_ip_block = settings.use_ip_block
   use_cache = settings.use_cache
+  use_output_limiter = settings.use_output_limiter
   use_http = settings.use_http
   use_https = settings.use_https
   https_cert = settings.https_cert
   https_key = settings.https_key
+  cached_commands = settings.cached_commands
+  allowed_commands = settings.allowed_commands
+  limited_commands = settings.limited_commands
 }
 catch(e) {
-  console.log("Could not read settings.json")
+  console.log("Could not read settings.json", e)
 }
 
 console.log("Node url: " + node_url)
 console.log("Http port: " + String(http_port))
 console.log("Https port: " + String(https_port))
 console.log("Cache duration: " + String(cache_duration))
-console.log("Max request count: " + String(max_request_count))
 console.log("Use authorization: " + use_auth)
 console.log("Use speed limiter: " + use_speed_limiter)
 console.log("Use IP block: " + use_ip_block)
 console.log("Use cached requests " + use_cache)
 console.log("Listen on http: " + use_http)
 console.log("Listen on https: " + use_https)
-
-
+console.log("Allowed commands:\n", allowed_commands)
+if (use_cache) {
+  console.log("Cached commands:\n", cached_commands)
+}
+if (use_output_limiter) {
+  console.log("Limited commands:\n", limited_commands)
+}
 
 // Define the proxy app
 const app = express()
@@ -91,7 +106,7 @@ if (use_ip_block) {
 }
 if (use_cache) {
   // Set up cache
-  myCache = new NodeCache( { stdTTL: cache_duration, checkperiod: 10 } )
+  rpcCache = new NodeCache( { stdTTL: cache_duration_default, checkperiod: 10 } )
 }
 
 // To verify username and password provided via basicAuth
@@ -102,10 +117,70 @@ function myAuthorizer(username, password) {
 // Redirect all bad GET requests to default page
 app.get('', (req, res) => res.sendFile(`${__dirname}/index.html`))
 
-//app.listen(listeningPort, () => console.log(`App listening on port ${listeningPort}!`));
+// Define the request listener
+app.post('/api/node', async (req, res) => {
+  console.log('rpc request received', req.body.action)
+
+  // Block non-allowed RPC commands
+  if (!req.body.action || allowed_commands.indexOf(req.body.action) === -1) {
+    console.log('RPC request is not allowed: ',req.body.action)
+    return res.status(500).json({ error: `Action ${req.body.action} not allowed`})
+  }
+
+  // Read cache for current request action, if there is one
+  if (use_cache) {
+    for (const [key, value] of Object.entries(cached_commands)) {
+      if (req.body.action === key) {
+        const cachedValue = rpcCache.get(key)
+        if (isValidJson(cachedValue)) {
+          console.log("Cache requested: " + key)
+          return res.json(cachedValue)
+        }
+        else {
+          console.log("Tried to retrieve cache for " + key + " but it was invalid")
+        }
+        break
+      }
+    }
+  }
+
+  // Limit response count
+  if (use_output_limiter) {
+    for (const [key, value] of Object.entries(limited_commands)) {
+      if (req.body.action === key) {
+        if (parseInt(req.body.count) > value) {
+          req.body.count = value.toString()
+        }
+      }
+    }
+  }
+
+  // Send the request to the Nano node and return the response
+  request({ method: 'post', uri: node_url, body: req.body, json: true })
+    .then(async (proxyRes) => {
+      if (!isValidJson(proxyRes)) {
+        res.status(500).json({error: "Bad json response from the node"})
+      }
+      // Save cache if applicable
+      if (use_cache) {
+        for (const [key, value] of Object.entries(cached_commands)) {
+          if (req.body.action === key) {
+            // Store the response (proxyRes) in cache with key (action name) with a TTL=value
+            if (!rpcCache.set(key, proxyRes, value)) {
+              console.log("Failed saving cache for " + key)
+            }
+            break
+          }
+        }
+      }
+    })
+    res.json(proxyRes) // sending back json response
+    .catch(err => res.status(500).json(err.toString()))
+})
 
 // Create an HTTP service
 if (use_http) {
+  console.log("Starting http server")
   http.createServer(app).listen(http_port)
 }
 
@@ -131,9 +206,25 @@ if (use_https) {
       cert: fs.readFileSync(https_cert),
       key: fs.readFileSync(https_key)
     }
+    console.log("Starting https server")
     https.createServer(https_options, app).listen(https_port)
   }
   else {
     console.log("Warning: Will not listen on https!")
+  }
+}
+
+// Check if a string is a valid JSON
+function isValidJson(str) {
+  try {
+    if (typeof str === 'string') {
+      var json = JSON.parse(str)
+      return (typeof json === 'object')
+    }
+    else {
+      return false
+    }
+  } catch (e) {
+    return false
   }
 }
