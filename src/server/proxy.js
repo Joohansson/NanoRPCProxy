@@ -12,6 +12,8 @@ const request =       require('request-promise-native')
 const cors =          require('cors')
 const { promisify } = require('util')
 
+log_levels = {none:"none", warning:"warning", info:"info"}
+
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
 var usr = ''                        // access base64 username
 var psw = ''                        // access base64 password
@@ -32,6 +34,7 @@ var https_key = ""                  // file path for private key file
 var cached_commands = []            // commands that will be cached with corresponding specified duration in seconds as value
 var allowed_commands = []           // only allow RPC actions in this list
 var limited_commands = []           // a list of commands to limit the output response for with max count as value
+var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
 
 // default vars
 cache_duration_default = 60
@@ -67,6 +70,7 @@ try {
   cached_commands = settings.cached_commands
   allowed_commands = settings.allowed_commands
   limited_commands = settings.limited_commands
+  log_level = settings.log_level
 }
 catch(e) {
   console.log("Could not read settings.json", e)
@@ -79,7 +83,8 @@ console.log("Cache duration: " + String(cache_duration))
 console.log("Use authorization: " + use_auth)
 console.log("Use speed limiter: " + use_speed_limiter)
 console.log("Use IP block: " + use_ip_block)
-console.log("Use cached requests " + use_cache)
+console.log("Use cached requests: " + use_cache)
+console.log("Use output limiter: " + use_output_limiter)
 console.log("Listen on http: " + use_http)
 console.log("Listen on https: " + use_https)
 console.log("Allowed commands:\n", allowed_commands)
@@ -89,6 +94,7 @@ if (use_cache) {
 if (use_output_limiter) {
   console.log("Limited commands:\n", limited_commands)
 }
+console.log("Log level: " + log_level)
 
 // Define the proxy app
 const app = express()
@@ -119,11 +125,11 @@ app.get('', (req, res) => res.sendFile(`${__dirname}/index.html`))
 
 // Define the request listener
 app.post('/api/node', async (req, res) => {
-  console.log('rpc request received', req.body.action)
+  logThis('rpc request received: ' + req.body.action, log_levels.info)
 
   // Block non-allowed RPC commands
   if (!req.body.action || allowed_commands.indexOf(req.body.action) === -1) {
-    console.log('RPC request is not allowed: ',req.body.action)
+    logThis('RPC request is not allowed: ' + req.body.action, log_levels.info)
     return res.status(500).json({ error: `Action ${req.body.action} not allowed`})
   }
 
@@ -133,11 +139,8 @@ app.post('/api/node', async (req, res) => {
       if (req.body.action === key) {
         const cachedValue = rpcCache.get(key)
         if (isValidJson(cachedValue)) {
-          console.log("Cache requested: " + key)
+          logThis("Cache requested: " + key, log_levels.info)
           return res.json(cachedValue)
-        }
-        else {
-          console.log("Tried to retrieve cache for " + key + " but it was invalid")
         }
         break
       }
@@ -149,7 +152,8 @@ app.post('/api/node', async (req, res) => {
     for (const [key, value] of Object.entries(limited_commands)) {
       if (req.body.action === key) {
         if (parseInt(req.body.count) > value) {
-          req.body.count = value.toString()
+          logThis("Response count was limited to " + value.toString(), log_levels.info)
+          req.body.count = value
         }
       }
     }
@@ -159,7 +163,9 @@ app.post('/api/node', async (req, res) => {
   request({ method: 'post', uri: node_url, body: req.body, json: true })
     .then(async (proxyRes) => {
       if (!isValidJson(proxyRes)) {
+        logThis("Bad json response from the node", log_levels.warning)
         res.status(500).json({error: "Bad json response from the node"})
+        return
       }
       // Save cache if applicable
       if (use_cache) {
@@ -167,14 +173,14 @@ app.post('/api/node', async (req, res) => {
           if (req.body.action === key) {
             // Store the response (proxyRes) in cache with key (action name) with a TTL=value
             if (!rpcCache.set(key, proxyRes, value)) {
-              console.log("Failed saving cache for " + key)
+              logThis("Failed saving cache for " + key, log_levels.warning)
             }
             break
           }
         }
       }
+      res.json(proxyRes) // sending back json response
     })
-    res.json(proxyRes) // sending back json response
     .catch(err => res.status(500).json(err.toString()))
 })
 
@@ -215,16 +221,23 @@ if (use_https) {
 }
 
 // Check if a string is a valid JSON
-function isValidJson(str) {
-  try {
-    if (typeof str === 'string') {
-      var json = JSON.parse(str)
-      return (typeof json === 'object')
-    }
-    else {
+function isValidJson(obj) {
+  if (obj != null) {
+    try {
+        JSON.parse(JSON.stringify(obj))
+        return true
+    } catch (e) {
       return false
     }
-  } catch (e) {
+  }
+  else  {
     return false
+  }
+}
+
+// Log function
+function logThis(str, level) {
+  if (log_level == "info" || level == log_level) {
+    console.log(str)
   }
 }

@@ -7,8 +7,11 @@ A relay, firewall, rate limiter, ddos protection and cache system between a clie
 * Limit number of response objects, like number of pending transactions
 * Slow down IPs that doing requests above limit
 * Block IPs for a certain amount of time that are doing requests above limit
-* IP black list
+* IP black list (TODO)
 * Supports basic authorization (username / password)
+* Multiple users via authorization (TODO)
+* Output log
+* Additional request tokens purchasable with Nano (TODO)
 * Listen on http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
 
 ## Install and run RPC server

@@ -34,7 +34,7 @@
     "representatives_online": 300
   },
   "limited_commands":       {
-    "account_history":      500,
+    "account_history":      10,
     "chain":                500,
     "frontiers":            500,
     "pending":              500
@@ -43,5 +43,6 @@
   "https_key":             "/etc/letsencrypt/live/example.com/privkey.pem",
   "ip_blacklist":          [
     "8.8.8.8"
-  ]
+  ],
+  "log_level":            "info"
 }
