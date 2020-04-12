@@ -20,20 +20,21 @@ var psw = ''                        // access base64 password
 var node_url = 'http://[::1]:7076'  // nano node RPC url (default for beta network is 'http://[::1]:55000')
 var http_port = 9950                // port to listen on for http (enabled default with use_http)
 var https_port = 9951               // port to listen on for https (disabled default with use_https)
-var cache_duration = 60             // how long to store cache if not specified [seconds]
 var max_request_count = 500         // max count of various rpc responses like pending transactions
 var use_auth = false                // if require username and password when connecting to proxy
-var use_speed_limiter = false       // if slowing down IPs when they request above set limit
-var use_ip_block = false            // if blocking IPs for a certain amount of time when they request above set limit
+var use_speed_limiter = false       // if slowing down IPs when they request above set limit (defined in speed_limiter)
+var use_ip_block = false            // if blocking IPs for a certain amount of time when they request above set limit (defined in ip_block)
 var use_cache = false               // if caching certain commands set in cached_commands
-var use_output_limiter = false      // if limiting number of response objects, like pending transactions, to a certain max amount set in limited_commands. Only supported for RPC actions that have a "count" key
 var use_http = true                 // listen on http (active by default)
 var use_https = false               // listen on https (inactive by default) (a valid cert and key file is needed via https_cert and https_key)
+var use_output_limiter = false      // if limiting number of response objects, like pending transactions, to a certain max amount set in limited_commands. Only supported for RPC actions that have a "count" key
 var https_cert = ""                 // file path for pub cert file
 var https_key = ""                  // file path for private key file
-var cached_commands = []            // commands that will be cached with corresponding specified duration in seconds as value
 var allowed_commands = []           // only allow RPC actions in this list
-var limited_commands = []           // a list of commands to limit the output response for with max count as value
+var cached_commands = []            // a list of commands [key] that will be cached for corresponding duration in seconds as [value]
+var limited_commands = []           // a list of commands [key] to limit the output response for with max count as [value]
+var speed_limiter = {}              // contains the settings for slowing down clients with speed limiter
+var ip_block = {}                   // contains the settings for blocking IP that does too many requests
 var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
 
 // default vars
@@ -42,6 +43,7 @@ var rpcCache = null
 var cacheKeys = []
 
 // Read credentials from file
+// ---
 try {
   const creds = JSON.parse(fs.readFileSync('creds.json', 'UTF-8'))
   usr = creds.user
@@ -50,14 +52,15 @@ try {
 catch(e) {
   console.log("Could not read creds.json", e)
 }
+// ---
 
 // Read settings from file
+// ---
 try {
   const settings = JSON.parse(fs.readFileSync('settings.json', 'UTF-8'))
   node_url = settings.node_url
   http_port = settings.http_port
   https_port = settings.https_port
-  cache_duration = settings.cache_duration
   use_auth = settings.use_auth
   use_speed_limiter = settings.use_speed_limiter
   use_ip_block = settings.use_ip_block
@@ -71,15 +74,19 @@ try {
   allowed_commands = settings.allowed_commands
   limited_commands = settings.limited_commands
   log_level = settings.log_level
+  speed_limiter = settings.speed_limiter
+  ip_block = settings.ip_block
 }
 catch(e) {
   console.log("Could not read settings.json", e)
 }
+// ---
 
+// Log all initial settings for convenience
+// ---
 console.log("Node url: " + node_url)
 console.log("Http port: " + String(http_port))
 console.log("Https port: " + String(https_port))
-console.log("Cache duration: " + String(cache_duration))
 console.log("Use authorization: " + use_auth)
 console.log("Use speed limiter: " + use_speed_limiter)
 console.log("Use IP block: " + use_ip_block)
@@ -87,31 +94,82 @@ console.log("Use cached requests: " + use_cache)
 console.log("Use output limiter: " + use_output_limiter)
 console.log("Listen on http: " + use_http)
 console.log("Listen on https: " + use_https)
-console.log("Allowed commands:\n", allowed_commands)
+
+log_string = "Allowed commands:\n"
+for (const [key, value] of Object.entries(allowed_commands)) {
+  log_string = log_string + value + "\n"
+}
+console.log(log_string)
+
 if (use_cache) {
-  console.log("Cached commands:\n", cached_commands)
+  log_string = "Cached commands:\n"
+  for (const [key, value] of Object.entries(cached_commands)) {
+    log_string = log_string + key + " : " + value + "\n"
+  }
+  console.log(log_string)
 }
+
 if (use_output_limiter) {
-  console.log("Limited commands:\n", limited_commands)
+  log_string = "Limited commands:\n"
+  for (const [key, value] of Object.entries(limited_commands)) {
+    log_string = log_string + key + " : " + value + "\n"
+  }
+  console.log(log_string)
 }
+
+if (use_speed_limiter) {
+  log_string = "Speed limiter settings:\n"
+  for (const [key, value] of Object.entries(speed_limiter)) {
+    log_string = log_string + key + " : " + value + "\n"
+  }
+  console.log(log_string)
+}
+
+if (use_ip_block) {
+  log_string = "IP block settings:\n"
+  for (const [key, value] of Object.entries(ip_block)) {
+    log_string = log_string + key + " : " + value + "\n"
+  }
+  console.log(log_string)
+}
+
 console.log("Log level: " + log_level)
+// ---
 
 // Define the proxy app
 const app = express()
 app.use(cors())
 app.use(express.json())
 app.use(express.static('static'))
+
+// Define authentication service
 if (use_auth) {
   app.use(basicAuth({ authorizer: myAuthorizer }))
 }
+
+// Limit by slowing down requests
 if (use_speed_limiter) {
-  app.use(speed_limiter)
+  const speed_limiter_settings = slowDown({
+    windowMs: speed_limiter.time_window, // rolling time window in ms
+    delayAfter: speed_limiter.request_limit, // allow x requests per time window, then start slowing down
+    delayMs: speed_limiter.delay_increment, // begin adding X ms of delay per request when delayAfter has been reached
+    maxDelayMs: speed_limiter.max_delay // max delay in ms to slow down
+  })
+  app.use(speed_limiter_settings)
 }
+
+// Block IP if requesting too much
 if (use_ip_block) {
-  app.use(ip_block)
+  const ip_block_settings = rateLimit({
+    windowMs: ip_block.time_window, // rolling time window in ms
+    max: ip_block.request_limit, // limit each IP to x requests per windowMs
+    message: 'You have sent too many RPC requests. You can try again later.'
+  })
+  app.use(ip_block_settings)
 }
+
+// Set up cache
 if (use_cache) {
-  // Set up cache
   rpcCache = new NodeCache( { stdTTL: cache_duration_default, checkperiod: 10 } )
 }
 
@@ -124,7 +182,8 @@ function myAuthorizer(username, password) {
 app.get('', (req, res) => res.sendFile(`${__dirname}/index.html`))
 
 // Define the request listener
-app.post('/api/node', async (req, res) => {
+app.post('/proxy', async (req, res) => {
+  console.log(req.body)
   logThis('rpc request received: ' + req.body.action, log_levels.info)
 
   // Block non-allowed RPC commands

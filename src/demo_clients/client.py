@@ -2,6 +2,9 @@ import requests
 import json
 import argparse
 
+# Make sure the proxy server is running and call this with <python3 client.py --c 1> where the number represent one of the commands below
+# The example is for MAIN NET and will show bad results on BETA NET
+
 commands = [
         {"action":"block_count"},
         {"action":"account_info","account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"},
@@ -19,12 +22,16 @@ args = parser.parse_args()
 command = commands[int(args.c)-1]
 
 try:
-    r = requests.post("http://localhost:9950/api/node", json=command)
+    r = requests.post("http://localhost:9950/proxy", json=command)
     status = r.status_code
     print("Status code: ", status)
     if (status == 200):
         print("Success!")
-    print(r.json())
+
+    try:
+        print(r.json())
+    except:
+        print(r)
 
     r.raise_for_status()
 
@@ -36,3 +43,5 @@ except requests.exceptions.Timeout as errt:
     print ("Timeout Error:",errt)
 except requests.exceptions.RequestException as err:
     print ("Oops: Something Else",err)
+except Exception as e:
+    print("Fatal error", e)
