@@ -114,7 +114,7 @@ The proxy server can be tested and experimented with using provided demo clients
 3. Test the sample buttons or paste any RPC command from the [docs](https://docs.nano.org/commands/rpc-protocol/)(including the {}). The available commands are set in the server settings.json file.
 4. If you change the user credentials in the server <creds.json> you will also need to change the reactjs/src/rpc.js credentials and re-build the app from source (instructions below)
 
-![ReactJS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/reactjs_client.png)
+![ReactJS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/reactjs_client_demo.png)
 
 **To run or build the app from source**
 

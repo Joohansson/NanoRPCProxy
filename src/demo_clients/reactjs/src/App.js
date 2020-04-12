@@ -174,7 +174,7 @@ class App extends Component {
       <div className="App">
         <header className="App-header">
           <h3>RPC demo client for communicating with <a href="https://github.com/Joohansson/NanoRPCProxy">NanoRPCProxy</a></h3>
-          <p>Requesting a live Nano node using RPC json requests<br/>
+          <p>Send to a live Nano node using RPC json requests<br/>
           See <a href="https://docs.nano.org/commands/rpc-protocol/">documentation</a> for more commands<br/>
           </p>
           <InputGroup size="sm" className="mb-3">
