@@ -1,5 +1,5 @@
 # NanoRPCProxy
-NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has no built in functionality for user authorization, rate limiting or caching which makes it dangerous to open up without protection like this. With NanoRPCProxy you can for example serve a mobile app or web frontend with direct node calls.
+NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has no built in functionality for user authentication, rate limiting or caching which makes it dangerous to open up without protection like this. With NanoRPCProxy you can for example serve a mobile app or web frontend with direct node calls.
 
 ## Features
 * Fully customizable via a settings file
@@ -8,8 +8,8 @@ NanoRPCProxy is a relay and protection system that sits between a client and a N
 * Slow down IPs that doing requests above limit
 * Block IPs for a certain amount of time that are doing requests above limit
 * IP black list (TODO)
-* Supports basic authorization (username / password)
-* Supports multiple users via authorization
+* Supports basic authentication (username / password)
+* Supports multiple users via authentication
 * Additional request tokens purchasable with Nano (TODO)
 * Listen on http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
 
@@ -46,16 +46,16 @@ The node commands are found here: https://docs.nano.org/commands/rpc-protocol/
 ### Using curl
 The curl command looks just a tiny bit different than for a direct node request. You just have to define it with a json content type. You can also use the -i flag to include response headers.
 
-**No authorization**
+**No authentication**
 
     curl -H "Content-Type: application/json" -d '{"action":"block_count"}' http://localhost:9950/proxy
 
-**With authorization**
+**With authentication**
 
     curl --user user1:user1 -H "Content-Type: application/json" -H '{"action":"block_count"}' http://127.0.0.1:9950/proxy
 
 ### Using python
-**No authorization**
+**No authentication**
 
     import requests
     import json
@@ -72,7 +72,7 @@ The curl command looks just a tiny bit different than for a direct node request.
     except Exception as e:
         print("Fatal error", e)
 
-**With authorization**
+**With authentication**
 Note: verify=False means we ignore possible SSL certificate errors. Recommended to set to True
 
     import requests
@@ -97,9 +97,34 @@ Note: verify=False means we ignore possible SSL certificate errors. Recommended 
 The proxy server can be tested and experimented with using provided demo clients. They can also help you getting starting with your own setup.
 
 ### Python client
+1. Make sure you have at least python3 installed
+2. Locate the directory demo_clients/python/
+3. Run this to install required libraries: "pip3 install -r requirements.txt"
+4. Make sure you have the proxy server running locally
+5. Test a request with "python3 client.py --c 1" where 1 means command example 1. Run "python3 client.py --help" to find out more.
+6. To test a server that is using authentication: "python3 client.py --c 1 --a"
 
 ### JS client
 
+### REACT client
+**To run the pre-built app:**
+
+1. Locate the directory demo_clients/reactjs/build
+2. Open index.html in a browser (Chrome/Firefox recommended)
+3. Test the sample buttons or paste any RPC command from the [docs](https://docs.nano.org/commands/rpc-protocol/)(including the {}). The available commands are set in the server settings.json file.
+4. If you change the user credentials in the server <creds.json> you will also need to change the reactjs/src/rpc.js credentials and re-build the app from source (instructions below)
+
+![ReactJS demo app](https://github.com/Joohansson/NanoRPCProxy/tree/master/media/reactjs_client.png)
+
+**To run or build the app from source**
+
+1. Make sure you have node.js (and react) installed. [Windows Guide](https://www.liquidweb.com/kb/install-react-js-windows/) | [Ubuntu Guide](https://medium.com/@DanielSayidi/install-and-setup-react-app-on-ubuntu-18-04-3-lts-fcd2c875885a)
+2. Locate the directory demo_clients/reactjs
+3. Install required libraries" "npm install" or "yarn install"
+3. Test the app in development mode: "npm start" or "yarn start"
+4. Navigate to http://localhost:3000/
+5. To build from source: "npm build" or "yarn build"
+6. The final build is located in clients/reactjs/build
 
 ## Special Notes
 

@@ -22,7 +22,7 @@ password = "user1"
 # Parse argument --c [int] to call different commands
 parser = argparse.ArgumentParser(description="Call proxy server")
 parser.add_argument("--c", default=1, type=int, choices=[1, 2, 3, 4, 5, 6, 7], required=True, help="The action to call")
-parser.add_argument("--a", action="store_true", help="Use authorization")
+parser.add_argument("--a", action="store_true", help="Use authentication")
 args = parser.parse_args()
 command = commands[int(args.c)-1]
 
