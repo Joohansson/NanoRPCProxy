@@ -1,6 +1,7 @@
 import requests
 import json
 import argparse
+from requests.auth import HTTPBasicAuth
 
 # Make sure the proxy server is running and call this with <python3 client.py --c 1> where the number represent one of the commands below
 # The example is for MAIN NET and will show bad results on BETA NET
@@ -15,14 +16,23 @@ commands = [
         {"action":"representatives_online"},
     ]
 
+username = "user1"
+password = "user1"
+
 # Parse argument --c [int] to call different commands
 parser = argparse.ArgumentParser(description="Call proxy server")
 parser.add_argument("--c", default=1, type=int, choices=[1, 2, 3, 4, 5, 6, 7], required=True, help="The action to call")
+parser.add_argument("--a", action="store_true", help="Use authorization")
 args = parser.parse_args()
 command = commands[int(args.c)-1]
 
 try:
-    r = requests.post("http://localhost:9950/proxy", json=command)
+    # If using auth or not
+    if args.a:
+        print("Authorizing with " + username + " | " + password)
+        r = requests.post('http://localhost:9950/proxy', json=command, verify=False, auth=HTTPBasicAuth(username, password))
+    else:
+        r = requests.post("http://localhost:9950/proxy", json=command)
     status = r.status_code
     print("Status code: ", status)
     if (status == 200):
