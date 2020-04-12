@@ -9,7 +9,7 @@ NanoRPCProxy is a relay and protection system that sits between a client and a N
 * Block IPs for a certain amount of time that are doing requests above limit
 * IP black list (TODO)
 * Supports basic authorization (username / password)
-* Multiple users via authorization (TODO)
+* Supports multiple users via authorization
 * Additional request tokens purchasable with Nano (TODO)
 * Listen on http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
 
@@ -44,8 +44,15 @@ You call the proxy server just like you would call the node RPC. It's a normal P
 The node commands are found here: https://docs.nano.org/commands/rpc-protocol/
 
 ### Using curl
-The curl command looks just a tiny bit different than for a direct node request. You just have to define it with a json content type:
+The curl command looks just a tiny bit different than for a direct node request. You just have to define it with a json content type. You can also use the -i flag to include response headers.
+
+**No authorization**
+
     curl -H "Content-Type: application/json" -d '{"action":"block_count"}' http://localhost:9950/proxy
+
+**With authorization**
+
+    curl --user user1:user1 -H "Content-Type: application/json" -H '{"action":"block_count"}' http://127.0.0.1:9950/proxy
 
 ### Using python
 **No authorization**
@@ -54,6 +61,25 @@ The curl command looks just a tiny bit different than for a direct node request.
     import json
     try:
         r = requests.post("http://localhost:9950/proxy", json={"action":"block_count"})
+        status = r.status_code
+        print("Status code: ", status)
+        if (status == 200):
+            print("Success!")
+        try:
+            print(r.json())
+        except:
+            print(r)
+    except Exception as e:
+        print("Fatal error", e)
+
+**With authorization**
+Note: verify=False means we ignore possible SSL certificate errors. Recommended to set to True
+
+    import requests
+    import json
+    from requests.auth import HTTPBasicAuth
+    try:
+        r = requests.post('http://localhost:9950/proxy', json={"action":"block_count"}, verify=False, auth=HTTPBasicAuth(username, password))
         status = r.status_code
         print("Status code: ", status)
         if (status == 200):

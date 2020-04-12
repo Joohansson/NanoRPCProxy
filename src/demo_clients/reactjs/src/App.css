@@ -1,0 +1,87 @@
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: #000034;
+}
+
+.App {
+  /*text-align: center;*/
+  color: #EEE;
+  font-size: calc(10px + 0.5vmin);
+  line-height: calc(10px + 1.2vmin);
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.App-header {
+  width: 80%;
+  margin: 0 auto;
+  margin-top: 10vh;
+}
+
+p {
+  font-size: calc(10px + 1vmin);
+  line-height: calc(10px + 1.4vmin);
+  margin-bottom: 0.5rem;
+}
+
+a {
+  color: #4a90e2;
+  text-decoration: none;
+}
+
+a:hover, a:focus {
+  color: #377ccc;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+#input, #output-area {
+  font-size: calc(10px + 0.3vmin);
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: #4a90e2;
+    border-color: #4a90e2;
+    margin-right: 20px;
+}
+
+.btn-primary:focus {
+    box-shadow: none;
+    background-color: #4a90e2;
+    border-color: #4a90e2;
+}
+
+.btn-outline-secondary:focus {
+  box-shadow: none;
+}
+
+.form-control:focus {
+  box-shadow: none;
+}
+
+.btn-active {
+  background-color: #6C757D;
+  color: #FFF;
+}
+
+/* Medium width button */
+.btn-medium {
+  width: 140px;
+  margin-bottom: 2vh;
+}
+.btn-small {
+  width: 100px;
+  margin-bottom: 2vh;
+}
+
+/* The left thing of input boxes */
+.input-group-prepend, .input-group-text {
+  width: 140px;
+}
