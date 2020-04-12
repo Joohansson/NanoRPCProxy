@@ -15,8 +15,7 @@ const { promisify } = require('util')
 log_levels = {none:"none", warning:"warning", info:"info"}
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
-var usr = ''                        // access base64 username
-var psw = ''                        // access base64 password
+var users = []                      // a list of base64 user/password credentials
 var node_url = 'http://[::1]:7076'  // nano node RPC url (default for beta network is 'http://[::1]:55000')
 var http_port = 9950                // port to listen on for http (enabled default with use_http)
 var https_port = 9951               // port to listen on for https (disabled default with use_https)
@@ -46,8 +45,7 @@ var cacheKeys = []
 // ---
 try {
   const creds = JSON.parse(fs.readFileSync('creds.json', 'UTF-8'))
-  usr = creds.user
-  psw = creds.password
+  users = creds.users
 }
 catch(e) {
   console.log("Could not read creds.json", e)
@@ -173,9 +171,16 @@ if (use_cache) {
   rpcCache = new NodeCache( { stdTTL: cache_duration_default, checkperiod: 10 } )
 }
 
-// To verify username and password provided via basicAuth
+// To verify username and password provided via basicAuth. Support multiple users
 function myAuthorizer(username, password) {
-  return basicAuth.safeCompare(username, usr) & basicAuth.safeCompare(password, psw)
+  var valid_user = false
+  for (const [key, value] of Object.entries(users)) {
+    if (basicAuth.safeCompare(username, value.user) & basicAuth.safeCompare(password, value.password)) {
+      valid_user = true
+      break
+    }
+  }
+  return valid_user
 }
 
 // Redirect all bad GET requests to default page

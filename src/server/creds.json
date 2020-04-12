@@ -1,4 +1,12 @@
 {
-  "user" : "test",
-  "password" : "test"
+  "users": [
+    {
+      "user": "user1",
+      "password": "user1"
+    },
+    {
+      "user": "user2",
+      "password": "user2"
+    }
+  ]
 }
