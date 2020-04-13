@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import './App.css';
 import * as rpc from './rpc' //rpc creds not shared on github
 import { Base64 } from 'js-base64';
-import { InputGroup, FormControl, Button} from 'react-bootstrap'
+import { Dropdown, DropdownButton, InputGroup, FormControl, Button} from 'react-bootstrap'
 
 const RPC_TIMEOUT = 10000 // 10sec timeout for calling RPC proxy
 
@@ -21,6 +21,16 @@ export const constants = {
     '{"action":"block_info","json_block":"true","hash":"87434F8041869A01C8F6F263B87972D7BA443A72E0A97D7A3FD0CCC2358FD6F9"}',
     '{"action":"pending","account":"nano_1111111111111111111111111111111111111111111111111117353trpda","count": "5"}',
     '{"action":"representatives_online"}',
+  ],
+  // For dropdown titles
+  SAMPLE_COMMAND_NAMES: [
+    'block_count',
+    'account_info',
+    'account_history',
+    'active_difficulty',
+    'block_info',
+    'pending',
+    'representatives_online',
   ]
 }
 
@@ -47,12 +57,14 @@ class App extends Component {
       command: '',
       output: '',
       fetchingRPC: false,
+      activeCommandId: 0,
+      activeCommandName: 'Select a sample',
     }
 
     this.getRPC = this.getRPC.bind(this)
-    this.sample = this.sample.bind(this)
     this.handleCommandChange = this.handleCommandChange.bind(this)
     this.handleRPCError = this.handleRPCError.bind(this)
+    this.selectCommand = this.selectCommand.bind(this)
   }
 
   handleCommandChange(event) {
@@ -62,10 +74,12 @@ class App extends Component {
     })
   }
 
-  // Generate sample request string
-  sample(event) {
+  // Change tool to view on main page
+  selectCommand(eventKey) {
     this.setState({
-      command: constants.SAMPLE_COMMANDS[event.target.value]
+      command: constants.SAMPLE_COMMANDS[eventKey],
+      activeCommandId: eventKey,
+      activeCommandName: constants.SAMPLE_COMMAND_NAMES[eventKey],
     })
   }
 
@@ -152,7 +166,7 @@ class App extends Component {
                   resolve(response);
               }
               else {
-                throw new RPCError(response.status, "HTTP status "+response.status)
+                throw new RPCError(response.status, resolve(response))
               }
             }
         })
@@ -177,6 +191,16 @@ class App extends Component {
           <p>Send to a live Nano node using RPC json requests<br/>
           See <a href="https://docs.nano.org/commands/rpc-protocol/">documentation</a> for more commands<br/>
           </p>
+          <DropdownButton
+            className="command-dropdown"
+            title={this.state.activeCommandName}
+            key={this.state.activeCommandId}
+            id={`dropdown-basic-${this.state.activeCommandId}`}>
+            {constants.SAMPLE_COMMAND_NAMES.map(function(command, index){
+              return <Dropdown.Item eventKey={index} key={index} onSelect={this.selectCommand}>{command}</Dropdown.Item>;
+            }.bind(this))}
+          </DropdownButton>
+
           <InputGroup size="sm" className="mb-3">
             <InputGroup.Prepend>
               <InputGroup.Text id="command">
@@ -187,18 +211,11 @@ class App extends Component {
           </InputGroup>
 
           <InputGroup size="sm" className="mb-3">
-            <FormControl id="output-area" aria-describedby="output" as="textarea" rows="15" placeholder="" value={this.state.output} readOnly/>
+            <Button className="btn-medium" variant="primary" disabled={this.state.fetchingRPC} onClick={this.getRPC}>Node Request</Button>
           </InputGroup>
 
           <InputGroup size="sm" className="mb-3">
-            <Button className="btn-small" variant="primary" value="0" onClick={this.sample}>Sample1</Button>
-            <Button className="btn-small" variant="primary" value="1" onClick={this.sample}>Sample2</Button>
-            <Button className="btn-small" variant="primary" value="2" onClick={this.sample}>Sample3</Button>
-            <Button className="btn-small" variant="primary" value="3" onClick={this.sample}>Sample4</Button>
-            <Button className="btn-small" variant="primary" value="4" onClick={this.sample}>Sample5</Button>
-            <Button className="btn-small" variant="primary" value="5" onClick={this.sample}>Sample6</Button>
-            <Button className="btn-small" variant="primary" value="6" onClick={this.sample}>Sample7</Button>
-            <Button className="btn-medium" variant="primary" disabled={this.state.fetchingRPC} onClick={this.getRPC}>Node Request</Button>
+            <FormControl id="output-area" aria-describedby="output" as="textarea" rows="15" placeholder="" value={this.state.output} readOnly/>
           </InputGroup>
         </header>
       </div>

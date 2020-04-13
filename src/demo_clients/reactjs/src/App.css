@@ -85,3 +85,24 @@ a:hover, a:focus {
 .input-group-prepend, .input-group-text {
   width: 140px;
 }
+
+.command-dropdown {
+  margin-top: 2vh;
+  margin-bottom: 15px;
+}
+
+.command-dropdown .dropdown-toggle {
+  font-size: calc(10px + 0.8vmin);
+  width: 215px;
+  text-align: left;
+}
+
+/* Striped dropdown menu */
+.dropdown-menu > a:nth-child(odd) {
+  background: #EEE;
+}
+
+/* Change color on dropdown menu hover */
+.dropdown-item:hover {
+  background: #4a90e2 !important;
+}
