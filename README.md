@@ -92,6 +92,29 @@ Note: verify=False means we ignore possible SSL certificate errors. Recommended 
         print("Fatal error", e)
 
 ### Using JS
+**With authentication (Without: remove the Authorization header)**
+See the js demo client for full example with error handling
+
+    async function postData(data = {}, server='http://localhost:9950/proxy') {
+      const response = await fetch(server, {
+        method: 'POST',
+        cache: 'no-cache',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic ' + Base64.encode('user1:user1')
+        },
+        body: JSON.stringify(data)
+      })
+      return await response.json()
+    }
+
+    postData({"action":"block_count"})
+    .then((data) => {
+      console.log(JSON.stringify(data, null, 2))
+    })
+    .catch(function(error) {
+      console.log(error)
+    })
 
 ## How to install and test the demo clients
 The proxy server can be tested and experimented with using provided demo clients. They can also help you getting starting with your own setup.
@@ -105,6 +128,12 @@ The proxy server can be tested and experimented with using provided demo clients
 6. To test a server that is using authentication: "python3 client.py --c 1 --a"
 
 ### JS client
+1. Locate the directory demo_clients/js
+2. Open index.html in a browser
+
+Note: The credentials for authentication is hard coded in the javascript and to my knowledge it's not possible to hide. However, the reactjs client is compiled and thus have the creds hidden inside the app. As far as I know, that should be safe as long as the source code cred file is not shared publicly.
+
+![ReactJS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/js_client_demo.png)
 
 ### REACT client
 **To run the pre-built app:**
@@ -112,7 +141,7 @@ The proxy server can be tested and experimented with using provided demo clients
 1. Locate the directory demo_clients/reactjs/build
 2. Open index.html in a browser (Chrome/Firefox recommended)
 3. Test the sample buttons or paste any RPC command from the [docs](https://docs.nano.org/commands/rpc-protocol/)(including the {}). The available commands are set in the server settings.json file.
-4. If you change the user credentials in the server <creds.json> you will also need to change the reactjs/src/rpc.js credentials and re-build the app from source (instructions below)
+4. If you change the user credentials in the server <creds.json> you will also need to change the reactjs/src/rpc.js credentials and re-build the app from source (instructions below). Don't share the creds file!
 
 ![ReactJS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/reactjs_client_demo.png)
 
