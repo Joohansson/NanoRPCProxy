@@ -40,6 +40,14 @@ var log_level = log_levels.none     // the log level to use (startup info is alw
 cache_duration_default = 60
 var rpcCache = null
 var cacheKeys = []
+var user_settings = {}
+
+var user_use_cache = null
+var user_use_output_limiter = null
+var user_allowed_commands = null
+var user_cached_commands = null
+var user_limited_commands = null
+var user_log_level = null
 
 // Read credentials from file
 // ---
@@ -74,9 +82,29 @@ try {
   log_level = settings.log_level
   speed_limiter = settings.speed_limiter
   ip_block = settings.ip_block
+
+  // Clone default settings for custom user specific vars, to be used if no auth
+  if (!use_auth) {
+    user_use_cache = use_cache
+    user_use_output_limiter = use_output_limiter
+    user_allowed_commands = allowed_commands
+    user_cached_commands = cached_commands
+    user_limited_commands = limited_commands
+    user_log_level = log_level
+  }
 }
 catch(e) {
   console.log("Could not read settings.json", e)
+}
+// ---
+
+// Read user settings from file, override default settings if they exist for specific users
+// ---
+try {
+  user_settings = JSON.parse(fs.readFileSync('user_settings.json', 'UTF-8'))
+}
+catch(e) {
+  console.log("Could not read user_settings.json", e)
 }
 // ---
 
@@ -85,7 +113,7 @@ catch(e) {
 console.log("Node url: " + node_url)
 console.log("Http port: " + String(http_port))
 console.log("Https port: " + String(https_port))
-console.log("Use authorization: " + use_auth)
+console.log("Use authentication: " + use_auth)
 console.log("Use speed limiter: " + use_speed_limiter)
 console.log("Use IP block: " + use_ip_block)
 console.log("Use cached requests: " + use_cache)
@@ -173,10 +201,49 @@ if (use_cache) {
 
 // To verify username and password provided via basicAuth. Support multiple users
 function myAuthorizer(username, password) {
+  // Set default settings specific for authenticated users
+  user_use_cache = use_cache
+  user_use_output_limiter = use_output_limiter
+  user_allowed_commands = allowed_commands
+  user_cached_commands = cached_commands
+  user_limited_commands = limited_commands
+  user_log_level = log_level
+
   var valid_user = false
   for (const [key, value] of Object.entries(users)) {
     if (basicAuth.safeCompare(username, value.user) & basicAuth.safeCompare(password, value.password)) {
       valid_user = true
+
+      // Override default settings if exists
+      for (const [key, value] of Object.entries(user_settings)) {
+        // Username found in user_settings
+        if (key == username) {
+          // Loop all defined user settings for the requesting user
+          for (const [key2, value2] of Object.entries(value)) {
+            switch (key2) {
+              case 'use_cache':
+              user_use_cache = value2
+              break
+              case 'use_output_limiter':
+              user_use_output_limiter = value2
+              break
+              case 'allowed_commands':
+              user_allowed_commands = value2
+              break
+              case 'cached_commands':
+              user_cached_commands = value2
+              break
+              case 'limited_commands':
+              user_limited_commands = value2
+              break
+              case 'log_level':
+              user_log_level = value2
+              break
+            }
+          }
+          break
+        }
+      }
       break
     }
   }
@@ -188,18 +255,17 @@ app.get('', (req, res) => res.sendFile(`${__dirname}/index.html`))
 
 // Define the request listener
 app.post('/proxy', async (req, res) => {
-  console.log(req.body)
   logThis('rpc request received: ' + req.body.action, log_levels.info)
 
   // Block non-allowed RPC commands
-  if (!req.body.action || allowed_commands.indexOf(req.body.action) === -1) {
+  if (!req.body.action || user_allowed_commands.indexOf(req.body.action) === -1) {
     logThis('RPC request is not allowed: ' + req.body.action, log_levels.info)
     return res.status(500).json({ error: `Action ${req.body.action} not allowed`})
   }
 
   // Read cache for current request action, if there is one
-  if (use_cache) {
-    for (const [key, value] of Object.entries(cached_commands)) {
+  if (user_use_cache) {
+    for (const [key, value] of Object.entries(user_cached_commands)) {
       if (req.body.action === key) {
         const cachedValue = rpcCache.get(key)
         if (isValidJson(cachedValue)) {
@@ -212,8 +278,8 @@ app.post('/proxy', async (req, res) => {
   }
 
   // Limit response count
-  if (use_output_limiter) {
-    for (const [key, value] of Object.entries(limited_commands)) {
+  if (user_use_output_limiter) {
+    for (const [key, value] of Object.entries(user_limited_commands)) {
       if (req.body.action === key) {
         if (parseInt(req.body.count) > value) {
           logThis("Response count was limited to " + value.toString(), log_levels.info)
@@ -233,7 +299,7 @@ app.post('/proxy', async (req, res) => {
       }
       // Save cache if applicable
       if (use_cache) {
-        for (const [key, value] of Object.entries(cached_commands)) {
+        for (const [key, value] of Object.entries(user_cached_commands)) {
           if (req.body.action === key) {
             // Store the response (proxyRes) in cache with key (action name) with a TTL=value
             if (!rpcCache.set(key, proxyRes, value)) {
@@ -301,7 +367,7 @@ function isValidJson(obj) {
 
 // Log function
 function logThis(str, level) {
-  if (log_level == "info" || level == log_level) {
+  if (user_log_level == "info" || level == user_log_level) {
     console.log(str)
   }
 }

@@ -1,0 +1,27 @@
+{
+  "user2": {
+    "use_cache":              true,
+    "use_output_limiter":     true,
+    "allowed_commands":       [
+        "account_history",
+        "account_info",
+        "block_info",
+        "block_count"
+    ],
+    "cached_commands":        {
+      "block_count":            60
+    },
+    "limited_commands":       {
+      "account_history":      50,
+      "chain":                50,
+      "frontiers":            50,
+      "pending":              50
+    },
+    "log_level":              "info"
+  },
+  "user3": {
+    "use_cache":              true,
+    "use_output_limiter":     true,
+    "log_level":              "warning"
+  }
+}
