@@ -1,17 +1,17 @@
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
 const NodeCache =     require("node-cache" )
-const slowDown =      require("express-slow-down")
-const rateLimit =     require("express-rate-limit")
-const basicAuth =     require('express-basic-auth')
-const http =          require('http')
-const https =         require('https')
-const fs =            require('fs')
-const express =       require('express')
-const request =       require('request-promise-native')
-const cors =          require('cors')
-const { promisify } = require('util')
-
+const SlowDown =      require("express-slow-down")
+const RateLimit =     require("express-rate-limit")
+const BasicAuth =     require('express-basic-auth')
+const Http =          require('http')
+const Https =         require('https')
+const Fs =            require('fs')
+const Express =       require('express')
+const Request =       require('request-promise-native')
+const Cors =          require('cors')
+const IpFilter =      require('express-ipfilter').IpFilter
+const IpDeniedError =      require('express-ipfilter').IpDeniedError
 log_levels = {none:"none", warning:"warning", info:"info"}
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
@@ -27,6 +27,7 @@ var use_cache = false               // if caching certain commands set in cached
 var use_http = true                 // listen on http (active by default)
 var use_https = false               // listen on https (inactive by default) (a valid cert and key file is needed via https_cert and https_key)
 var use_output_limiter = false      // if limiting number of response objects, like pending transactions, to a certain max amount set in limited_commands. Only supported for RPC actions that have a "count" key
+var use_ip_blacklist = false        // if blocking access to IPs listed in ip_blacklist
 var https_cert = ""                 // file path for pub cert file
 var https_key = ""                  // file path for private key file
 var allowed_commands = []           // only allow RPC actions in this list
@@ -35,6 +36,7 @@ var limited_commands = []           // a list of commands [key] to limit the out
 var speed_limiter = {}              // contains the settings for slowing down clients with speed limiter
 var ip_block = {}                   // contains the settings for blocking IP that does too many requests
 var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
+var ip_blacklist = []               // a list of IPs to deny always
 
 // default vars
 cache_duration_default = 60
@@ -52,7 +54,7 @@ var user_log_level = null
 // Read credentials from file
 // ---
 try {
-  const creds = JSON.parse(fs.readFileSync('creds.json', 'UTF-8'))
+  const creds = JSON.parse(Fs.readFileSync('creds.json', 'UTF-8'))
   users = creds.users
 }
 catch(e) {
@@ -63,7 +65,7 @@ catch(e) {
 // Read settings from file
 // ---
 try {
-  const settings = JSON.parse(fs.readFileSync('settings.json', 'UTF-8'))
+  const settings = JSON.parse(Fs.readFileSync('settings.json', 'UTF-8'))
   node_url = settings.node_url
   http_port = settings.http_port
   https_port = settings.https_port
@@ -74,6 +76,7 @@ try {
   use_output_limiter = settings.use_output_limiter
   use_http = settings.use_http
   use_https = settings.use_https
+  use_ip_blacklist = settings.use_ip_blacklist
   https_cert = settings.https_cert
   https_key = settings.https_key
   cached_commands = settings.cached_commands
@@ -82,6 +85,7 @@ try {
   log_level = settings.log_level
   speed_limiter = settings.speed_limiter
   ip_block = settings.ip_block
+  ip_blacklist = settings.ip_blacklist
 
   // Clone default settings for custom user specific vars, to be used if no auth
   if (!use_auth) {
@@ -101,7 +105,7 @@ catch(e) {
 // Read user settings from file, override default settings if they exist for specific users
 // ---
 try {
-  user_settings = JSON.parse(fs.readFileSync('user_settings.json', 'UTF-8'))
+  user_settings = JSON.parse(Fs.readFileSync('user_settings.json', 'UTF-8'))
 }
 catch(e) {
   console.log("Could not read user_settings.json", e)
@@ -118,6 +122,7 @@ console.log("Use speed limiter: " + use_speed_limiter)
 console.log("Use IP block: " + use_ip_block)
 console.log("Use cached requests: " + use_cache)
 console.log("Use output limiter: " + use_output_limiter)
+console.log("Use IP blacklist: " + use_ip_blacklist)
 console.log("Listen on http: " + use_http)
 console.log("Listen on https: " + use_https)
 
@@ -159,23 +164,32 @@ if (use_ip_block) {
   console.log(log_string)
 }
 
+if (use_ip_blacklist) {
+  log_string = "IPs blacklisted:\n"
+  for (const [key, value] of Object.entries(ip_blacklist)) {
+    log_string = log_string + value + "\n"
+  }
+  console.log(log_string)
+}
+
 console.log("Log level: " + log_level)
 // ---
 
 // Define the proxy app
-const app = express()
-app.use(cors())
-app.use(express.json())
-app.use(express.static('static'))
+const app = Express()
+app.set('view engine', 'pug')
+app.use(Cors())
+app.use(Express.json())
+app.use(Express.static('static'))
 
 // Define authentication service
 if (use_auth) {
-  app.use(basicAuth({ authorizer: myAuthorizer }))
+  app.use(BasicAuth({ authorizer: myAuthorizer }))
 }
 
 // Limit by slowing down requests
 if (use_speed_limiter) {
-  const speed_limiter_settings = slowDown({
+  const speed_limiter_settings = SlowDown({
     windowMs: speed_limiter.time_window, // rolling time window in ms
     delayAfter: speed_limiter.request_limit, // allow x requests per time window, then start slowing down
     delayMs: speed_limiter.delay_increment, // begin adding X ms of delay per request when delayAfter has been reached
@@ -186,7 +200,7 @@ if (use_speed_limiter) {
 
 // Block IP if requesting too much
 if (use_ip_block) {
-  const ip_block_settings = rateLimit({
+  const ip_block_settings = RateLimit({
     windowMs: ip_block.time_window, // rolling time window in ms
     max: ip_block.request_limit, // limit each IP to x requests per windowMs
     message: 'You have sent too many RPC requests. You can try again later.'
@@ -198,6 +212,27 @@ if (use_ip_block) {
 if (use_cache) {
   rpcCache = new NodeCache( { stdTTL: cache_duration_default, checkperiod: 10 } )
 }
+
+// Set up blacklist
+if (use_ip_blacklist) {
+  app.use(IpFilter(ip_blacklist))
+}
+
+// Error handling
+app.use((err, req, res, _next) => {
+  //console.log('Error handler', err)
+  if (err instanceof IpDeniedError) {
+    res.status(401)
+  } else {
+    res.status(err.status || 500)
+  }
+
+  res.render('index', {
+    title: 'RPCProxy Error',
+    message: 'You shall not pass',
+    error: err
+  })
+})
 
 // To verify username and password provided via basicAuth. Support multiple users
 function myAuthorizer(username, password) {
@@ -211,7 +246,7 @@ function myAuthorizer(username, password) {
 
   var valid_user = false
   for (const [key, value] of Object.entries(users)) {
-    if (basicAuth.safeCompare(username, value.user) & basicAuth.safeCompare(password, value.password)) {
+    if (BasicAuth.safeCompare(username, value.user) & BasicAuth.safeCompare(password, value.password)) {
       valid_user = true
 
       // Override default settings if exists
@@ -250,8 +285,14 @@ function myAuthorizer(username, password) {
   return valid_user
 }
 
-// Redirect all bad GET requests to default page
-app.get('', (req, res) => res.sendFile(`${__dirname}/index.html`))
+// Default get requests
+app.get('/', function (req, res) {
+  res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
+})
+
+app.get('/proxy/', function (req, res) {
+  res.render('index', { title: 'RPCProxy API', message: 'Bad request type' })
+})
 
 // Define the request listener
 app.post('/proxy', async (req, res) => {
@@ -290,7 +331,7 @@ app.post('/proxy', async (req, res) => {
   }
 
   // Send the request to the Nano node and return the response
-  request({ method: 'post', uri: node_url, body: req.body, json: true })
+  Request({ method: 'post', uri: node_url, body: req.body, json: true })
     .then(async (proxyRes) => {
       if (!isValidJson(proxyRes)) {
         logThis("Bad json response from the node", log_levels.warning)
@@ -317,7 +358,7 @@ app.post('/proxy', async (req, res) => {
 // Create an HTTP service
 if (use_http) {
   console.log("Starting http server")
-  http.createServer(app).listen(http_port)
+  Http.createServer(app).listen(http_port)
 }
 
 // Create an HTTPS service
@@ -325,13 +366,13 @@ if (use_https) {
   // Verify that cert files exists
   var cert_exists = false
   var key_exists = false
-  fs.access(https_cert, fs.F_OK, (err) => {
+  Fs.access(https_cert, fs.F_OK, (err) => {
     if (err) {
       console.log("Warning: Https cert file does not exist!")
     }
     cert_exists = true
   })
-  fs.access(https_key, fs.F_OK, (err) => {
+  Fs.access(https_key, fs.F_OK, (err) => {
     if (err) {
       console.log("Warning: Https key file does not exist!")
     }
@@ -339,11 +380,11 @@ if (use_https) {
   })
   if (cert_exists && key_exists) {
     var https_options = {
-      cert: fs.readFileSync(https_cert),
-      key: fs.readFileSync(https_key)
+      cert: Fs.readFileSync(https_cert),
+      key: Fs.readFileSync(https_key)
     }
     console.log("Starting https server")
-    https.createServer(https_options, app).listen(https_port)
+    Https.createServer(https_options, app).listen(https_port)
   }
   else {
     console.log("Warning: Will not listen on https!")

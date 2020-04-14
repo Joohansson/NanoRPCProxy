@@ -3,7 +3,7 @@
   "http_port":              9950,
   "https_port":             9951,
   "cache_duration":         60,
-  "use_auth":               true,
+  "use_auth":               false,
   "use_speed_limiter":      true,
   "use_ip_block":           true,
   "use_cache":              true,
