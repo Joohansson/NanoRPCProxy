@@ -106,3 +106,8 @@ a:hover, a:focus {
 .dropdown-item:hover {
   background: #4a90e2 !important;
 }
+
+/* RADIO BUTTONS */
+.auth-title {
+  width: 100px;
+}

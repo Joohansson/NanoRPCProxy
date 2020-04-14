@@ -12,25 +12,40 @@ export const constants = {
   RPC_SERVER: rpc.RPC_SERVER,
   RPC_LIMIT: rpc.RPC_LIMIT,
   RPC_CREDS: rpc.RPC_CREDS,
+
   // Nano sample commands
   SAMPLE_COMMANDS: [
-    '{"action":"block_count"}',
+    '{"action":"account_history", "account":"nano_3cpz7oh9qr5b7obbcb5867omqf8esix4sdd5w6mh8kkknamjgbnwrimxsaaf","count":"20"}',
     '{"action":"account_info","account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"}',
-    '{"action":"account_history", "account":"nano_3cpz7oh9qr5b7obbcb5867omqf8esix4sdd5w6mh8kkknamjgbnwrimxsaaf", "count":"20"}',
+    '{"account_representative","account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"}',
     '{"action":"active_difficulty"}',
+    '{"action":"available_supply"}',
     '{"action":"block_info","json_block":"true","hash":"87434F8041869A01C8F6F263B87972D7BA443A72E0A97D7A3FD0CCC2358FD6F9"}',
-    '{"action":"pending","account":"nano_1111111111111111111111111111111111111111111111111117353trpda","count": "5"}',
+    '{"action":"block_count"}',
+    '{"action":"chain","block":"87434F8041869A01C8F6F263B87972D7BA443A72E0A97D7A3FD0CCC2358FD6F9","count":"20"}',
+    '{"action":"delegators","account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"}',
+    '{"action":"delegators_count","account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"}',
+    '{"action":"frontiers", "account":"nano_3cpz7oh9qr5b7obbcb5867omqf8esix4sdd5w6mh8kkknamjgbnwrimxsaaf","count":"20"}',
+    '{"action":"pending","account":"nano_1111111111111111111111111111111111111111111111111117353trpda","count":"5"}',
+    '{"action": "process","json_block": "true","subtype": "send","block": {"type": "state","account": "nano_1qato4k7z3spc8gq1zyd8xeqfbzsoxwo36a45ozbrxcatut7up8ohyardu1z","previous": "6CDDA48608C7843A0AC1122BDD46D9E20E21190986B19EAC23E7F33F2E6A6766","representative": "nano_3pczxuorp48td8645bs3m6c3xotxd3idskrenmi65rbrga5zmkemzhwkaznh","balance": "40200000001000000000000000000000000","link": "87434F8041869A01C8F6F263B87972D7BA443A72E0A97D7A3FD0CCC2358FD6F9","link_as_account":"nano_33t5by1653nt196hfwm5q3wq7oxtaix97r7bhox5zn8eratrzoqsny49ftsd","signature": "A5DB164F6B81648F914E49CAB533900C389FAAD64FBB24F6902F9261312B29F730D07E9BCCD21D918301419B4E05B181637CF8419ED4DCBF8EF2539EB2467F07","work": "000bc55b014e807d"}}',
     '{"action":"representatives_online"}',
   ],
   // For dropdown titles
   SAMPLE_COMMAND_NAMES: [
-    'block_count',
-    'account_info',
-    'account_history',
-    'active_difficulty',
-    'block_info',
-    'pending',
-    'representatives_online',
+    "account_history",
+    "account_info",
+    "account_representative",
+    "active_difficulty",
+    "available_supply",
+    "block_info",
+    "block_count",
+    "chain",
+    "delegators",
+    "delegators_count",
+    "frontiers",
+    "pending",
+    "process",
+    "representatives_online",
   ]
 }
 
@@ -59,18 +74,28 @@ class App extends Component {
       fetchingRPC: false,
       activeCommandId: 0,
       activeCommandName: 'Select a sample',
+      useAuth: true,
     }
 
     this.getRPC = this.getRPC.bind(this)
     this.handleCommandChange = this.handleCommandChange.bind(this)
     this.handleRPCError = this.handleRPCError.bind(this)
     this.selectCommand = this.selectCommand.bind(this)
+    this.postData = this.postData.bind(this)
+    this.handleOptionChange = this.handleOptionChange.bind(this)
   }
 
   handleCommandChange(event) {
     let command = event.target.value
     this.setState({
       command: command
+    })
+  }
+
+  // Select Auth
+  handleOptionChange = changeEvent => {
+    this.setState({
+      useAuth: !this.state.useAuth
     })
   }
 
@@ -138,6 +163,10 @@ class App extends Component {
   // Post RPC data with timeout and catch errors
   async postData(data = {}, server=constants.RPC_SERVER) {
     let didTimeOut = false;
+    var headers = {'Content-Type': 'application/json'}
+    if (this.state.useAuth) {
+      headers.Authorization = 'Basic ' + Base64.encode(constants.RPC_CREDS)
+    }
 
     return new Promise(function(resolve, reject) {
         const timeout = setTimeout(function() {
@@ -150,10 +179,7 @@ class App extends Component {
           mode: 'cors', // no-cors, *cors, same-origin
           cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
           credentials: 'same-origin', // include, *same-origin, omit
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + Base64.encode(constants.RPC_CREDS)
-          },
+          headers: headers,
           redirect: 'follow', // manual, *follow, error
           referrerPolicy: 'no-referrer', // no-referrer, *client
           body: JSON.stringify(data) // body data type must match "Content-Type" header
@@ -189,7 +215,7 @@ class App extends Component {
         <header className="App-header">
           <h3>RPC demo client for communicating with <a href="https://github.com/Joohansson/NanoRPCProxy">NanoRPCProxy</a></h3>
           <p>Send to a live Nano node using RPC json requests<br/>
-          See <a href="https://docs.nano.org/commands/rpc-protocol/">documentation</a> for more commands<br/>
+          See RPC <a href="https://docs.nano.org/commands/rpc-protocol/">documentation</a><br/>
           </p>
           <DropdownButton
             className="command-dropdown"
@@ -208,6 +234,13 @@ class App extends Component {
               </InputGroup.Text>
             </InputGroup.Prepend>
             <FormControl id="command" aria-describedby="command" value={this.state.command} title="" maxLength="200" placeholder='RPC command' onChange={this.handleCommandChange} autoComplete="off"/>
+          </InputGroup>
+
+          <InputGroup size="sm" className="mb-3">
+            <div className="auth-title" title="Use authentication">Use Auth:</div>
+            <div className="form-check form-check-inline index-checkbox">
+              <input className="form-check-input" type="checkbox" id="auth-check" value={this.state.useAuth} checked={this.state.useAuth} onChange={this.handleOptionChange}/>
+            </div>
           </InputGroup>
 
           <InputGroup size="sm" className="mb-3">
