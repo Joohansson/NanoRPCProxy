@@ -12,8 +12,9 @@ const Request =       require('request-promise-native')
 const Cors =          require('cors')
 const IpFilter =      require('express-ipfilter').IpFilter
 const IpDeniedError = require('express-ipfilter').IpDeniedError
-const FetchUrl =      require("fetch").fetchUrl;
-const Promise =       require('promise');
+const FetchUrl =      require("fetch").fetchUrl
+const Promise =       require('promise')
+const Tools =         require('./tools')
 log_levels = {none:"none", warning:"warning", info:"info"}
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
@@ -306,14 +307,12 @@ class APIError extends Error {
   }
 }
 
+// GET request from an external API with timeout
 async function getAPIData(server='') {
   let didTimeOut = false;
-  // If using CoinMarketCap
-  /*
+  /* // If using CoinMarketCap
   options = {
-    headers:{
-      "X-CMC_PRO_API_KEY":CMC_API_KEY
-    }
+    headers:{"X-CMC_PRO_API_KEY":CMC_API_KEY}
   }*/
   options = {}
 
@@ -323,6 +322,7 @@ async function getAPIData(server='') {
           reject(new Error('Request timed out'));
       }, API_TIMEOUT);
 
+      // https://www.npmjs.com/package/fetch
       FetchUrl(server, options, function(error, meta, body){
         // Clear the timeout as cleanup
         clearTimeout(timeout);
@@ -336,7 +336,32 @@ async function getAPIData(server='') {
         }
       })
   }).catch(function(error) {
-    logThis('Could not fetch price: ' + error, log_levels.warning)
+    logThis('Could not fetch API data: ' + error, log_levels.warning)
+  })
+}
+
+// Post data, for example to RPC node
+async function postData(data, server=node_url) {
+  let didTimeOut = false;
+  options = {
+    header: "Content-type:application/json",
+    method: "POST",
+    timout: API_TIMEOUT,
+    payload: data
+  }
+
+  return new Promise(async (resolve, reject) => {
+      // https://www.npmjs.com/package/fetch
+      FetchUrl(server, options, function(error, meta, body) {
+        if(meta.status === 200) {
+          resolve(JSON.parse(body.toString()));
+        }
+        else {
+          throw new APIError(response.status, error)
+        }
+      })
+  }).catch(function(error) {
+    logThis('Could not fetch API data: ' + error, log_levels.warning)
   })
 }
 
@@ -345,6 +370,7 @@ app.get('/', function (req, res) {
   res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
 })
 
+// Wrong request type (GET) on the proxy endpoint
 app.get('/proxy/', function (req, res) {
   res.render('index', { title: 'RPCProxy API', message: 'Bad request type' })
 })
@@ -360,6 +386,7 @@ app.post('/proxy', async (req, res) => {
   }
 
   // Respond directly if non-node-related request
+  //  ---
   if (req.body.action === 'price') {
     getAPIData(PriceUrl)
     .then((data) => {
@@ -372,6 +399,19 @@ app.post('/proxy', async (req, res) => {
     })
     return
   }
+
+  if (req.body.action === 'tokens_buy') {
+    var amount = null
+    if ('amount' in req.body) {
+      amount = req.body.amount
+    }
+
+    let key = Tools.requestTokenPayment(amount)
+
+    res.json({"key":key})
+    return
+  }
+  // ---
 
   // Read cache for current request action, if there is one
   if (user_use_cache) {

@@ -28,7 +28,9 @@
       "pending",
       "process",
       "representatives_online",
-      "price"
+      "price",
+      "tokens_buy",
+      "tokens_check"
   ],
   "cached_commands":        {
     "block_count":            30,

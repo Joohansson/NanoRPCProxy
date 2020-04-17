@@ -67,7 +67,7 @@ The curl command looks just a tiny bit different than for a direct node request.
 
 **With authentication**
 
-    curl --user user1:user1 -H "Content-Type: application/json" -H '{"action":"block_count"}' http://127.0.0.1:9950/proxy
+    curl --user user1:user1 -H "Content-Type: application/json" -d '{"action":"block_count"}' http://127.0.0.1:9950/proxy
 
 ### Using python
 **No authentication**

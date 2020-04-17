@@ -6,13 +6,15 @@
   "license": "MIT",
   "repository": "https://github.com/Joohansson/NanoRPCProxy",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node -r esm proxy.js"
   },
   "homepage": "https://github.com/joohansson/NanoRPCProxy",
   "dependencies": {
     "console-stamp": "^0.2.9",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
+    "esm": "^3.2.25",
     "express": "^4.17.1",
     "express-basic-auth": "^1.2.0",
     "express-ipfilter": "^1.1.2",
@@ -22,10 +24,14 @@
     "fs": "0.0.1-security",
     "http": "0.0.0",
     "https": "^1.0.0",
+    "nanocurrency": "npm:nanocurrency@^2.3.0",
+    "nanocurrency-web": "^1.0.6",
+    "nanocurrency174": "npm:nanocurrency@1.7.4",
     "node-cache": "^5.1.0",
     "package.json": "^2.0.1",
     "pug": "^2.0.4",
     "request": "^2.88.0",
-    "request-promise-native": "^1.0.8"
+    "request-promise-native": "^1.0.8",
+    "tweetnacl": "^1.0.1"
   }
 }
