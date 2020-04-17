@@ -14,6 +14,7 @@ commands = [
         {"action":"block_info","json_block":"true","hash":"87434F8041869A01C8F6F263B87972D7BA443A72E0A97D7A3FD0CCC2358FD6F9"},
         {"action":"pending","account":"nano_1111111111111111111111111111111111111111111111111117353trpda","count": "5"},
         {"action":"representatives_online"},
+        {"action":"price"},
     ]
 
 username = "user1"
@@ -21,7 +22,7 @@ password = "user1"
 
 # Parse argument --c [int] to call different commands
 parser = argparse.ArgumentParser(description="Call proxy server")
-parser.add_argument("--c", default=1, type=int, choices=[1, 2, 3, 4, 5, 6, 7], required=True, help="The action to call")
+parser.add_argument("--c", default=1, type=int, choices=[1, 2, 3, 4, 5, 6, 7, 8], required=True, help="The action to call")
 parser.add_argument("--a", action="store_true", help="Use authentication")
 args = parser.parse_args()
 command = commands[int(args.c)-1]

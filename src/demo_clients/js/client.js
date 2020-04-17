@@ -8,6 +8,7 @@ const SAMPLE_COMMANDS = [
   '{"action":"block_info","json_block":"true","hash":"87434F8041869A01C8F6F263B87972D7BA443A72E0A97D7A3FD0CCC2358FD6F9"}',
   '{"action":"pending","account":"nano_1111111111111111111111111111111111111111111111111117353trpda","count": "5"}',
   '{"action":"representatives_online"}',
+  '{"action":"price"}',
 ]
 const NODE_SERVER = 'http://localhost:9950/proxy'
 const CREDS = 'user1:user1'

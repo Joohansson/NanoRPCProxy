@@ -11,7 +11,9 @@ const Express =       require('express')
 const Request =       require('request-promise-native')
 const Cors =          require('cors')
 const IpFilter =      require('express-ipfilter').IpFilter
-const IpDeniedError =      require('express-ipfilter').IpDeniedError
+const IpDeniedError = require('express-ipfilter').IpDeniedError
+const FetchUrl =      require("fetch").fetchUrl;
+const Promise =       require('promise');
 log_levels = {none:"none", warning:"warning", info:"info"}
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
@@ -43,6 +45,10 @@ cache_duration_default = 60
 var rpcCache = null
 var cacheKeys = []
 var user_settings = {}
+const PriceUrl = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
+//const PriceUrl2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
+//const CMC_API_KEY = 'xxx'
+const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
 
 var user_use_cache = null
 var user_use_output_limiter = null
@@ -285,6 +291,55 @@ function myAuthorizer(username, password) {
   return valid_user
 }
 
+// Custom error class
+class APIError extends Error {
+  constructor(code, ...params) {
+    super(...params)
+
+    // Maintains proper stack trace for where our error was thrown (only available on V8)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, APIError)
+    }
+    this.name = 'APIError'
+    // Custom debugging information
+    this.code = code
+  }
+}
+
+async function getAPIData(server='') {
+  let didTimeOut = false;
+  // If using CoinMarketCap
+  /*
+  options = {
+    headers:{
+      "X-CMC_PRO_API_KEY":CMC_API_KEY
+    }
+  }*/
+  options = {}
+
+  return new Promise(async (resolve, reject) => {
+      const timeout = setTimeout(function() {
+          didTimeOut = true;
+          reject(new Error('Request timed out'));
+      }, API_TIMEOUT);
+
+      FetchUrl(server, options, function(error, meta, body){
+        // Clear the timeout as cleanup
+        clearTimeout(timeout);
+        if(!didTimeOut) {
+          if(meta.status === 200) {
+            resolve(JSON.parse(body.toString()));
+          }
+          else {
+            throw new APIError(response.status, error)
+          }
+        }
+      })
+  }).catch(function(error) {
+    logThis('Could not fetch price: ' + error, log_levels.warning)
+  })
+}
+
 // Default get requests
 app.get('/', function (req, res) {
   res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
@@ -302,6 +357,20 @@ app.post('/proxy', async (req, res) => {
   if (!req.body.action || user_allowed_commands.indexOf(req.body.action) === -1) {
     logThis('RPC request is not allowed: ' + req.body.action, log_levels.info)
     return res.status(500).json({ error: `Action ${req.body.action} not allowed`})
+  }
+
+  // Respond directly if non-node-related request
+  if (req.body.action === 'price') {
+    getAPIData(PriceUrl)
+    .then((data) => {
+      //res.json({"Price USD":data.data["1567"].quote.USD.price}) // sending back json response (CMC)
+      //res.json({"Price USD":data.quotes.USD.price}) // sending back json response (Coinpaprika)
+      res.json(data) // sending back full json price response (Coinpaprika)
+    })
+    .catch(function(error) {
+      res.status(500).json(error.toString())
+    })
+    return
   }
 
   // Read cache for current request action, if there is one

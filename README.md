@@ -17,6 +17,8 @@ NanoRPCProxy is a relay and protection system that sits between a client and a N
 ## Install and run proxy server
 
 
+
+
 ## How customize the proxy server
 The proxy server is configured via the **settings.json** file found in the server folder
 * **node_url:** Nano node RPC url (default for main network is 'http://[::1]:7076' and for beta network 'http://[::1]:55000') [number]
@@ -40,7 +42,7 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **ip_block:** Contains the settings for blocking IPs when they request too much. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will block the IP until the time slot has passed. Then the IP can start requesting again. To permantenly ban IPs they have to be manually added to <ip_blacklist> and activating <use_ip_blacklist>
 * **log_level:** It can be set to either "info" which will output all logs, "warning" which will only output warning messages or "none" which will only log the initial settings.
 
-Furthermore, the following parameters can be set in **user_settings.json** to override the default ones for specific users defined in **creds.json**. Anything in this file will override even if there are less sub entries like only 1 allowed command or 2 limited commands.
+The following parameters can be set in **user_settings.json** to override the default ones for specific users defined in **creds.json**. Anything in this file will override even if there are less sub entries like only 1 allowed command or 2 limited commands.
 * **use_cache**
 * **use_output_limiter**
 * **allowed_commands**
@@ -51,6 +53,10 @@ Furthermore, the following parameters can be set in **user_settings.json** to ov
 ## How to call the proxy server
 You call the proxy server just like you would call the node RPC. It's a normal POST request to "<YourProxyURL>/proxy" with json formatted data.
 The node commands are found here: https://docs.nano.org/commands/rpc-protocol/
+
+### Special RPC commands
+The proxy server also support special commands not supported in the Nano RPC. They need to be listed in the **settings.json** under "allowed_commands"
+* **{"action":"price"}** Returns the latest Nano price quote from Coinpaprika
 
 ### Using curl
 The curl command looks just a tiny bit different than for a direct node request. You just have to define it with a json content type. You can also use the -i flag to include response headers.

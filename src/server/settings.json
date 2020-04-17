@@ -3,7 +3,7 @@
   "http_port":              9950,
   "https_port":             9951,
   "cache_duration":         60,
-  "use_auth":               false,
+  "use_auth":               true,
   "use_speed_limiter":      true,
   "use_ip_block":           true,
   "use_cache":              true,
@@ -27,7 +27,8 @@
       "frontiers",
       "pending",
       "process",
-      "representatives_online"
+      "representatives_online",
+      "price"
   ],
   "cached_commands":        {
     "block_count":            30,
