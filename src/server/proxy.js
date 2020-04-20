@@ -14,8 +14,15 @@ const IpFilter =      require('express-ipfilter').IpFilter
 const IpDeniedError = require('express-ipfilter').IpDeniedError
 const FetchUrl =      require("fetch").fetchUrl
 const Promise =       require('promise')
-const Tools =         require('./tools')
+const Tokens =         require('./tokens')
 log_levels = {none:"none", warning:"warning", info:"info"}
+
+// lowdb init
+const Low = require('lowdb')
+const FileSync = require('lowdb/adapters/FileSync')
+const Adapter = new FileSync('db.json')
+const order_db = Low(Adapter)
+order_db.defaults({orders: []}).write()
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
 var users = []                      // a list of base64 user/password credentials
@@ -401,14 +408,30 @@ app.post('/proxy', async (req, res) => {
   }
 
   if (req.body.action === 'tokens_buy') {
-    var amount = null
-    if ('amount' in req.body) {
-      amount = req.body.amount
+    var token_amount = 0
+    var token_key = ""
+    if ('token_amount' in req.body) {
+      token_amount = req.body.token_amount
+    }
+    if ('token_key' in req.body) {
+      token_key = req.body.token_key
     }
 
-    let key = Tools.requestTokenPayment(amount)
+    let payment_request = Tokens.requestTokenPayment(token_amount, token_key, order_db)
 
-    res.json({"key":key})
+    res.json(payment_request)
+    return
+  }
+
+  if (req.body.action === 'tokens_check') {
+    var token_key = ""
+    if ('token_key' in req.body) {
+      token_key = req.body.token_key
+    }
+
+    let status = Tokens.checkOrder(token_key, order_db)
+
+    res.json(status)
     return
   }
   // ---

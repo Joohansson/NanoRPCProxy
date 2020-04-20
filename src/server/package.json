@@ -24,6 +24,7 @@
     "fs": "0.0.1-security",
     "http": "0.0.0",
     "https": "^1.0.0",
+    "lowdb": "^1.0.0",
     "nanocurrency": "npm:nanocurrency@^2.3.0",
     "nanocurrency-web": "^1.0.6",
     "nanocurrency174": "npm:nanocurrency@1.7.4",
