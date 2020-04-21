@@ -1,19 +1,24 @@
 const Nacl =       require('tweetnacl/nacl')
 const Nano =       require('nanocurrency')
 const Wallet =     require('nanocurrency-web')
+const Tools =      require('./tools')
 
 const Token_Price = 0.0001 // 10k tokens per Nano
 const Payment_Timeout = 120 // timeout after 120sec
 const Pending_Interval = 5 // time to wait for each check for pending Nano
+const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
 
 const sleep = (milliseconds) => {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
+var node_url = "" // will be set by main script
+
 // Functions to be required from another file
 module.exports = {
   // Generates and provides a payment address with seed backup
-  requestTokenPayment: function (token_amount=0, token_key="", order_db) {
+  requestTokenPayment: function (token_amount=0, token_key="", order_db, url) {
+    node_url = url
     const refill = token_key != "" ? true:false
     var priv_key = ""
     var address = ""
@@ -76,6 +81,44 @@ module.exports = {
 async function checkPending(address, order_db) {
   console.log("Start checking for pending tx...")
   // TODO: check pending and claim
+  Tools.postData({"action":"pending","account":address,"count": 10,"threshold":"1000000000000000000000000","sorting":"true","include_only_confirmed":"true"}, node_url, API_TIMEOUT)
+  .then((pending) => {
+    if ("blocks" in pending) {
+      // Send all pending to main account
+      for (const [key, value] of Object.entries(pending)) {
+        const priv_key = order_db.get('orders').find({address: address}).value().priv_key
+        console.log(priv_key)
+
+        // get account info required to build the open block (to retrieve the pending before we can send it home)
+        var command = {}
+        command.action = 'account_info'
+        command.account = address
+        command.representative = true
+
+        var balance = 0 // balance will be 0 if open block
+        this.adjustedBalance = balance
+        var previous = null // previous is null if we create open block
+        this.representative = 'nano_1iuz18n4g4wfp9gf7p1s8qkygxw7wx9qfjq6a9aq68uyrdnningdcjontgar'
+        var subType = 'open'
+
+        // Request the node
+        Tools.postData(command, node_url, API_TIMEOUT)
+        .then((account_info) => {
+          console.log()
+        })
+        // If promise was rejected
+        .catch(function(error) {
+          console.log(error.toString())
+        })
+      }
+    }
+  })
+  // If promise was rejected
+  .catch(function(error) {
+    console.log(error.toString())
+  })
+
+
   let nano_received = 1
   let tokens_purchased = nano_received / Token_Price
 

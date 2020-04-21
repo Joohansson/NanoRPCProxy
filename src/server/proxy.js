@@ -8,13 +8,12 @@ const Http =          require('http')
 const Https =         require('https')
 const Fs =            require('fs')
 const Express =       require('express')
-const Request =       require('request-promise-native')
 const Cors =          require('cors')
 const IpFilter =      require('express-ipfilter').IpFilter
 const IpDeniedError = require('express-ipfilter').IpDeniedError
-const FetchUrl =      require("fetch").fetchUrl
 const Promise =       require('promise')
-const Tokens =         require('./tokens')
+const Tokens =        require('./tokens')
+const Tools =         require('./tools')
 log_levels = {none:"none", warning:"warning", info:"info"}
 
 // lowdb init
@@ -314,64 +313,6 @@ class APIError extends Error {
   }
 }
 
-// GET request from an external API with timeout
-async function getAPIData(server='') {
-  let didTimeOut = false;
-  /* // If using CoinMarketCap
-  options = {
-    headers:{"X-CMC_PRO_API_KEY":CMC_API_KEY}
-  }*/
-  options = {}
-
-  return new Promise(async (resolve, reject) => {
-      const timeout = setTimeout(function() {
-          didTimeOut = true;
-          reject(new Error('Request timed out'));
-      }, API_TIMEOUT);
-
-      // https://www.npmjs.com/package/fetch
-      FetchUrl(server, options, function(error, meta, body){
-        // Clear the timeout as cleanup
-        clearTimeout(timeout);
-        if(!didTimeOut) {
-          if(meta.status === 200) {
-            resolve(JSON.parse(body.toString()));
-          }
-          else {
-            throw new APIError(response.status, error)
-          }
-        }
-      })
-  }).catch(function(error) {
-    logThis('Could not fetch API data: ' + error, log_levels.warning)
-  })
-}
-
-// Post data, for example to RPC node
-async function postData(data, server=node_url) {
-  let didTimeOut = false;
-  options = {
-    header: "Content-type:application/json",
-    method: "POST",
-    timout: API_TIMEOUT,
-    payload: data
-  }
-
-  return new Promise(async (resolve, reject) => {
-      // https://www.npmjs.com/package/fetch
-      FetchUrl(server, options, function(error, meta, body) {
-        if(meta.status === 200) {
-          resolve(JSON.parse(body.toString()));
-        }
-        else {
-          throw new APIError(response.status, error)
-        }
-      })
-  }).catch(function(error) {
-    logThis('Could not fetch API data: ' + error, log_levels.warning)
-  })
-}
-
 // Default get requests
 app.get('/', function (req, res) {
   res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
@@ -395,12 +336,13 @@ app.post('/proxy', async (req, res) => {
   // Respond directly if non-node-related request
   //  ---
   if (req.body.action === 'price') {
-    getAPIData(PriceUrl)
+    Tools.getData(PriceUrl, API_TIMEOUT)
     .then((data) => {
-      //res.json({"Price USD":data.data["1567"].quote.USD.price}) // sending back json response (CMC)
-      //res.json({"Price USD":data.quotes.USD.price}) // sending back json response (Coinpaprika)
+      //res.json({"Price USD":data.data["1567"].quote.USD.price}) // sending back json price response (CMC)
+      //res.json({"Price USD":data.quotes.USD.price}) // sending back json price response (Coinpaprika)
       res.json(data) // sending back full json price response (Coinpaprika)
     })
+    // if promise rejected
     .catch(function(error) {
       res.status(500).json(error.toString())
     })
@@ -441,7 +383,7 @@ app.post('/proxy', async (req, res) => {
     for (const [key, value] of Object.entries(user_cached_commands)) {
       if (req.body.action === key) {
         const cachedValue = rpcCache.get(key)
-        if (isValidJson(cachedValue)) {
+        if (Tools.isValidJson(cachedValue)) {
           logThis("Cache requested: " + key, log_levels.info)
           return res.json(cachedValue)
         }
@@ -463,28 +405,26 @@ app.post('/proxy', async (req, res) => {
   }
 
   // Send the request to the Nano node and return the response
-  Request({ method: 'post', uri: node_url, body: req.body, json: true })
-    .then(async (proxyRes) => {
-      if (!isValidJson(proxyRes)) {
-        logThis("Bad json response from the node", log_levels.warning)
-        res.status(500).json({error: "Bad json response from the node"})
-        return
-      }
+  Tools.postData(req.body, node_url, API_TIMEOUT)
+    .then((data) => {
       // Save cache if applicable
       if (use_cache) {
         for (const [key, value] of Object.entries(user_cached_commands)) {
           if (req.body.action === key) {
             // Store the response (proxyRes) in cache with key (action name) with a TTL=value
-            if (!rpcCache.set(key, proxyRes, value)) {
+            if (!rpcCache.set(key, data, value)) {
               logThis("Failed saving cache for " + key, log_levels.warning)
             }
             break
           }
         }
       }
-      res.json(proxyRes) // sending back json response
+      res.json(data) // sending back json response
     })
-    .catch(err => res.status(500).json(err.toString()))
+    // If promise was rejected
+    .catch(function(error) {
+      res.status(500).json(error.toString())
+    })
 })
 
 // Create an HTTP service
@@ -520,21 +460,6 @@ if (use_https) {
   }
   else {
     console.log("Warning: Will not listen on https!")
-  }
-}
-
-// Check if a string is a valid JSON
-function isValidJson(obj) {
-  if (obj != null) {
-    try {
-        JSON.parse(JSON.stringify(obj))
-        return true
-    } catch (e) {
-      return false
-    }
-  }
-  else  {
-    return false
   }
 }
 
