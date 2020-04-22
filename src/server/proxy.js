@@ -127,6 +127,7 @@ catch(e) {
 
 // Log all initial settings for convenience
 // ---
+console.log("PROXY SETTINGS:")
 console.log("Node url: " + node_url)
 console.log("Http port: " + String(http_port))
 console.log("Https port: " + String(https_port))
@@ -336,16 +337,15 @@ app.post('/proxy', async (req, res) => {
   // Respond directly if non-node-related request
   //  ---
   if (req.body.action === 'price') {
-    Tools.getData(PriceUrl, API_TIMEOUT)
-    .then((data) => {
+    try {
+      let data = await Tools.getData(PriceUrl, API_TIMEOUT)
       //res.json({"Price USD":data.data["1567"].quote.USD.price}) // sending back json price response (CMC)
       //res.json({"Price USD":data.quotes.USD.price}) // sending back json price response (Coinpaprika)
       res.json(data) // sending back full json price response (Coinpaprika)
-    })
-    // if promise rejected
-    .catch(function(error) {
-      res.status(500).json(error.toString())
-    })
+    }
+    catch(err) {
+      res.status(500).json(err.toString())
+    }
     return
   }
 
@@ -355,11 +355,14 @@ app.post('/proxy', async (req, res) => {
     if ('token_amount' in req.body) {
       token_amount = req.body.token_amount
     }
+    else {
+      return res.status(500).json({ error: 'The amount of tokens (token_amount) to purchase must be provided'})
+    }
     if ('token_key' in req.body) {
       token_key = req.body.token_key
     }
 
-    let payment_request = Tokens.requestTokenPayment(token_amount, token_key, order_db)
+    let payment_request = Tokens.requestTokenPayment(token_amount, token_key, order_db, node_url)
 
     res.json(payment_request)
     return
@@ -405,26 +408,25 @@ app.post('/proxy', async (req, res) => {
   }
 
   // Send the request to the Nano node and return the response
-  Tools.postData(req.body, node_url, API_TIMEOUT)
-    .then((data) => {
-      // Save cache if applicable
-      if (use_cache) {
-        for (const [key, value] of Object.entries(user_cached_commands)) {
-          if (req.body.action === key) {
-            // Store the response (proxyRes) in cache with key (action name) with a TTL=value
-            if (!rpcCache.set(key, data, value)) {
-              logThis("Failed saving cache for " + key, log_levels.warning)
-            }
-            break
+  try {
+    let data = await Tools.postData(req.body, node_url, API_TIMEOUT)
+    // Save cache if applicable
+    if (use_cache) {
+      for (const [key, value] of Object.entries(user_cached_commands)) {
+        if (req.body.action === key) {
+          // Store the response (proxyRes) in cache with key (action name) with a TTL=value
+          if (!rpcCache.set(key, data, value)) {
+            logThis("Failed saving cache for " + key, log_levels.warning)
           }
+          break
         }
       }
-      res.json(data) // sending back json response
-    })
-    // If promise was rejected
-    .catch(function(error) {
-      res.status(500).json(error.toString())
-    })
+    }
+    res.json(data) // sending back json response
+  }
+  catch(err) {
+    res.status(500).json(err.toString())
+  }
 })
 
 // Create an HTTP service

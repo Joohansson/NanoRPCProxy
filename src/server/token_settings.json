@@ -1,0 +1,11 @@
+{
+  "work_server":                "http://[::1]:55000",
+  "token_price":                0.0001,
+  "payment_timeout":            120,
+  "pending_interval":           2,
+  "pending_threshold":          "1",
+  "pending_count":              10,
+  "difficulty_threshold":       "fffffff800000000",
+  "difficulty_multiplier":      "1.0",
+  "payment_receive_account":    "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue"
+}

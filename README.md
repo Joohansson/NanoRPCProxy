@@ -4,15 +4,16 @@ NanoRPCProxy is a relay and protection system that sits between a client and a N
 ## Features
 * Fully customizable via a settings file
 * Caching of certain request actions to lower the RPC burden
-* Limit number of response objects, like number of pending transactions
-* Slow down IPs that doing requests above limit
-* Block IPs for a certain amount of time that are doing requests above limit
-* IP black list (TODO)
+* Limits number of response objects, like number of pending transactions
+* Slows down IPs that doing requests above limit
+* Blocks IPs for a certain amount of time that are doing requests above limit
+* IP black list
 * Supports basic authentication (username / password)
 * Supports multiple users via authentication
 * User specific settings override
-* Additional request tokens purchasable with Nano (TODO)
-* Listen on http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
+* Additional request tokens purchasable with Nano
+* URL based API support like nano.org/api/?action=block_count
+* Listens on http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
 
 ## Install and run proxy server
 
