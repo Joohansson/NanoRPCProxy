@@ -21,12 +21,12 @@ body {
 .App-header {
   width: 80%;
   margin: 0 auto;
-  margin-top: 10vh;
+  margin-top: 2vh;
 }
 
 p {
-  font-size: calc(10px + 1vmin);
-  line-height: calc(10px + 1.4vmin);
+  font-size: calc(10px + 0.7vmin);
+  line-height: calc(10px + 1.0vmin);
   margin-bottom: 0.5rem;
 }
 
@@ -43,6 +43,10 @@ a:hover, a:focus {
 
 #input, #output-area {
   font-size: calc(10px + 0.3vmin);
+}
+
+.hidden {
+  display: none;
 }
 
 .btn-primary {
@@ -71,14 +75,70 @@ a:hover, a:focus {
   color: #FFF;
 }
 
+/* QR style */
+.QR-container {
+  width: 148px;
+  height: 148px;
+  padding: 10px;
+  background-color: #EEE;
+  text-align: center;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.QR-img {
+  width: 128px;
+  height: 128px;
+  cursor: pointer;
+}
+
+.QR-container-2x {
+  width: 276px;
+  height: 276px;
+  padding: 10px;
+  background-color: #EEE;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.QR-img-2x {
+  width: 256px;
+  height: 256px;
+  cursor: pointer;
+}
+
+.QR-container-4x {
+  width: 532px;
+  height: 532px;
+  padding: 10px;
+  background-color: #EEE;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.QR-img-4x {
+  width: 512px;
+  height: 512px;
+  cursor: pointer;
+}
+
 /* Medium width button */
 .btn-medium {
-  width: 140px;
-  margin-bottom: 2vh;
+  width: 160px;
+  margin-bottom: 0;
 }
 .btn-small {
   width: 100px;
   margin-bottom: 2vh;
+}
+
+/* Token output text */
+.token-text {
+  border: 1px #eee solid;
+  padding: 5px;
+  margin-bottom: 10px;
 }
 
 /* The left thing of input boxes */

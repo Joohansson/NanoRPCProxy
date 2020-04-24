@@ -1,19 +1,26 @@
 # NanoRPCProxy
-NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has no built in functionality for user authentication, rate limiting or caching which makes it dangerous to open up without protection like this. With NanoRPCProxy you can for example serve a mobile app or web frontend with direct node calls.
+NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has NO built in functionality for user authentication, rate limiting or caching which makes it dangerous to open up without protection like this. With NanoRPCProxy you can for example serve a mobile app or web frontend with direct node calls. **In reality, it can be used for Nano wallets, exchanges, block explorers, public APIs, monitor systems, Point of Sale or basically anything that communicates with a node.**.
+
+The built in token system makes it possible to serve requests beyond the default limits and monetize your backend via direct Nano token purchases.
+
+Demo clients/code for Curl, JS, REACT, Python, Flask and PHP are available to test your own server.
+**A public demo client with token and API support on the live network is available [here](https://example.com)!**
 
 ## Features
 * Fully customizable via a settings file
 * Caching of certain request actions to lower the RPC burden
 * Limits number of response objects, like number of pending transactions
-* Slows down IPs that doing requests above limit
-* Blocks IPs for a certain amount of time that are doing requests above limit
-* IP black list
+* Slows down IPs that doing requests above limit (Including purchased tokens)
+* Blocks IPs for a certain amount of time that are doing requests above limit (Overridden by purchased tokens)
+* IP black list (Overrides purchased tokens)
 * Supports basic authentication (username / password)
 * Supports multiple users via authentication
 * User specific settings override
 * Additional request tokens purchasable with Nano
 * URL based API support like nano.org/api/?action=block_count
 * Listens on http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
+* Works with both beta and main Nano network
+* Demo clients/code
 
 ## Install and run proxy server
 
@@ -40,7 +47,7 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **limited_commands:** A list of commands [key] to limit the output response for with max count as [value]
 * **ip_blacklist:** A list of IPs to always block. If calling from localhost you can test this with 127.0.0.1 (::ffff:127.0.0.1 for ipv6)
 * **speed_limiter:** Contains the settings for slowing down clients. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will start slowing down requests with increments of <delay_increment> [ms] with a maximum total delay defined in <max_delay> [ms]
-* **ip_block:** Contains the settings for blocking IPs when they request too much. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will block the IP until the time slot has passed. Then the IP can start requesting again. To permantenly ban IPs they have to be manually added to <ip_blacklist> and activating <use_ip_blacklist>
+* **ip_block:** Contains the settings for blocking IPs when they request too much. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will block the IP until the time slot has passed. Then the IP can start requesting again. To permantenly ban IPs they have to be manually added to <ip_blacklist> and activating <use_ip_blacklist>. **The IP block is disabled if a token_key is provided with enough tokens.** The token system is disabled by default.
 * **log_level:** It can be set to either "info" which will output all logs, "warning" which will only output warning messages or "none" which will only log the initial settings.
 
 The following parameters can be set in **user_settings.json** to override the default ones for specific users defined in **creds.json**. Anything in this file will override even if there are less sub entries like only 1 allowed command or 2 limited commands.
@@ -57,7 +64,7 @@ The node commands are found here: https://docs.nano.org/commands/rpc-protocol/
 
 ### Special RPC commands
 The proxy server also support special commands not supported in the Nano RPC. They need to be listed in the **settings.json** under "allowed_commands"
-* **{"action":"price"}** Returns the latest Nano price quote from Coinpaprika
+* **{"action":"price"}** Returns the latest Nano price quote from Coinpaprika. Will always be cached for 10sec.
 
 ### Using curl
 The curl command looks just a tiny bit different than for a direct node request. You just have to define it with a json content type. You can also use the -i flag to include response headers.

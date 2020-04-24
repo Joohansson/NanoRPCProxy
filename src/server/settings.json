@@ -13,6 +13,7 @@
   "https_key":             "/etc/letsencrypt/live/example.com/privkey.pem",
   "use_output_limiter":     true,
   "use_ip_blacklist":       true,
+  "use_tokens":             true,
   "allowed_commands":       [
       "account_history",
       "account_info",
@@ -28,9 +29,7 @@
       "pending",
       "process",
       "representatives_online",
-      "price",
-      "tokens_buy",
-      "tokens_check"
+      "price"
   ],
   "cached_commands":        {
     "block_count":            30,
@@ -54,8 +53,8 @@
     "max_delay":          5000
   },
   "ip_block":        {
-    "time_window":        3600000,
-    "request_limit":      500
+    "time_window":        86400000,
+    "request_limit":      1000
   },
   "log_level":            "info"
 }

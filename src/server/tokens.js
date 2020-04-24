@@ -6,29 +6,31 @@ const Tools =      require('./tools')
 
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
 
-var Work_Server = "http://127.0.0.1:7000" // the work server for doing PoW (the node can be used as well, for example http://127.0.0.1:7076, but enable_control is needed in the node config)
-var Token_Price = 0.0001 // Nano per token
-var Payment_Timeout = 120 // timeout after 120sec
-var Pending_Interval = 2 // time to wait for each check for pending Nano
-var Pending_Threshold = "1" // only allow pending tx above this raw value
-var Pending_Count = 10 // max number of pending to process per account for each order (normally only 1 should be needed)
-var Difficulty_Threshold = "fffffff800000000" // 8x threshold from the original (PoW increase introduced in v21). Only used when using a work server
-var Difficulty_Multiplier = "1.0" // Multipliers used when using the node for PoW
-var Payment_Receive_Account = "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue" // where to send the payment
+var work_server = "http://127.0.0.1:7000" // the work server for doing PoW (the node can be used as well, for example http://127.0.0.1:7076, but enable_control is needed in the node config)
+var token_price = 0.0001          // Nano per token
+var payment_timeout = 120         // timeout after 120sec
+var pending_interval = 2          // time to wait for each check for pending Nano
+var pending_threshold = "1"       // only allow pending tx above this raw value
+var pending_count = 10            // max number of pending to process per account for each order (normally only 1 should be needed)
+var difficulty_multiplier = "1.0" // Multipliers used when using the node for PoW
+var payment_receive_account = "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue" // where to send the payment
+var min_token_amount = 1          // min allowed tokens to be purchased
+var max_token_amount = 10000000    // max allowed tokens to be purchased
 
 // Read settings from file
 // ---
 try {
   const settings = JSON.parse(Fs.readFileSync('token_settings.json', 'UTF-8'))
-  Work_Server = settings.work_server
-  Token_Price = settings.token_price
-  Payment_Timeout = settings.payment_timeout
-  Pending_Interval = settings.pending_interval
-  Pending_Threshold = settings.pending_threshold
-  Pending_Count = settings.pending_count
-  Difficulty_Threshold = settings.difficulty_threshold
-  Difficulty_Multiplier = settings.difficulty_multiplier
-  Payment_Receive_Account = settings.payment_receive_account
+  work_server = settings.work_server
+  token_price = settings.token_price
+  payment_timeout = settings.payment_timeout
+  pending_interval = settings.pending_interval
+  pending_threshold = settings.pending_threshold
+  pending_count = settings.pending_count
+  difficulty_multiplier = settings.difficulty_multiplier
+  payment_receive_account = settings.payment_receive_account
+  min_token_amount = settings.min_token_amount
+  max_token_amount = settings.max_token_amount
 }
 catch(e) {
   console.log("Could not read token_settings.json", e)
@@ -37,16 +39,16 @@ catch(e) {
 
 // Log all initial settings for convenience
 // ---
-console.log("TOKEN SETTINGS:")
-console.log("Work Server: " + Work_Server)
-console.log("Token Price: " + Token_Price + " Nano/token")
-console.log("Payment Timeout: " + Payment_Timeout)
-console.log("Pending Interval: " + Pending_Interval)
-console.log("Pending Threshold: " + Pending_Threshold)
-console.log("Pending Max Count: " + Pending_Count)
-console.log("Difficulty Threshold: " + Difficulty_Threshold)
-console.log("Difficulty Multiplier: " + Difficulty_Multiplier)
-console.log("Payment Receive Account: " + Payment_Receive_Account)
+console.log("TOKEN SETTINGS:\n-----------")
+console.log("Work Server: " + work_server)
+console.log("Token Price: " + token_price + " Nano/token")
+console.log("Payment Timeout: " + payment_timeout)
+console.log("Pending Interval: " + pending_interval)
+console.log("Pending Threshold: " + pending_threshold)
+console.log("Pending Max Count: " + pending_count)
+console.log("Difficulty Multiplier: " + difficulty_multiplier)
+console.log("Min allowed tokens to purchase: " + min_token_amount)
+console.log("Max allowed tokens to purchase: " + max_token_amount)
 // ---
 
 const sleep = (milliseconds) => {
@@ -69,12 +71,32 @@ var global_adjustedBalance = null
 module.exports = {
   // Generates and provides a payment address while checking for pending tx and collect them
   requestTokenPayment: function (token_amount, token_key="", order_db, url) {
+    // Block request if amount is not within interval
+    if (token_amount < min_token_amount) {
+      return res = {"error":"Token amount must be larger than " + min_token_amount}
+    }
+    if (token_amount > max_token_amount) {
+      return res = {"error":"Token amount must be smaller than " + max_token_amount}
+    }
+
     node_url = url
-    const refill = token_key != "" ? true:false
     var priv_key = ""
     var address = ""
-    let nano_amount = token_amount*Token_Price // the Nano to be received
-    if (!refill) {
+    let nano_amount = token_amount*token_price // the Nano to be received
+
+    // If token_key was passed it means refill tokens and update db order
+    // first check if key exist in DB and the order is not currently processing
+    if (token_key != "" && order_db.get('orders').find({token_key: token_key}).value()) {
+      if (!order_db.get('orders').find({token_key: token_key}).value().order_waiting) {
+        order_db.get('orders').find({token_key: token_key}).assign({"order_waiting":true, "nano_amount":nano_amount, "order_time_left":payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
+        address = order_db.get('orders').find({token_key: token_key}).value().address //reuse old address
+      }
+      else {
+        return res = {"error":"This order is already processing or was interrupted. Please try again later or request a new key."}
+      }
+    }
+    // Store new order in db
+    else {
       token_key = genSecureKey()
       let seed = genSecureKey().toUpperCase()
       let nanowallet = Wallet.wallet.generate(seed)
@@ -82,16 +104,8 @@ module.exports = {
       priv_key = accounts[0].privateKey
       let pub_key = Nano.derivePublicKey(priv_key)
       address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
-    }
 
-    // If token_key was passed it means refill tokens and update db order
-    if (refill) {
-      order_db.get('orders').find({token_key: token_key}).assign({"order_waiting":true, "nano_amount":nano_amount, "order_time_left":Payment_Timeout, "timestamp":Math.floor(Date.now()/1000)}).write()
-      address = order_db.get('orders').find({token_key: token_key}).value().address //reuse old address
-    }
-    // Store new order in db
-    else {
-      const order = {"address":address, "token_key":token_key, "priv_key":priv_key, "tokens":0, "order_waiting":true, "nano_amount":nano_amount, "order_time_left":Payment_Timeout, "timestamp":Math.floor(Date.now()/1000)}
+      const order = {"address":address, "token_key":token_key, "priv_key":priv_key, "tokens":0, "order_waiting":true, "nano_amount":nano_amount, "order_time_left":payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}
       order_db.get("orders").push(order).write()
     }
 
@@ -100,7 +114,7 @@ module.exports = {
     res = {"address":address, "token_key":token_key, "payment_amount":nano_amount}
 
     // Start checking for pending and cancel order if taking too long
-    console.log("Start checking pending tx every " + Pending_Interval + "sec for a total of " + nano_amount + " Nano...")
+    console.log("Start checking pending tx every " + pending_interval + "sec for a total of " + nano_amount + " Nano...")
     checkPending(address, order_db)
 
     // Return payment request
@@ -111,15 +125,66 @@ module.exports = {
     // Get the right order based on token_key
     const order = order_db.get('orders').find({token_key: token_key}).value()
     if (order) {
-      if (order.order_waiting === false) {
-        return {"tokens":order.tokens}
+      if (order.order_waiting === false && order.order_time_left > 0) {
+        return {"tokens_ordered": order.nano_amount/token_price, "tokens_total":order.tokens}
+      }
+      else if (order.order_time_left > 0){
+        return {"order_time_left":order.order_time_left}
       }
       else {
-        return {"order_time_left":order.order_time_left}
+        return {"error":"Order timed out"}
       }
     }
     else {
-      return {"status":"error","msg":"Order not found"}
+      return {"error":"Order not found"}
+    }
+  },
+  // Cancel order by replacing the account and return the previous private key for client to claim the funds
+  cancelOrder: function (token_key, order_db) {
+    // Get the right order based on token_key
+    const order = order_db.get('orders').find({token_key: token_key}).value()
+    if (order) {
+      let previous_priv_key = order.priv_key
+      let seed = genSecureKey().toUpperCase()
+      let nanowallet = Wallet.wallet.generate(seed)
+      let accounts = Wallet.wallet.accounts(nanowallet.seed, 0, 0)
+      var priv_key = accounts[0].privateKey
+      let pub_key = Nano.derivePublicKey(priv_key)
+      var address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
+
+      // Replace the address and private key and reset status
+      if (order.processing === false) {
+        order_db.get('orders').find({token_key: token_key}).assign({"address":address, "priv_key":priv_key, "order_waiting":false, "nano_amount":0, "order_time_left":payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
+        console.log("Order was cancelled for " + token_key + ". Previous private key was " + previous_priv_key)
+        return {"priv_key":previous_priv_key,"status":"Order canceled and account replaced. You can use the private key to claim any leftover funds."}
+      }
+      else {
+        console.log("Order tried to cancel but still in process: " + token_key)
+        return {"priv_key":"","status":"Order is currently processing, please try again later."}
+      }
+
+    }
+    else {
+      return {"error":"Order not found"}
+    }
+  },
+  // Client checks status of owned tokens
+  checkTokens: function (token_key, order_db) {
+    // Get the right order based on token_key
+    const order = order_db.get('orders').find({token_key: token_key}).value()
+    if (order) {
+      if (order.order_waiting === false && order.order_time_left > 0) {
+        return {"tokens_total":order.tokens,"status":"OK"}
+      }
+      else if (order.order_time_left > 0){
+        return {"tokens_total":order.tokens,"status":'Something went wrong with the last order. You can try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
+      }
+      else {
+        return {"tokens_total":order.tokens,"status":'The last order timed out. If you sent Nano anyway you try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
+      }
+    }
+    else {
+      return {"error":"Tokens not found for that key"}
     }
   }
 }
@@ -129,15 +194,17 @@ async function checkPending(address, order_db, total_received = 0) {
   // Check pending and claim
   let priv_key = order_db.get('orders').find({address: address}).value().priv_key
   let nano_amount = order_db.get('orders').find({address: address}).value().nano_amount
+  order_db.get('orders').find({address: address}).assign({"processing":true}).write() // set processing status (to avoid stealing of the private key via orderCancel before pending has been retrieved)
   try {
     let pending_result = await processAccount(priv_key)
+    order_db.get('orders').find({address: address}).assign({"processing":false}).write() // reset processing status
 
     // Payment is OK when combined pending is equal or larger than was ordered (to make sure spammed pending is not counted as an order)
     if('amount' in pending_result && pending_result.amount > 0) {
       total_received = total_received + pending_result.amount
       if(total_received >= nano_amount) {
         let nano_received = pending_result.amount
-        let tokens_purchased = nano_received / Token_Price
+        let tokens_purchased = nano_received / token_price
         // Get the right order based on address
         const order = order_db.get('orders').find({address: address}).value()
         if (order) {
@@ -153,19 +220,22 @@ async function checkPending(address, order_db, total_received = 0) {
         console.log("Still need " + (nano_amount - total_received)  + " Nano to finilize the order")
       }
     }
+    else if (!'amount' in pending_result) {
+      console.log("Amount is missing in the response from processAccount()")
+    }
   }
   catch(err) {
     console.log(err.toString())
   }
 
   // pause 5sec and check again
-  await sleep(Pending_Interval * 1000)
+  await sleep(pending_interval * 1000)
 
   // Find the order and update the timeout key
   const order = order_db.get('orders').find({address: address}).value()
   if (order) {
     // Update the order time left
-    var new_time = order.order_time_left - Pending_Interval
+    var new_time = order.order_time_left - pending_interval
     if (new_time < 0) {
       new_time = 0
     }
@@ -176,6 +246,7 @@ async function checkPending(address, order_db, total_received = 0) {
       checkPending(address, order_db, total_received) // check again
     }
     else {
+      order_db.get('orders').find({address: address}).assign({order_waiting: false}).write()
       console.log("Payment timed out for " + address)
     }
     return
@@ -260,7 +331,6 @@ async function processAccount(privKey) {
 
 // Create pending blocks based on current balance and previous block (or start with an open block)
 async function createPendingBlocks(privKey, address, balance, previous, subType, callback, accountCallback) {
-  global_privKey = privKey
   global_previous = previous
   global_subType = subType
   global_pendingCallback = callback
@@ -273,7 +343,7 @@ async function createPendingBlocks(privKey, address, balance, previous, subType,
   command.source = 'true'
   command.sorting = 'true' //largest amount first
   command.include_only_confirmed = 'true'
-  command.threshold = Pending_Threshold
+  command.threshold = pending_threshold
 
   // retrive from RPC
   try {
@@ -298,12 +368,12 @@ async function createPendingBlocks(privKey, address, balance, previous, subType,
         keys.push(key)
       })
 
-      processPending(pending.blocks, keys, 0)
+      processPending(pending.blocks, keys, 0, privKey)
     }
     // no pending, create final block directly
     else {
       if (parseInt(global_adjustedBalance) > 0) {
-        processSend(global_privKey, global_previous, () => {
+        processSend(privKey, global_previous, () => {
           accountCallback({'amount':0}) // tell that we are ok to continue with next step
         })
       }
@@ -318,7 +388,7 @@ async function createPendingBlocks(privKey, address, balance, previous, subType,
 }
 
 // For each pending block: Create block, generate work and process
-async function processPending(blocks, keys, keyCount) {
+async function processPending(blocks, keys, keyCount, privKey) {
   let key = keys[keyCount]
   global_blocks = blocks
   global_keys = keys
@@ -339,8 +409,7 @@ async function processPending(blocks, keys, keyCount) {
     var command = {}
     command.action = "work_generate"
     command.hash = workInputHash
-    command.multiplier = Difficulty_Multiplier
-    command.threshold = Difficulty_Threshold
+    command.multiplier = difficulty_multiplier
     command.use_peers = "true"
 
     // retrive from RPC
@@ -349,7 +418,7 @@ async function processPending(blocks, keys, keyCount) {
       if ('work' in data) {
         let work = data.work
         // create the block with the work found
-        let block = Nano.createBlock(global_privKey,{balance:global_adjustedBalance, representative:global_representative,
+        let block = Nano.createBlock(privKey,{balance:global_adjustedBalance, representative:global_representative,
         work:work, link:key, previous:global_previous})
         // replace xrb with nano (old library)
         block.block.account = block.block.account.replace('xrb', 'nano')
@@ -369,7 +438,7 @@ async function processPending(blocks, keys, keyCount) {
             // continue with the next pending
             global_keyCount += 1
             if (global_keyCount < global_keys.length) {
-              processPending(global_blocks, global_keys, global_keyCount)
+              processPending(global_blocks, global_keys, global_keyCount, privKey)
             }
             // all pending done, now we process the final send block
             else {
@@ -413,18 +482,17 @@ async function processSend(privKey, previous, sendCallback) {
   var command = {}
   command.action = 'work_generate'
   command.hash = previous
-  command.multiplier = Difficulty_Multiplier
-  command.threshold = Difficulty_Threshold
+  command.multiplier = difficulty_multiplier
   command.use_peers = "true"
 
   // retrive from RPC
   try {
-    let data = await Tools.postData(command, Work_Server, API_TIMEOUT)
+    let data = await Tools.postData(command, work_server, API_TIMEOUT)
     if ('work' in data) {
       let work = data.work
       // create the block with the work found
       let block = Nano.createBlock(privKey, {balance:'0', representative:global_representative,
-      work:work, link:Payment_Receive_Account, previous:previous})
+      work:work, link:payment_receive_account, previous:previous})
       // replace xrb with nano (old library)
       block.block.account = block.block.account.replace('xrb', 'nano')
       block.block.link_as_account = block.block.link_as_account.replace('xrb', 'nano')
@@ -435,7 +503,7 @@ async function processSend(privKey, previous, sendCallback) {
         let data = await Tools.postData(jsonBlock, node_url, API_TIMEOUT)
         if (data.hash) {
           console.log("Funds transferred at block: " + data.hash)
-          console.log(global_adjustedBalance + " raw transferred to " + Payment_Receive_Account)
+          console.log(global_adjustedBalance + " raw transferred to " + payment_receive_account)
         }
         else {
           console.log("Failed processing block: " + data.error)

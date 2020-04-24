@@ -3,6 +3,8 @@ import './App.css';
 import * as rpc from './rpc' //rpc creds not shared on github
 import { Base64 } from 'js-base64';
 import { Dropdown, DropdownButton, InputGroup, FormControl, Button} from 'react-bootstrap'
+import QrImageStyle from './components/qrImageStyle'
+import * as Nano from 'nanocurrency'
 
 const RPC_TIMEOUT = 10000 // 10sec timeout for calling RPC proxy
 
@@ -10,7 +12,6 @@ const RPC_TIMEOUT = 10000 // 10sec timeout for calling RPC proxy
 export const constants = {
   // These are taken from the creds file
   RPC_SERVER: rpc.RPC_SERVER,
-  RPC_LIMIT: rpc.RPC_LIMIT,
   RPC_CREDS: rpc.RPC_CREDS,
 
   // Nano sample commands
@@ -70,21 +71,44 @@ class App extends Component {
   constructor(props) {
     super(props)
 
+    // QR css
+    this.qrClassesContainer = ["QR-container", "QR-container-2x", "QR-container-4x"]
+    this.qrClassesImg = ["QR-img", "QR-img-2x", "QR-img-4x"]
+
     this.state = {
       command: '',
+      key: '',
+      amount: 10,
       output: '',
+      validKey: false,
       fetchingRPC: false,
+      paymentActive: false,
       activeCommandId: 0,
       activeCommandName: 'Select a sample',
       useAuth: true,
+      tokenText1: "Payment info will display here",
+      tokenText2: "",
+      tokenText3: "",
+      qrContent: '',
+      qrSize: 512,
+      qrState: 0,  //qr size
+      qrHidden: true,
     }
 
     this.getRPC = this.getRPC.bind(this)
+    this.buyTokens = this.buyTokens.bind(this)
+    this.checkTokens = this.checkTokens.bind(this)
+    this.cancelOrder = this.cancelOrder.bind(this)
+    this.prepareForPayment = this.prepareForPayment.bind(this)
     this.handleCommandChange = this.handleCommandChange.bind(this)
+    this.handleKeyChange = this.handleKeyChange.bind(this)
+    this.handleAmountChange = this.handleAmountChange.bind(this)
     this.handleRPCError = this.handleRPCError.bind(this)
     this.selectCommand = this.selectCommand.bind(this)
     this.postData = this.postData.bind(this)
     this.handleOptionChange = this.handleOptionChange.bind(this)
+    this.updateQR = this.updateQR.bind(this)
+    this.double = this.double.bind(this)
   }
 
   handleCommandChange(event) {
@@ -94,11 +118,89 @@ class App extends Component {
     })
   }
 
+  handleKeyChange(event) {
+    let key = event.target.value
+    if (key.length === 64) {
+      this.setState({
+        validKey: true
+      })
+    }
+    else {
+      this.setState({
+        validKey: false
+      })
+    }
+    this.setState({
+      key: key
+    })
+  }
+
+  handleAmountChange(event) {
+    if (event.target.value !== "") {
+      let amount = parseInt(event.target.value)
+      if (Number.isInteger(amount)) {
+        this.setState({
+          amount: amount
+        })
+      }
+    }
+    else {
+      this.setState({
+        amount: event.target.value
+      })
+    }
+  }
+
   // Select Auth
   handleOptionChange = changeEvent => {
     this.setState({
       useAuth: !this.state.useAuth
     })
+  }
+
+  updateQR(address, amount=0) {
+    let raw = this.MnanoToRaw(amount.toString())
+    this.setState({
+      qrContent: "nano:"+address+"?amount="+raw+"&message=RPC Proxy Tokens",
+    })
+    if (address === "") {
+      this.setState({
+        qrHidden: true,
+      })
+    }
+    else {
+      this.setState({
+        qrHidden: false,
+      })
+    }
+  }
+
+  // loop qr state 1x, 2x, 4x
+  double() {
+    var state = this.state.qrState
+    state = state + 1
+    if (state >= this.qrClassesContainer.length) {
+      state = 0
+    }
+    this.setState({
+      qrState: state
+    })
+  }
+
+  MnanoToRaw(input) {
+    return this.isNumeric(input) ? Nano.convert(input, {from: Nano.Unit.NANO, to: Nano.Unit.raw}) : 'N/A'
+  }
+
+  // Check if numeric string
+  isNumeric(val) {
+    //numerics and last character is not a dot and number of dots is 0 or 1
+    let isnum = /^-?\d*\.?\d*$/.test(val)
+    if (isnum && String(val).slice(-1) !== '.') {
+      return true
+    }
+    else {
+      return false
+    }
   }
 
   // Change tool to view on main page
@@ -112,29 +214,61 @@ class App extends Component {
 
   handleRPCError(error) {
     this.setState({fetchingRPC: false})
-    alert("Error: see console")
     if (error.code) {
-      // IP blocked
-      if (error.code === 429) {
-        console.log(constants.RPC_LIMIT)
-      }
-      else {
-        console.log("RPC request failed: "+error.message)
-      }
+      console.log("RPC request failed: "+error.message)
     }
     else {
       console.log("RPC request failed: "+error)
     }
   }
 
-  // Make RPC call
-  getRPC(event) {
-    try {
-      var command = JSON.parse(this.state.command)
+  buyTokens(event) {
+    let amount = parseInt(this.state.amount)
+    if (Number.isInteger(amount) && amount > 0) {
+      var command = {
+        action: "tokens_buy",
+        token_amount: this.state.amount
+      }
+      if (this.state.key.length === 64) {
+        command.token_key = this.state.key
+      }
+      this.getRPC(null, command)
     }
-    catch(e) {
-      console.log("Could not parse json string")
-      return
+  }
+
+  checkTokens(event) {
+    var command = {
+      action: "tokens_check",
+    }
+    if (this.state.key.length === 64) {
+      command.token_key = this.state.key
+      this.getRPC(null, command)
+    }
+  }
+
+  cancelOrder(event) {
+    var command = {
+      action: "tokenorder_cancel",
+    }
+    if (this.state.key.length === 64) {
+      command.token_key = this.state.key
+      this.getRPC(null, command)
+    }
+  }
+
+  // Make RPC call
+  getRPC(event, command="") {
+    this.updateQR("")
+
+    // Read command from text box if not provided from other function
+    if (command === "") {
+      try {
+        command = JSON.parse(this.state.command)
+      }
+      catch(e) {
+        console.log("Could not parse json string")
+        return
+      }
     }
 
     if (Object.keys(command).length > 0) {
@@ -150,8 +284,76 @@ class App extends Component {
     }
   }
 
+  // Inform user how to pay and check status
+  prepareForPayment(json) {
+    this.setState({
+      tokenText1: "Pay " + json.payment_amount + " Nano to " + json.address,
+      tokenText2: "Your request key is: " + json.token_key,
+      paymentActive: true
+    })
+    this.updateQR(json.address, json.payment_amount)
+
+    let command = {action:"tokenorder_check",token_key:json.token_key}
+
+    // Check status every second until payment completed or timed out
+    var timer = setInterval(() => {
+      this.postData(command)
+      .then((data) => {
+        if ("order_time_left" in data) {
+          if (parseInt(data.order_time_left) > 0) {
+            this.setState({tokenText3: "You have " + data.order_time_left + "sec to pay"})
+          }
+        }
+        else if ("tokens_total" in data && "tokens_ordered" in data) {
+          this.setState({
+            tokenText1: "Payment completed for " + data.tokens_ordered + " tokens! You now have " + data.tokens_total + " tokens to use",
+            tokenText2: "",
+            tokenText3: "",
+            paymentActive: false,
+          })
+          clearInterval(timer)
+          this.updateQR("")
+        }
+        else if ("error" in data) {
+          this.setState({
+            tokenText1: data.error,
+            tokenText2: "",
+            tokenText3: "",
+            paymentActive: false,
+          })
+          clearInterval(timer)
+          this.updateQR("")
+        }
+        else {
+          this.setState({
+            tokenText1: "Unknown error occured",
+            tokenText2: "",
+            tokenText3: "",
+            paymentActive: false,
+          })
+          clearInterval(timer)
+          this.updateQR("")
+        }
+      })
+      .catch(function(error) {
+        this.setState({
+          tokenText1: "",
+          tokenText2: "",
+          tokenText3: "",
+          paymentActive: false,
+        })
+        clearInterval(timer)
+        this.updateQR("")
+        this.handleRPCError(error)
+      }.bind(this))
+    },1000)
+  }
+
   // Write result in output area
   writeOutput(json) {
+    if ('address' in json) {
+      this.prepareForPayment(json)
+    }
     try {
       this.setState({
         output: JSON.stringify(json, null, 2)
@@ -173,7 +375,7 @@ class App extends Component {
     return new Promise(function(resolve, reject) {
         const timeout = setTimeout(function() {
             didTimeOut = true;
-            reject(new Error('Request timed out'));
+            reject(new Error('Request timed out'))
         }, RPC_TIMEOUT);
 
         fetch(server, {
@@ -186,12 +388,20 @@ class App extends Component {
           referrerPolicy: 'no-referrer', // no-referrer, *client
           body: JSON.stringify(data) // body data type must match "Content-Type" header
         })
-        .then(function(response) {
+        .then(async function(response) {
             // Clear the timeout as cleanup
-            clearTimeout(timeout);
+            clearTimeout(timeout)
             if(!didTimeOut) {
               if(response.status === 200) {
-                  resolve(response);
+                  resolve(await response.json())
+              }
+              // catch blocked (to display on the site)
+              else if(response.status === 429) {
+                  resolve({"error":await response.text()})
+              }
+              // catch unauthorized (to display on the site)
+              else if(response.status === 401) {
+                  resolve({"error": "unauthorized"})
               }
               else {
                 throw new RPCError(response.status, resolve(response))
@@ -200,14 +410,14 @@ class App extends Component {
         })
         .catch(function(err) {
             // Rejection already happened with setTimeout
-            if(didTimeOut) return;
+            if(didTimeOut) return
             // Reject with error
-            reject(err);
-        });
+            reject(err)
+        })
     })
     .then(async function(result) {
         // Request success and no timeout
-        return await result.json()
+        return result
     })
   }
 
@@ -216,9 +426,12 @@ class App extends Component {
       <div className="App">
         <header className="App-header">
           <h3>RPC demo client for communicating with <a href="https://github.com/Joohansson/NanoRPCProxy">NanoRPCProxy</a></h3>
-          <p>Send to a live Nano node using RPC json requests<br/>
-          See RPC <a href="https://docs.nano.org/commands/rpc-protocol/">documentation</a><br/>
-          </p>
+          <p>Send to a live Nano node using <a href="https://docs.nano.org/commands/rpc-protocol/">RPC json requests</a></p>
+          <ul>
+            <li> Everyone are allowed 1000 requests/day. Purchase optional tokens if you need more.</li>
+            <li> Tokens can be refilled/extended using the same Request Key. The order is done when said Nano (or more) is registered.</li>
+            <li> If you send nano but order fail you can claim back the corresponding private key. The deposit account will be destroyed/replaced.</li>
+          </ul>
           <DropdownButton
             className="command-dropdown"
             title={this.state.activeCommandName}
@@ -235,7 +448,16 @@ class App extends Component {
                 RPC Command
               </InputGroup.Text>
             </InputGroup.Prepend>
-            <FormControl id="command" aria-describedby="command" value={this.state.command} title="" maxLength="200" placeholder='RPC command' onChange={this.handleCommandChange} autoComplete="off"/>
+            <FormControl id="command" aria-describedby="command" value={this.state.command} title="Command to send" maxLength="200" placeholder='RPC command' onChange={this.handleCommandChange} autoComplete="off"/>
+          </InputGroup>
+
+          <InputGroup size="sm" className="mb-3">
+            <InputGroup.Prepend>
+              <InputGroup.Text id="key">
+                Request Key
+              </InputGroup.Text>
+            </InputGroup.Prepend>
+            <FormControl id="key" aria-describedby="key" value={this.state.key} title="Your personal token key" maxLength="64" placeholder='Optional: Get key by purchase tokens. Key can also be used to refill/check your tokens or claim priv key.' onChange={this.handleKeyChange} autoComplete="off"/>
           </InputGroup>
 
           <InputGroup size="sm" className="mb-3">
@@ -246,11 +468,36 @@ class App extends Component {
           </InputGroup>
 
           <InputGroup size="sm" className="mb-3">
-            <Button className="btn-medium" variant="primary" disabled={this.state.fetchingRPC} onClick={this.getRPC}>Node Request</Button>
+            <Button className="btn-medium" variant="primary" disabled={this.state.fetchingRPC || this.state.paymentActive} onClick={this.getRPC}>Server Request</Button>
           </InputGroup>
 
           <InputGroup size="sm" className="mb-3">
-            <FormControl id="output-area" aria-describedby="output" as="textarea" rows="15" placeholder="" value={this.state.output} readOnly/>
+            <InputGroup.Prepend>
+              <InputGroup.Text id="amount">
+                Token Amount
+              </InputGroup.Text>
+            </InputGroup.Prepend>
+            <FormControl id="amount" aria-describedby="amount" value={this.state.amount} title="Number of tokens to purchase" maxLength="7" placeholder='' onChange={this.handleAmountChange} autoComplete="off"/>
+          </InputGroup>
+
+          <InputGroup size="sm" className="mb-3">
+            <Button className="btn-medium" variant="primary" disabled={this.state.fetchingRPC || this.state.paymentActive} onClick={this.buyTokens}>Buy/Refill tokens</Button>
+            <Button className="btn-medium" variant="primary" disabled={this.state.fetchingRPC || !this.state.validKey} onClick={this.checkTokens}>Check my tokens</Button>
+            <Button className="btn-medium" variant="primary" disabled={this.state.fetchingRPC || !this.state.validKey} onClick={this.cancelOrder}>Claim back order</Button>
+          </InputGroup>
+
+          <div className="token-text">
+            <span>{this.state.tokenText1}<br/>{this.state.tokenText2}<br/>{this.state.tokenText3}<br/></span>
+          </div>
+
+          <div className={ this.state.qrHidden ? "hidden" : ""}>
+            <div className={this.qrClassesContainer[this.state.qrState]}>
+              <QrImageStyle className={this.qrClassesImg[this.state.qrState]} content={this.state.qrContent} onClick={this.double} title="Click to toggle size" size={this.state.qrSize} />
+            </div>
+          </div>
+
+          <InputGroup size="sm" className="mb-3">
+            <FormControl id="output-area" aria-describedby="output" as="textarea" rows="12" placeholder="" value={this.state.output} readOnly/>
           </InputGroup>
         </header>
       </div>

@@ -37,6 +37,7 @@ var use_http = true                 // listen on http (active by default)
 var use_https = false               // listen on https (inactive by default) (a valid cert and key file is needed via https_cert and https_key)
 var use_output_limiter = false      // if limiting number of response objects, like pending transactions, to a certain max amount set in limited_commands. Only supported for RPC actions that have a "count" key
 var use_ip_blacklist = false        // if blocking access to IPs listed in ip_blacklist
+var use_tokens = false              // if activating the token system for purchase via Nano
 var https_cert = ""                 // file path for pub cert file
 var https_key = ""                  // file path for private key file
 var allowed_commands = []           // only allow RPC actions in this list
@@ -90,6 +91,7 @@ try {
   use_http = settings.use_http
   use_https = settings.use_https
   use_ip_blacklist = settings.use_ip_blacklist
+  use_tokens = settings.use_tokens
   https_cert = settings.https_cert
   https_key = settings.https_key
   cached_commands = settings.cached_commands
@@ -127,7 +129,7 @@ catch(e) {
 
 // Log all initial settings for convenience
 // ---
-console.log("PROXY SETTINGS:")
+console.log("PROXY SETTINGS:\n-----------")
 console.log("Node url: " + node_url)
 console.log("Http port: " + String(http_port))
 console.log("Https port: " + String(https_port))
@@ -137,10 +139,11 @@ console.log("Use IP block: " + use_ip_block)
 console.log("Use cached requests: " + use_cache)
 console.log("Use output limiter: " + use_output_limiter)
 console.log("Use IP blacklist: " + use_ip_blacklist)
+console.log("Use token system: " + use_tokens)
 console.log("Listen on http: " + use_http)
 console.log("Listen on https: " + use_https)
 
-log_string = "Allowed commands:\n"
+log_string = "Allowed commands:\n-----------\n"
 for (const [key, value] of Object.entries(allowed_commands)) {
   log_string = log_string + value + "\n"
 }
@@ -207,17 +210,40 @@ if (use_speed_limiter) {
     windowMs: speed_limiter.time_window, // rolling time window in ms
     delayAfter: speed_limiter.request_limit, // allow x requests per time window, then start slowing down
     delayMs: speed_limiter.delay_increment, // begin adding X ms of delay per request when delayAfter has been reached
-    maxDelayMs: speed_limiter.max_delay // max delay in ms to slow down
+    maxDelayMs: speed_limiter.max_delay, // max delay in ms to slow down
+    // skip limit for certain requests
+    skip: function(req, res) {
+      if (use_tokens) {
+        if (req.body.action === 'tokens_check') {
+          return true
+        }
+      }
+      return false
+    }
   })
   app.use(speed_limiter_settings)
 }
 
-// Block IP if requesting too much
+// Block IP if requesting too much but skipped if a valid token_key is provided
 if (use_ip_block) {
   const ip_block_settings = RateLimit({
     windowMs: ip_block.time_window, // rolling time window in ms
     max: ip_block.request_limit, // limit each IP to x requests per windowMs
-    message: 'You have sent too many RPC requests. You can try again later.'
+    message: 'You have sent too many RPC requests. You can try again later.',
+    // Check if token key exist in DB and have enough tokens, then skip IP block by returning true
+    skip: function(req, res) {
+      if (use_tokens) {
+        if ('token_key' in req.body && order_db.get('orders').find({token_key: req.body.token_key}).value()) {
+          if (order_db.get('orders').find({token_key: req.body.token_key}).value().tokens > 0) {
+            return true
+          }
+        }
+        if (req.body.action === 'tokens_check') {
+          return true
+        }
+      }
+      return false
+    }
   })
   app.use(ip_block_settings)
 }
@@ -229,7 +255,7 @@ if (use_cache) {
 
 // Set up blacklist
 if (use_ip_blacklist) {
-  app.use(IpFilter(ip_blacklist))
+  app.use(IpFilter(ip_blacklist, {logLevel: 'deny'}))
 }
 
 // Error handling
@@ -299,6 +325,19 @@ function myAuthorizer(username, password) {
   return valid_user
 }
 
+// Deduct token count for given token_key
+function useToken(token_key) {
+  // Find token_key in order DB
+  if (order_db.get('orders').find({token_key: token_key}).value()) {
+    let tokens = order_db.get('orders').find({token_key: token_key}).value().tokens
+    if (tokens > 0) {
+      // Count down token by 1 and store new value in DB
+      order_db.get('orders').find({token_key: token_key}).assign({tokens:tokens-1}).write()
+      logThis("A token was used by: " + token_key, log_levels.info)
+    }
+  }
+}
+
 // Custom error class
 class APIError extends Error {
   constructor(code, ...params) {
@@ -326,7 +365,70 @@ app.get('/proxy/', function (req, res) {
 
 // Define the request listener
 app.post('/proxy', async (req, res) => {
-  logThis('rpc request received: ' + req.body.action, log_levels.info)
+  if (!req.body.action === 'tokens_check') {
+    logThis('RPC request received from ' + req.ip + ': ' + req.body.action, log_levels.info)
+  }
+
+  if (use_tokens) {
+    // Initiate token purchase
+    if (req.body.action === 'tokens_buy') {
+      var token_amount = 0
+      var token_key = ""
+      if ('token_amount' in req.body) {
+        token_amount = req.body.token_amount
+      }
+      else {
+        return res.status(500).json({ error: 'The amount of tokens (token_amount) to purchase must be provided'})
+      }
+      if ('token_key' in req.body) {
+        token_key = req.body.token_key
+      }
+
+      let payment_request = Tokens.requestTokenPayment(token_amount, token_key, order_db, node_url)
+
+      res.json(payment_request)
+      return
+    }
+
+    // Verify order status
+    if (req.body.action === 'tokenorder_check') {
+      var token_key = ""
+      if ('token_key' in req.body) {
+        token_key = req.body.token_key
+        let status = Tokens.checkOrder(token_key, order_db)
+        return res.json(status)
+      }
+      else {
+        return res.status(500).json({ error: 'No token key provided'})
+      }
+    }
+
+    // Claim back private key and replace the account
+    if (req.body.action === 'tokenorder_cancel') {
+      var token_key = ""
+      if ('token_key' in req.body) {
+        token_key = req.body.token_key
+        let status = Tokens.cancelOrder(token_key, order_db)
+        return res.json(status)
+      }
+      else {
+        return res.status(500).json({ error: 'No token key provided'})
+      }
+    }
+
+    // Verify order status
+    if (req.body.action === 'tokens_check') {
+      var token_key = ""
+      if ('token_key' in req.body) {
+        token_key = req.body.token_key
+        let status = Tokens.checkTokens(token_key, order_db)
+        return res.json(status)
+      }
+      else {
+        return res.status(500).json({ error: 'No token key provided'})
+      }
+    }
+  }
 
   // Block non-allowed RPC commands
   if (!req.body.action || user_allowed_commands.indexOf(req.body.action) === -1) {
@@ -338,7 +440,19 @@ app.post('/proxy', async (req, res) => {
   //  ---
   if (req.body.action === 'price') {
     try {
+      // Use cached value first
+      const cachedValue = rpcCache.get('price')
+      if (Tools.isValidJson(cachedValue)) {
+        logThis("Cache requested: " + 'price', log_levels.info)
+        return res.json(cachedValue)
+      }
+
       let data = await Tools.getData(PriceUrl, API_TIMEOUT)
+
+      // Store the price in cache for 10sec
+      if (!rpcCache.set('price', data, 10)) {
+        logThis("Failed saving cache for " + 'price', log_levels.warning)
+      }
       //res.json({"Price USD":data.data["1567"].quote.USD.price}) // sending back json price response (CMC)
       //res.json({"Price USD":data.quotes.USD.price}) // sending back json price response (Coinpaprika)
       res.json(data) // sending back full json price response (Coinpaprika)
@@ -348,38 +462,14 @@ app.post('/proxy', async (req, res) => {
     }
     return
   }
-
-  if (req.body.action === 'tokens_buy') {
-    var token_amount = 0
-    var token_key = ""
-    if ('token_amount' in req.body) {
-      token_amount = req.body.token_amount
-    }
-    else {
-      return res.status(500).json({ error: 'The amount of tokens (token_amount) to purchase must be provided'})
-    }
-    if ('token_key' in req.body) {
-      token_key = req.body.token_key
-    }
-
-    let payment_request = Tokens.requestTokenPayment(token_amount, token_key, order_db, node_url)
-
-    res.json(payment_request)
-    return
-  }
-
-  if (req.body.action === 'tokens_check') {
-    var token_key = ""
-    if ('token_key' in req.body) {
-      token_key = req.body.token_key
-    }
-
-    let status = Tokens.checkOrder(token_key, order_db)
-
-    res.json(status)
-    return
-  }
   // ---
+
+  // Decrease user tokens
+  if (use_tokens) {
+    if ('token_key' in req.body) {
+      useToken(req.body.token_key)
+    }
+  }
 
   // Read cache for current request action, if there is one
   if (user_use_cache) {
@@ -395,7 +485,7 @@ app.post('/proxy', async (req, res) => {
     }
   }
 
-  // Limit response count
+  // Limit response count (if count parameter is provided)
   if (user_use_output_limiter) {
     for (const [key, value] of Object.entries(user_limited_commands)) {
       if (req.body.action === key) {
