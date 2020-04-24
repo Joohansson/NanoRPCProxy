@@ -214,7 +214,7 @@ if (use_speed_limiter) {
     // skip limit for certain requests
     skip: function(req, res) {
       if (use_tokens) {
-        if (req.body.action === 'tokens_check') {
+        if (req.body.action === 'tokenorder_check' || req.query.action === 'tokenorder_check') {
           return true
         }
       }
@@ -238,7 +238,12 @@ if (use_ip_block) {
             return true
           }
         }
-        if (req.body.action === 'tokens_check') {
+        if ('token_key' in req.query && order_db.get('orders').find({token_key: req.query.token_key}).value()) {
+          if (order_db.get('orders').find({token_key: req.query.token_key}).value().tokens > 0) {
+            return true
+          }
+        }
+        if (req.body.action === 'tokenorder_check' || req.query.action === 'tokenorder_check') {
           return true
         }
       }
@@ -354,48 +359,52 @@ class APIError extends Error {
 }
 
 // Default get requests
-app.get('/', function (req, res) {
+app.get('/', async (req, res) => {
   res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
 })
 
-// Wrong request type (GET) on the proxy endpoint
-app.get('/proxy/', function (req, res) {
-  res.render('index', { title: 'RPCProxy API', message: 'Bad request type' })
+// Process any API requests
+app.get('/proxy', (req, res) => {
+  processRequest(req.query, req, res)
 })
 
 // Define the request listener
-app.post('/proxy', async (req, res) => {
-  if (!req.body.action === 'tokens_check') {
-    logThis('RPC request received from ' + req.ip + ': ' + req.body.action, log_levels.info)
+app.post('/proxy', (req, res) => {
+  processRequest(req.body, req, res)
+})
+
+async function processRequest(query, req, res) {
+  if (query.action !== 'tokenorder_check') {
+    logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
   }
 
   if (use_tokens) {
     // Initiate token purchase
-    if (req.body.action === 'tokens_buy') {
+    if (query.action === 'tokens_buy') {
       var token_amount = 0
       var token_key = ""
-      if ('token_amount' in req.body) {
-        token_amount = req.body.token_amount
+      if ('token_amount' in query) {
+        token_amount = query.token_amount
       }
       else {
         return res.status(500).json({ error: 'The amount of tokens (token_amount) to purchase must be provided'})
       }
-      if ('token_key' in req.body) {
-        token_key = req.body.token_key
+      if ('token_key' in query) {
+        token_key = query.token_key
       }
 
-      let payment_request = Tokens.requestTokenPayment(token_amount, token_key, order_db, node_url)
+      let payment_request = await Tokens.requestTokenPayment(token_amount, token_key, order_db, node_url)
 
       res.json(payment_request)
       return
     }
 
     // Verify order status
-    if (req.body.action === 'tokenorder_check') {
+    if (query.action === 'tokenorder_check') {
       var token_key = ""
-      if ('token_key' in req.body) {
-        token_key = req.body.token_key
-        let status = Tokens.checkOrder(token_key, order_db)
+      if ('token_key' in query) {
+        token_key = query.token_key
+        let status = await Tokens.checkOrder(token_key, order_db)
         return res.json(status)
       }
       else {
@@ -404,11 +413,11 @@ app.post('/proxy', async (req, res) => {
     }
 
     // Claim back private key and replace the account
-    if (req.body.action === 'tokenorder_cancel') {
+    if (query.action === 'tokenorder_cancel') {
       var token_key = ""
-      if ('token_key' in req.body) {
-        token_key = req.body.token_key
-        let status = Tokens.cancelOrder(token_key, order_db)
+      if ('token_key' in query) {
+        token_key = query.token_key
+        let status = await Tokens.cancelOrder(token_key, order_db)
         return res.json(status)
       }
       else {
@@ -417,28 +426,41 @@ app.post('/proxy', async (req, res) => {
     }
 
     // Verify order status
-    if (req.body.action === 'tokens_check') {
+    if (query.action === 'tokens_check') {
       var token_key = ""
-      if ('token_key' in req.body) {
-        token_key = req.body.token_key
-        let status = Tokens.checkTokens(token_key, order_db)
+      if ('token_key' in query) {
+        token_key = query.token_key
+        let status = await Tokens.checkTokens(token_key, order_db)
         return res.json(status)
       }
       else {
         return res.status(500).json({ error: 'No token key provided'})
       }
     }
+
+    // Check token price
+    if (query.action === 'tokenprice_check') {
+      let status = await Tokens.checkTokenPrice()
+      return res.json(status)
+    }
   }
 
   // Block non-allowed RPC commands
-  if (!req.body.action || user_allowed_commands.indexOf(req.body.action) === -1) {
-    logThis('RPC request is not allowed: ' + req.body.action, log_levels.info)
-    return res.status(500).json({ error: `Action ${req.body.action} not allowed`})
+  if (!query.action || user_allowed_commands.indexOf(query.action) === -1) {
+    logThis('RPC request is not allowed: ' + query.action, log_levels.info)
+    return res.status(500).json({ error: `Action ${query.action} not allowed`})
+  }
+
+  // Decrease user tokens
+  if (use_tokens) {
+    if ('token_key' in query) {
+      useToken(query.token_key)
+    }
   }
 
   // Respond directly if non-node-related request
-  //  ---
-  if (req.body.action === 'price') {
+  //  --
+  if (query.action === 'price') {
     try {
       // Use cached value first
       const cachedValue = rpcCache.get('price')
@@ -464,17 +486,10 @@ app.post('/proxy', async (req, res) => {
   }
   // ---
 
-  // Decrease user tokens
-  if (use_tokens) {
-    if ('token_key' in req.body) {
-      useToken(req.body.token_key)
-    }
-  }
-
   // Read cache for current request action, if there is one
   if (user_use_cache) {
     for (const [key, value] of Object.entries(user_cached_commands)) {
-      if (req.body.action === key) {
+      if (query.action === key) {
         const cachedValue = rpcCache.get(key)
         if (Tools.isValidJson(cachedValue)) {
           logThis("Cache requested: " + key, log_levels.info)
@@ -488,10 +503,10 @@ app.post('/proxy', async (req, res) => {
   // Limit response count (if count parameter is provided)
   if (user_use_output_limiter) {
     for (const [key, value] of Object.entries(user_limited_commands)) {
-      if (req.body.action === key) {
-        if (parseInt(req.body.count) > value) {
+      if (query.action === key) {
+        if (parseInt(query.count) > value) {
           logThis("Response count was limited to " + value.toString(), log_levels.info)
-          req.body.count = value
+          query.count = value
         }
       }
     }
@@ -499,11 +514,11 @@ app.post('/proxy', async (req, res) => {
 
   // Send the request to the Nano node and return the response
   try {
-    let data = await Tools.postData(req.body, node_url, API_TIMEOUT)
+    let data = await Tools.postData(query, node_url, API_TIMEOUT)
     // Save cache if applicable
     if (use_cache) {
       for (const [key, value] of Object.entries(user_cached_commands)) {
-        if (req.body.action === key) {
+        if (query.action === key) {
           // Store the response (proxyRes) in cache with key (action name) with a TTL=value
           if (!rpcCache.set(key, data, value)) {
             logThis("Failed saving cache for " + key, log_levels.warning)
@@ -517,7 +532,7 @@ app.post('/proxy', async (req, res) => {
   catch(err) {
     res.status(500).json(err.toString())
   }
-})
+}
 
 // Create an HTTP service
 if (use_http) {

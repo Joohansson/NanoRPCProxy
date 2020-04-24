@@ -1,7 +1,7 @@
 {
   "work_server":                "http://[::1]:55000",
   "token_price":                0.0001,
-  "payment_timeout":            60,
+  "payment_timeout":            180,
   "pending_interval":           2,
   "pending_threshold":          "1",
   "pending_count":              10,

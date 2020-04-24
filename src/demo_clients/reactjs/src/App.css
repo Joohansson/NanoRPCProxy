@@ -21,7 +21,7 @@ body {
 .App-header {
   width: 80%;
   margin: 0 auto;
-  margin-top: 2vh;
+  margin-top: 1vh;
 }
 
 p {
@@ -43,6 +43,12 @@ a:hover, a:focus {
 
 #input, #output-area {
   font-size: calc(10px + 0.3vmin);
+}
+
+.line {
+  height:1px;
+  background-color: #4a90e2;
+  margin-bottom: 15px;
 }
 
 .hidden {
@@ -68,6 +74,11 @@ a:hover, a:focus {
 
 .form-control:focus {
   box-shadow: none;
+}
+
+/* Special margin for double text box */
+.edit-short {
+  margin-right: 20px;
 }
 
 .btn-active {
@@ -139,6 +150,7 @@ a:hover, a:focus {
   border: 1px #eee solid;
   padding: 5px;
   margin-bottom: 10px;
+  overflow-wrap: break-word;
 }
 
 /* The left thing of input boxes */

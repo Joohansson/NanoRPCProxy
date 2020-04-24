@@ -1,5 +1,5 @@
 # NanoRPCProxy
-NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has NO built in functionality for user authentication, rate limiting or caching which makes it dangerous to open up without protection like this. With NanoRPCProxy you can for example serve a mobile app or web frontend with direct node calls. **In reality, it can be used for Nano wallets, exchanges, block explorers, public APIs, monitor systems, Point of Sale or basically anything that communicates with a node.**.
+NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has NO built in functionality for user authentication, rate limiting or caching which makes it dangerous to open up without protection like this proxy provides. With NanoRPCProxy you can for example serve a mobile app or web frontend with indirect node calls. **In reality, it can be used for Nano wallets, exchanges, block explorers, public APIs, monitor systems, Point of Sale or basically anything that communicates with a node.**.
 
 The built in token system makes it possible to serve requests beyond the default limits and monetize your backend via direct Nano token purchases.
 
@@ -17,7 +17,8 @@ Demo clients/code for Curl, JS, REACT, Python, Flask and PHP are available to te
 * Supports multiple users via authentication
 * User specific settings override
 * Additional request tokens purchasable with Nano
-* URL based API support like nano.org/api/?action=block_count
+* Supports POST requests like the RPC, ie. payload = {"action":"block_count"}
+* Supports GET requests, ie. URL query = /proxy/?action=block_count
 * Listens on http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
 * Works with both beta and main Nano network
 * Demo clients/code

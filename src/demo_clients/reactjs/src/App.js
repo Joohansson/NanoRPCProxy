@@ -5,6 +5,7 @@ import { Base64 } from 'js-base64';
 import { Dropdown, DropdownButton, InputGroup, FormControl, Button} from 'react-bootstrap'
 import QrImageStyle from './components/qrImageStyle'
 import * as Nano from 'nanocurrency'
+import $ from 'jquery'
 
 const RPC_TIMEOUT = 10000 // 10sec timeout for calling RPC proxy
 
@@ -79,6 +80,7 @@ class App extends Component {
       command: '',
       key: '',
       amount: 10,
+      nanoAmount: 0,
       output: '',
       validKey: false,
       fetchingRPC: false,
@@ -86,13 +88,16 @@ class App extends Component {
       activeCommandId: 0,
       activeCommandName: 'Select a sample',
       useAuth: true,
-      tokenText1: "Payment info will display here",
+      tokenText1: "",
       tokenText2: "",
       tokenText3: "",
       qrContent: '',
       qrSize: 512,
       qrState: 0,  //qr size
       qrHidden: true,
+      payinfoHidden: true,
+      apiText: "",
+      tokenPrice: 0.0001, //temp price, real price grabbed from server
     }
 
     this.getRPC = this.getRPC.bind(this)
@@ -103,6 +108,7 @@ class App extends Component {
     this.handleCommandChange = this.handleCommandChange.bind(this)
     this.handleKeyChange = this.handleKeyChange.bind(this)
     this.handleAmountChange = this.handleAmountChange.bind(this)
+    this.handleNanoChange = this.handleNanoChange.bind(this)
     this.handleRPCError = this.handleRPCError.bind(this)
     this.selectCommand = this.selectCommand.bind(this)
     this.postData = this.postData.bind(this)
@@ -111,8 +117,46 @@ class App extends Component {
     this.double = this.double.bind(this)
   }
 
+  // Init component
+  componentDidMount() {
+    // try update the price
+    var command = {
+      action: "tokenprice_check",
+    }
+    this.postData(command)
+    .then((data) => {
+      if ("token_price" in data) {
+        let nano = this.state.amount * parseFloat(data.token_price)
+        this.setState({
+          nanoAmount: nano
+        })
+      }
+    })
+    .catch(function(error) {
+      this.handleRPCError(error)
+    }.bind(this))
+
+    // calculate nano cost regardless of if server respond or not
+    let nano = this.state.amount * this.state.tokenPrice
+    this.setState({
+      nanoAmount: nano
+    })
+  }
+
   handleCommandChange(event) {
     let command = event.target.value
+    try {
+      let query = $.param(JSON.parse(command)) //convert json to query string
+      this.setState({
+        apiText: query
+      })
+    }
+    catch {
+      this.setState({
+        apiText: "Bad json format"
+      })
+    }
+
     this.setState({
       command: command
     })
@@ -138,15 +182,37 @@ class App extends Component {
   handleAmountChange(event) {
     if (event.target.value !== "") {
       let amount = parseInt(event.target.value)
-      if (Number.isInteger(amount)) {
+      if (Number.isSafeInteger(amount)) {
+        // calculate nano cost
+        let nano = amount * this.state.tokenPrice
         this.setState({
-          amount: amount
+          amount: amount,
+          nanoAmount: nano
         })
       }
     }
     else {
       this.setState({
         amount: event.target.value
+      })
+    }
+  }
+
+  handleNanoChange(event) {
+    if (event.target.value !== "") {
+      let amount = event.target.value
+      if (Number.isSafeInteger(parseInt(amount)) || this.isFloat(parseFloat(amount))) {
+        // calculate tokens
+        let tokens = Math.round(parseFloat(amount) / this.state.tokenPrice)
+        this.setState({
+          nanoAmount: event.target.value,
+          amount: tokens
+        })
+      }
+    }
+    else {
+      this.setState({
+        nanoAmount: event.target.value
       })
     }
   }
@@ -203,12 +269,20 @@ class App extends Component {
     }
   }
 
+  // Check if float string
+  isFloat(x) {
+    return !!(x % 1)
+  }
+
   // Change tool to view on main page
   selectCommand(eventKey) {
+    let command = constants.SAMPLE_COMMANDS[eventKey]
+    let query = $.param(JSON.parse(command)) //convert json to query string
     this.setState({
       command: constants.SAMPLE_COMMANDS[eventKey],
       activeCommandId: eventKey,
       activeCommandName: constants.SAMPLE_COMMAND_NAMES[eventKey],
+      apiText: query
     })
   }
 
@@ -216,13 +290,17 @@ class App extends Component {
     this.setState({fetchingRPC: false})
     if (error.code) {
       console.log("RPC request failed: "+error.message)
+      this.writeOutput({error:"RPC request failed: "+error.message})
     }
     else {
       console.log("RPC request failed: "+error)
+      this.writeOutput({error:"RPC request failed: "+error})
     }
   }
 
   buyTokens(event) {
+    this.setState({payinfoHidden: false})
+
     let amount = parseInt(this.state.amount)
     if (Number.isInteger(amount) && amount > 0) {
       var command = {
@@ -237,6 +315,7 @@ class App extends Component {
   }
 
   checkTokens(event) {
+    this.setState({payinfoHidden: true})
     var command = {
       action: "tokens_check",
     }
@@ -247,6 +326,7 @@ class App extends Component {
   }
 
   cancelOrder(event) {
+    this.setState({payinfoHidden: true})
     var command = {
       action: "tokenorder_cancel",
     }
@@ -262,8 +342,12 @@ class App extends Component {
 
     // Read command from text box if not provided from other function
     if (command === "") {
+      this.setState({payinfoHidden: true})
       try {
         command = JSON.parse(this.state.command)
+        if (this.state.key.length === 64) {
+          command.token_key = this.state.key
+        }
       }
       catch(e) {
         console.log("Could not parse json string")
@@ -305,9 +389,10 @@ class App extends Component {
           }
         }
         else if ("tokens_total" in data && "tokens_ordered" in data) {
+          this.writeOutput(data)
           this.setState({
             tokenText1: "Payment completed for " + data.tokens_ordered + " tokens! You now have " + data.tokens_total + " tokens to use",
-            tokenText2: "",
+            tokenText2: "Your request key is: " + json.token_key,
             tokenText3: "",
             paymentActive: false,
           })
@@ -315,6 +400,7 @@ class App extends Component {
           this.updateQR("")
         }
         else if ("error" in data) {
+          this.writeOutput(data)
           this.setState({
             tokenText1: data.error,
             tokenText2: "",
@@ -325,6 +411,7 @@ class App extends Component {
           this.updateQR("")
         }
         else {
+          this.writeOutput(data)
           this.setState({
             tokenText1: "Unknown error occured",
             tokenText2: "",
@@ -430,7 +517,7 @@ class App extends Component {
           <ul>
             <li> Everyone are allowed 1000 requests/day. Purchase optional tokens if you need more.</li>
             <li> Tokens can be refilled/extended using the same Request Key. The order is done when said Nano (or more) is registered.</li>
-            <li> If you send nano but order fail you can claim back the corresponding private key. The deposit account will be destroyed/replaced.</li>
+            <li> If you send nano but order fail you can claim the private key. The old deposit account will be destroyed/replaced.</li>
           </ul>
           <DropdownButton
             className="command-dropdown"
@@ -460,7 +547,11 @@ class App extends Component {
             <FormControl id="key" aria-describedby="key" value={this.state.key} title="Your personal token key" maxLength="64" placeholder='Optional: Get key by purchase tokens. Key can also be used to refill/check your tokens or claim priv key.' onChange={this.handleKeyChange} autoComplete="off"/>
           </InputGroup>
 
-          <InputGroup size="sm" className="mb-3">
+          <div className="token-text">
+            <span>GET Query Equivalent (need basic auth headers if using server auth):<br/></span><a href={constants.RPC_SERVER+"/?"+this.state.apiText}>{constants.RPC_SERVER+"/?"+this.state.apiText}</a>
+          </div>
+
+          <InputGroup size="sm" className="mb-3 hidden">
             <div className="auth-title" title="Use authentication">Use Auth:</div>
             <div className="form-check form-check-inline index-checkbox">
               <input className="form-check-input" type="checkbox" id="auth-check" value={this.state.useAuth} checked={this.state.useAuth} onChange={this.handleOptionChange}/>
@@ -471,13 +562,22 @@ class App extends Component {
             <Button className="btn-medium" variant="primary" disabled={this.state.fetchingRPC || this.state.paymentActive} onClick={this.getRPC}>Server Request</Button>
           </InputGroup>
 
+          <div className="line"></div>
+          <div className="line"></div>
+
           <InputGroup size="sm" className="mb-3">
             <InputGroup.Prepend>
               <InputGroup.Text id="amount">
                 Token Amount
               </InputGroup.Text>
             </InputGroup.Prepend>
-            <FormControl id="amount" aria-describedby="amount" value={this.state.amount} title="Number of tokens to purchase" maxLength="7" placeholder='' onChange={this.handleAmountChange} autoComplete="off"/>
+            <FormControl className="edit-short" id="amount" aria-describedby="amount" value={this.state.amount} title="Number of tokens to purchase" maxLength="9" placeholder='' onChange={this.handleAmountChange} autoComplete="off"/>
+            <InputGroup.Prepend>
+              <InputGroup.Text id="nano">
+                Nano Amount
+              </InputGroup.Text>
+            </InputGroup.Prepend>
+            <FormControl id="nano" aria-describedby="nano" value={this.state.nanoAmount} title="Amount of Nano to pay" maxLength="9" placeholder='' onChange={this.handleNanoChange} autoComplete="off"/>
           </InputGroup>
 
           <InputGroup size="sm" className="mb-3">
@@ -486,7 +586,7 @@ class App extends Component {
             <Button className="btn-medium" variant="primary" disabled={this.state.fetchingRPC || !this.state.validKey} onClick={this.cancelOrder}>Claim back order</Button>
           </InputGroup>
 
-          <div className="token-text">
+          <div className={ this.state.payinfoHidden ? "hidden token-text" : "token-text"}>
             <span>{this.state.tokenText1}<br/>{this.state.tokenText2}<br/>{this.state.tokenText3}<br/></span>
           </div>
 
