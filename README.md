@@ -62,7 +62,9 @@ Before making changes, stop any running servers with "pm2 stop proxy.js" and del
 https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-systemd
 
 1. Create a file /etc/systemd/system/nanorpcproxy.service
-2. Paste this (**change to your actual location of proxy.js**)
+2. Paste this
+
+**change to your actual location of proxy.js**
 
     [Unit]
     Description=NanoRPCProxy
@@ -282,7 +284,7 @@ Or status
 
 * **{"action":"tokenorder_cancel","token_key":"815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74"}**
 
-Reset the deposit account and return last private key to claim any lost funds
+Reset the deposit account and return last private key to be used for recovery
 
     {
       "priv_key": "2aad399e19f926c7358a2d21d3c320e32bfedb774e0a43dba684853a1ca2cf56",
