@@ -3,6 +3,7 @@ const Nano =       require('nanocurrency')
 const Wallet =     require('nanocurrency-web')
 const Fs =         require('fs')
 const Tools =      require('./tools')
+const log_levels = {none:"none", warning:"warning", info:"info"}
 
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
 
@@ -16,6 +17,7 @@ var difficulty_multiplier = "1.0" // Multipliers used when using the node for Po
 var payment_receive_account = "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue" // where to send the payment
 var min_token_amount = 1          // min allowed tokens to be purchased
 var max_token_amount = 10000000    // max allowed tokens to be purchased
+var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
 
 // Read settings from file
 // ---
@@ -31,6 +33,7 @@ try {
   payment_receive_account = settings.payment_receive_account
   min_token_amount = settings.min_token_amount
   max_token_amount = settings.max_token_amount
+  log_level = settings.log_level
 }
 catch(e) {
   console.log("Could not read token_settings.json", e)
@@ -49,6 +52,7 @@ console.log("Pending Max Count: " + pending_count)
 console.log("Difficulty Multiplier: " + difficulty_multiplier)
 console.log("Min allowed tokens to purchase: " + min_token_amount)
 console.log("Max allowed tokens to purchase: " + max_token_amount)
+console.log("Token system log level: " + log_level)
 // ---
 
 const sleep = (milliseconds) => {
@@ -103,7 +107,7 @@ module.exports = {
     res = {"address":address, "token_key":token_key, "payment_amount":nano_amount}
 
     // Start checking for pending and cancel order if taking too long
-    console.log("Start checking pending tx every " + pending_interval + "sec for a total of " + nano_amount + " Nano...")
+    logThis("Start checking pending tx every " + pending_interval + "sec for a total of " + nano_amount + " Nano...", log_levels.info)
     checkPending(address, order_db)
 
     // Return payment request
@@ -144,11 +148,11 @@ module.exports = {
       // Replace the address and private key and reset status
       if (order.processing === false) {
         order_db.get('orders').find({token_key: token_key}).assign({"address":address, "priv_key":priv_key, "order_waiting":false, "nano_amount":0, "order_time_left":payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
-        console.log("Order was cancelled for " + token_key + ". Previous private key was " + previous_priv_key)
+        logThis("Order was cancelled for " + token_key + ". Previous private key was " + previous_priv_key, log_levels.info)
         return {"priv_key":previous_priv_key,"status":"Order canceled and account replaced. You can use the private key to claim any leftover funds."}
       }
       else {
-        console.log("Order tried to cancel but still in process: " + token_key)
+        logThis("Order tried to cancel but still in process: " + token_key, log_levels.info)
         return {"priv_key":"","status":"Order is currently processing, please try again later."}
       }
 
@@ -169,7 +173,7 @@ module.exports = {
         return {"tokens_total":order.tokens,"status":'Something went wrong with the last order. You can try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
       }
       else {
-        return {"tokens_total":order.tokens,"status":'The last order timed out. If you sent Nano anyway you try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
+        return {"tokens_total":order.tokens,"status":'The last order timed out. If you sent Nano you can try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
       }
     }
     else {
@@ -183,6 +187,7 @@ module.exports = {
 }
 
 // Check if order payment has arrived as a pending block, continue check at intervals until time is up
+// TODO for a better day: Use websocket instead and subscribe only to accounts needed
 async function checkPending(address, order_db, total_received = 0) {
   // Check pending and claim
   let priv_key = order_db.get('orders').find({address: address}).value().priv_key
@@ -201,23 +206,23 @@ async function checkPending(address, order_db, total_received = 0) {
         const order = order_db.get('orders').find({address: address}).value()
         if (order) {
           // Update the total tokens count and actual nano paid
-          console.log("Enough pending amount detected: Order successfully updated! Continuing processing pending internally")
+          logThis("Enough pending amount detected: Order successfully updated! Continuing processing pending internally", log_levels.info)
           order_db.get('orders').find({address: address}).assign({tokens: order.tokens + tokens_purchased, nano_amount: total_received, token_amount:order.token_amount + tokens_purchased, order_waiting: false}).write()
           return
         }
-        console.log("Address paid was not found in the DB")
+        logThis("Address paid was not found in the DB", log_levels.warning)
         return
       }
       else {
-        console.log("Still need " + (nano_amount - total_received)  + " Nano to finilize the order")
+        logThis("Still need " + (nano_amount - total_received)  + " Nano to finilize the order", log_levels.info)
       }
     }
     else if (!'amount' in pending_result) {
-      console.log("Amount is missing in the response from processAccount()")
+      logThis("Amount is missing in the response from processAccount()", log_levels.warning)
     }
   }
   catch(err) {
-    console.log(err.toString())
+    logThis(err.toString(), log_levels.warning)
   }
 
   // pause 5sec and check again
@@ -239,11 +244,11 @@ async function checkPending(address, order_db, total_received = 0) {
     }
     else {
       order_db.get('orders').find({address: address}).assign({order_waiting: false}).write()
-      console.log("Payment timed out for " + address)
+      logThis("Payment timed out for " + address, log_levels.info)
     }
     return
   }
-  console.log("Address paid was not found in the DB")
+  logThis("Address paid was not found in the DB", log_levels.warning)
   return
 }
 
@@ -295,11 +300,11 @@ async function processAccount(privKey) {
           // the previous is the last received block and will be used to create the final send block
           if (parseInt(newAdjustedBalance) > 0) {
             processSend(privKey, previous, representative, () => {
-              console.log("Done processing final send")
+              logThis("Done processing final send", log_levels.info)
             })
           }
           else {
-            console.log("Balance is 0")
+            logThis("Balance is 0", log_levels.warning)
             resolve({'amount':0})
           }
         },
@@ -309,12 +314,12 @@ async function processAccount(privKey) {
         })
       }
       else {
-        console.log("Bad RPC response")
+        logThis("Bad RPC response", log_levels.warning)
         reject(new Error('Bad RPC response'))
       }
     }
     catch (err) {
-      console.log(err.toString())
+      logThis(err.toString(), log_levels.warning)
       reject(new Error('Connection error: ' + err))
     }
   })
@@ -346,7 +351,7 @@ async function createPendingBlocks(privKey, address, balance, adjustedBalance, p
       let nanoAmount = Tools.rawToMnano(raw)
       let pending = {count: Object.keys(data.blocks).length, raw: raw, NANO: nanoAmount, blocks: data.blocks}
       let row = "Found " + pending.count + " pending containing total " + pending.NANO + " NANO"
-      console.log(row)
+      logThis(row,log_levels.info)
       accountCallback({'amount':parseFloat(nanoAmount)})
 
       // create receive blocks for all pending
@@ -358,20 +363,24 @@ async function createPendingBlocks(privKey, address, balance, adjustedBalance, p
 
       processPending(pending.blocks, keys, 0, privKey, previous, subType, representative, pubKey, adjustedBalance, callback)
     }
+    else if (data.error) {
+      logThis(data.error, log_levels.warning)
+      accountCallback({'amount':0})
+    }
     // no pending, create final block directly
     else {
       if (parseInt(adjustedBalance) > 0) {
         processSend(privKey, previous, representative, () => {
-          accountCallback({'amount':0}) // tell that we are ok to continue with next step
+          accountCallback({'amount':0})
         })
       }
       else {
-        accountCallback({'amount':0}) // tell that we are ok to continue with next step
+        accountCallback({'amount':0})
       }
     }
   }
   catch(err) {
-    console.log(err)
+    logThis(err, log_levels.warning)
   }
 }
 
@@ -382,7 +391,7 @@ async function processPending(blocks, keys, keyCount, privKey, previous, subType
 
   // generate local work
   try {
-    console.log("Started generating PoW...")
+    logThis("Started generating PoW...", log_levels.info)
 
     // determine input work hash depending if open block or receive block
     var workInputHash = previous
@@ -418,7 +427,7 @@ async function processPending(blocks, keys, keyCount, privKey, previous, subType
         try {
           let data = await Tools.postData(jsonBlock, node_url, API_TIMEOUT)
           if (data.hash) {
-            console.log("Processed pending: " + data.hash)
+            logThis("Processed pending: " + data.hash, log_levels.info)
 
             // continue with the next pending
             keyCount += 1
@@ -427,32 +436,32 @@ async function processPending(blocks, keys, keyCount, privKey, previous, subType
             }
             // all pending done, now we process the final send block
             else {
-              console.log("All pending processed!")
+              logThis("All pending processed!", log_levels.info)
               pendingCallback(previous, newAdjustedBalance)
             }
           }
           else {
-            console.log("Failed processing block: " + data.error)
+            logThis("Failed processing block: " + data.error, log_levels.warning)
           }
         }
         catch(err) {
-          console.log(err)
+          logThis(err, log_levels.warning)
         }
       }
       else {
-        console.log("Bad PoW result")
+        logThis("Bad PoW result", log_levels.warning)
       }
     }
     catch(err) {
-      console.log(err)
+      logThis(err, log_levels.warning)
     }
   }
   catch(error) {
     if(error.message === 'invalid_hash') {
-      console.log("Block hash must be 64 character hex string")
+      logThis("Block hash must be 64 character hex string", log_levels.warning)
     }
     else {
-      console.log("An unknown error occurred while generating PoW" + error)
+      logThis("An unknown error occurred while generating PoW" + error, log_levels.warning)
     }
     return
   }
@@ -463,7 +472,7 @@ async function processSend(privKey, previous, representative, sendCallback) {
   let pubKey = Nano.derivePublicKey(privKey)
   let address = Nano.deriveAddress(pubKey, {useNanoPrefix: true})
 
-  console.log("Final transfer started for: " + address)
+  logThis("Final transfer started for: " + address, log_levels.info)
   var command = {}
   command.action = 'work_generate'
   command.hash = previous
@@ -487,23 +496,35 @@ async function processSend(privKey, previous, representative, sendCallback) {
       try {
         let data = await Tools.postData(jsonBlock, node_url, API_TIMEOUT)
         if (data.hash) {
-          console.log("Funds transferred at block: " + data.hash + " to " + payment_receive_account)
+          logThis("Funds transferred at block: " + data.hash + " to " + payment_receive_account, log_levels.info)
         }
         else {
-          console.log("Failed processing block: " + data.error)
+          logThis("Failed processing block: " + data.error, log_levels.warning)
         }
         sendCallback()
       }
       catch(err) {
-        console.log(err)
+        logThis(err, log_levels.warning)
       }
     }
     else {
-      console.log("Bad PoW result")
+      logThis("Bad PoW result", log_levels.warning)
     }
   }
   catch(err) {
-    console.log(err)
+    logThis(err, log_levels.warning)
     sendCallback()
+  }
+}
+
+// Log function
+function logThis(str, level) {
+  if (log_level == log_levels.info || level == log_level) {
+    if (level == log_levels.info) {
+      console.info(str)
+    }
+    else {
+      console.warn(str)
+    }
   }
 }

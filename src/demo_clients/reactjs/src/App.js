@@ -512,7 +512,7 @@ class App extends Component {
     return (
       <div className="App">
         <header className="App-header">
-          <h3>RPC demo client for communicating with <a href="https://github.com/Joohansson/NanoRPCProxy">NanoRPCProxy</a></h3>
+          <h3>Demo client for communicating with <a href="https://github.com/Joohansson/NanoRPCProxy">NanoRPCProxy</a></h3>
           <p>Send to a live Nano node using <a href="https://docs.nano.org/commands/rpc-protocol/">RPC json requests</a></p>
           <ul>
             <li> Everyone are allowed 1000 requests/day. Purchase optional tokens if you need more.</li>

@@ -1,10 +1,12 @@
 # NanoRPCProxy
-NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has NO built in functionality for user authentication, rate limiting or caching which makes it dangerous to open up without protection like this proxy provides. With NanoRPCProxy you can for example serve a mobile app or web frontend with indirect node calls. **In reality, it can be used for Nano wallets, exchanges, block explorers, public APIs, monitor systems, Point of Sale or basically anything that communicates with a node.**.
+NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has NO built in functionality for user authentication, rate limiting or caching which makes it dangerous to open up without protection like this proxy provides. With NanoRPCProxy you can for example serve a mobile app or web frontend with indirect node calls. **In reality, it can be used for Nano wallets, exchanges, block explorers, public APIs, monitor systems, Point of Sale or anything that communicates with a node.**.
 
 The built in token system makes it possible to serve requests beyond the default limits and monetize your backend via direct Nano token purchases.
 
 Demo clients/code for Curl, JS, REACT, Python, Flask and PHP are available to test your own server.
+
 **A public demo client with token and API support on the live network is available [here](https://example.com)!**
+
 
 ## Features
 * Fully customizable via a settings file
@@ -23,13 +25,69 @@ Demo clients/code for Curl, JS, REACT, Python, Flask and PHP are available to te
 * Works with both beta and main Nano network
 * Demo clients/code
 
-## Install and run proxy server
 
+## Install and run the proxy server
+### Setup nodejs and test server
+1. Make sure you have node.js installed. [Windows Guide](https://www.liquidweb.com/kb/install-react-js-windows/) | [Ubuntu Guide](https://medium.com/@DanielSayidi/install-and-setup-react-app-on-ubuntu-18-04-3-lts-fcd2c875885a)
+2. Locate the directory srs/server
+3. Install required libraries: "npm install" or "yarn install"
+4. Start and test the server with "node proxy.js"
 
+### Option1: Install as a service using PM2 (Recommended)
+https://pm2.keymetrics.io/docs/usage/quick-start/
+
+1. Locate the directory srs/server
+2. Install pm2: npm install pm2@latest -g
+3. Start the server: pm2 start proxy.js
+
+#### Other useful pm2 cached_commands
+* Runtime commands: pm2 restart proxy.js, pm2 stop proxy.js, pm2 delete proxy.js
+* Make pm2 auto-boot at server restart: pm2 startup
+* Realtime online monitor: pm2 monitor
+* Status: pm2 status
+* Realtime logs: pm2 logs (or specifically for this app: pm2 logs proxy.js)
+* Terminal dashboard: pm2 monit
+
+Before making changes, stop any running servers with "pm2 stop proxy.js" and delete the process with "pm delete proxy.js"
+* Specify log location: pm2 start proxy.js --log ~/NanoRPCProxy.log
+* Restart app when file changes: pm2 start proxy.js --watch
+
+#### Update pm2:
+1. npm install pm2@latest -g
+2. pm2 update
+
+### Option2: Install as a service using systemd on Linux
+https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-systemd
+
+1. Create a file /etc/systemd/system/nanorpcproxy.service
+2. Paste this (**change to your actual location of proxy.js**):
+
+    [Unit]
+    Description=NanoRPCProxy
+    After=network.target
+    [Service]
+    ExecStart=/usr/local/bin/node /home/NanoRPCProxy/src/server/proxy.js
+    Restart=always
+    RestartSec=10 #wait 10sec before restart
+    #User=nobody
+    #Group=nogroup
+    Environment=PATH=/usr/bin:/usr/local/bin
+    Environment=NODE_ENV=production
+    WorkingDirectory=/home/NanoRPCProxy/src/server/
+    [Install]
+    WantedBy=multi-user.target
+
+3. Make the file executable: sudo chmod +x /home/NanoRPCProxy/src/server/proxy.js
+4. Make systemd aware: sudo systemctl daemon-reload
+5. Test the service: sudo systemctl start nanorpcproxy
+6. Check status: sudo systemctl status nanorpcproxy
+7. Start service on boot: sudo systemctl enable nanorpcproxy.service
+8. Follow logs in realtime: sudo journalctl --follow -u nanorpcproxy
 
 
 ## How customize the proxy server
 The proxy server is configured via the **settings.json** file found in the server folder
+
 * **node_url:** Nano node RPC url (default for main network is 'http://[::1]:7076' and for beta network 'http://[::1]:55000') [number]
 * **http_port:** Port to listen on for http (enabled default with the setting <use_http>) [number]
 * **https_port:** Port to listen on for https (disabled default with the setting <use_https>) [number]
@@ -41,6 +99,7 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **use_https:** Listen on https (a valid cert and key file is needed via <https_cert> and <https_key>) [true/false]
 * **use_output_limiter:** If limiting number of response objects, like pending transactions, to a certain max amount set in <limited_commands>. Only valid for RPC actions that have a "count" key [true/false] [true/false]
 * **use_ip_blacklist:** If always blocking certain IPs set in <ip_blacklist> [true/false]
+* **use_tokens** If activating the token system for purchase via Nano [true/false] (more information further down)
 * **https_cert:** File path for pub cert file [absolute path string]
 * **https_key:** File path for private key file [absolute path string]
 * **allowed_commands:** A list of RPC actions to allow [list]
@@ -52,6 +111,7 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **log_level:** It can be set to either "info" which will output all logs, "warning" which will only output warning messages or "none" which will only log the initial settings.
 
 The following parameters can be set in **user_settings.json** to override the default ones for specific users defined in **creds.json**. Anything in this file will override even if there are less sub entries like only 1 allowed command or 2 limited commands.
+
 * **use_cache**
 * **use_output_limiter**
 * **allowed_commands**
@@ -59,9 +119,28 @@ The following parameters can be set in **user_settings.json** to override the de
 * **limited_commands**
 * **log_level**
 
+The following parameters can be set in **token_settings.json** for configuration of the token system. The system require the <use_tokens> to be active in **settings.json**
+More info about the token system can be found in the specific section for it.
+
+* **work_server** Source for calculating PoW. Can be a node (http://[::1]:7076) (with enable_control active) or a [work server](https://github.com/nanocurrency/nano-work-server) which can be run as "./nano-work-server --gpu 0:0 -l 127.0.0.1:7000" and then set work_server to http://127.0.0.1:7000. Also available pre-compiled [here](https://github.com/guilhermelawless/nano-dpow/tree/master/client).
+* **token_price** Purchase price per token [Nano]
+* **payment_timeout** Payment window before timeout and cancelled [seconds]
+* **pending_interval** How often to check for deposit during the payment window (may be removed if websocket is implemented) []
+* **pending_threshold** Skip processing pending transactions below this raw amount
+* **pending_count** The maximum number of pending transactions to process each time a new order comes in
+* **difficulty_multiplier** The PoW multiplier from base difficulty (may be needed during network saturation)
+* **payment_receive_account** The account to send the incoming money
+* **min_token_amount** The minimum amount of tokens to allow for purchase
+* **max_token_amount** The maximum amount of tokens to allow for purchase
+* **log_level** It can be set to either "info" which will output all logs, "warning" which will only output warning messages or "none" which will only log the initial settings.
+
+
 ## How to call the proxy server
 You call the proxy server just like you would call the node RPC. It's a normal POST request to "<YourProxyURL>/proxy" with json formatted data.
 The node commands are found here: https://docs.nano.org/commands/rpc-protocol/
+
+It also support URL queries via GET request, which means you can even run the commands from a web browser via links such as ""<YourProxyURL>/proxy/?action=block_count" and get a json response.
+However, if authentication is activated in the server settings, basic auth headers are needed so that won't work in a browser.
 
 ### Special RPC commands
 The proxy server also support special commands not supported in the Nano RPC. They need to be listed in the **settings.json** under "allowed_commands"
@@ -70,16 +149,22 @@ The proxy server also support special commands not supported in the Nano RPC. Th
 ### Using curl
 The curl command looks just a tiny bit different than for a direct node request. You just have to define it with a json content type. You can also use the -i flag to include response headers.
 
-**No authentication**
+**POST: No authentication**
 
     curl -H "Content-Type: application/json" -d '{"action":"block_count"}' http://localhost:9950/proxy
 
-**With authentication**
+**POST: With authentication**
 
     curl --user user1:user1 -H "Content-Type: application/json" -d '{"action":"block_count"}' http://127.0.0.1:9950/proxy
 
+**GET: No authentication**
+    curl http://localhost:9950/proxy?action=block_count
+
+**GET: With authentication**
+    curl --user user1:user1 http://localhost:9950/proxy?action=block_count
+
 ### Using python
-**No authentication**
+**POST: No authentication**
 
     import requests
     import json
@@ -96,28 +181,20 @@ The curl command looks just a tiny bit different than for a direct node request.
     except Exception as e:
         print("Fatal error", e)
 
-**With authentication**
+**POST: With authentication**
 Note: verify=False means we ignore possible SSL certificate errors. Recommended to set to True
 
-    import requests
-    import json
-    from requests.auth import HTTPBasicAuth
-    try:
-        r = requests.post('http://localhost:9950/proxy', json={"action":"block_count"}, verify=False, auth=HTTPBasicAuth(username, password))
-        status = r.status_code
-        print("Status code: ", status)
-        if (status == 200):
-            print("Success!")
-        try:
-            print(r.json())
-        except:
-            print(r)
-    except Exception as e:
-        print("Fatal error", e)
+    r = requests.post('http://localhost:9950/proxy', json={"action":"block_count"}, verify=False, auth=HTTPBasicAuth(username, password))
+
+**GET: With authentication**
+
+    r = requests.get('http://localhost:9950/proxy?action=block_count', auth=HTTPBasicAuth(username, password))
 
 ### Using JS
-**With authentication (Without: remove the Authorization header)**
+**POST: Async with authentication (Without: remove the Authorization header)**
 See the js demo client for full example with error handling
+
+    For html file: <script src="https://cdn.jsdelivr.net/npm/js-base64@2.5.2/base64.min.js"></script>
 
     async function postData(data = {}, server='http://localhost:9950/proxy') {
       const response = await fetch(server, {
@@ -140,6 +217,76 @@ See the js demo client for full example with error handling
       console.log(error)
     })
 
+**GET: No authentication using jquery**
+
+    $.get("http://localhost:9950/proxy?action=block_count", function(data, status){
+      console.log(data)
+    })
+
+**GET: Authentication using jquery and ajax**
+
+    $.ajax({
+         url: "http://localhost:9950/proxy?action=block_count",
+         type: "GET",
+         beforeSend: function(xhr){xhr.setRequestHeader('Authorization', 'Basic ' + Base64.encode('user1:user1'))},
+         success: function(data, status) {console.log(data)}
+      })
+
+### The Token System
+Only a certain amount of requests per time period is allowed and configured in the settings. Users who need more requests (and only affected by the "slow down rate limiter" can purchase tokens with Nano. The system require the <use_tokens> to be active in **settings.json**.
+
+* Any RPC command can be made by including a request key: **{"action":"block_count","token_key":"815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74"}** For each request 1 token will be deducted.
+
+* **{"action":"tokens_buy","token_amount":10}** Initiates a new order of 10 tokens and respond with a deposit account, a token key and the amount of Nano to pay
+
+    {
+      "address": "nano_3m497b1ghppe316aiu4o5eednfyueemzjf7a8wye3gi5rjrkpk1p59okghwb",
+      "token_key": "815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74",
+      "payment_amount": 0.001
+    }
+
+* **{"action":"tokens_buy","token_amount":10,"token_key":"815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74"}** Initiates a refill order of existing key for 10 tokens
+
+    {
+      "address": "nano_3m497b1ghppe316aiu4o5eednfyueemzjf7a8wye3gi5rjrkpk1p59okghwb",
+      "token_key": "815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74",
+      "payment_amount": 0.001
+    }
+
+* **{"action":"tokenorder_check","token_key":"815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74"}** Check status of initiated order
+
+Either the time left to pay the order
+
+    {
+      "order_time_left": 135
+    }
+
+Or status
+
+    {
+      "error": "Order timed out"
+    }
+
+* **{"action":"tokenorder_cancel","token_key":"815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74"}** Reset the deposit account and return last private key to claim any lost funds
+
+    {
+      "priv_key": "2aad399e19f926c7358a2d21d3c320e32bfedb774e0a43dba684853a1ca2cf56",
+      "status": "Order canceled and account replaced. You can use the private key to claim any leftover funds."
+    }
+
+* **{"action":"tokens_check","token_key":"815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74"}** Returns the total amount of tokens bound to the key and status of last order
+
+    {
+      "tokens_total": 10,
+      "status": "OK"
+    }
+
+* **{"action":"tokenprice_check"}** Returns the current price set by the server
+
+    {
+      "token_price": 0.0001
+    }
+
 ## How to install and test the demo clients
 The proxy server can be tested and experimented with using provided demo clients. They can also help you getting starting with your own setup.
 
@@ -160,12 +307,12 @@ Note: The credentials for authentication is hard coded in the javascript and to 
 ![ReactJS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/js_client_demo.png)
 
 ### REACT client
+The only demo client that has full functionality for purchasing request tokens
 **To run the pre-built app:**
 
 1. Locate the directory demo_clients/reactjs/build
 2. Open index.html in a browser (Chrome/Firefox recommended)
-3. Test the sample buttons or paste any RPC command from the [docs](https://docs.nano.org/commands/rpc-protocol/)(including the {}). The available commands are set in the server settings.json file.
-4. If you change the user credentials in the server <creds.json> you will also need to change the reactjs/src/rpc.js credentials and re-build the app from source (instructions below). Don't share the creds file!
+3. If you change the user credentials in the server <creds.json> you will also need to change the reactjs/src/rpc.js credentials and re-build the app from source (instructions below). Don't share your creds file if you are going to make it live!
 
 ![ReactJS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/reactjs_client_demo.png)
 
@@ -173,11 +320,12 @@ Note: The credentials for authentication is hard coded in the javascript and to 
 
 1. Make sure you have node.js (and react) installed. [Windows Guide](https://www.liquidweb.com/kb/install-react-js-windows/) | [Ubuntu Guide](https://medium.com/@DanielSayidi/install-and-setup-react-app-on-ubuntu-18-04-3-lts-fcd2c875885a)
 2. Locate the directory demo_clients/reactjs
-3. Install required libraries" "npm install" or "yarn install"
+3. Install required libraries: "npm install" or "yarn install"
 3. Test the app in development mode: "npm start" or "yarn start"
 4. Navigate to http://localhost:3000/
 5. To build from source: "npm build" or "yarn build"
 6. The final build is located in clients/reactjs/build
+
 
 ## Special Notes
 

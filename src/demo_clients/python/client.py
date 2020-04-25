@@ -32,6 +32,7 @@ try:
     if args.a:
         print("Authorizing with " + username + " | " + password)
         r = requests.post('http://localhost:9950/proxy', json=command, verify=False, auth=HTTPBasicAuth(username, password))
+        #r = requests.get('http://localhost:9950/proxy?action=block_count', auth=HTTPBasicAuth(username, password))
     else:
         r = requests.post("http://localhost:9950/proxy", json=command)
     status = r.status_code

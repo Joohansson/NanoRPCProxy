@@ -14,7 +14,7 @@ const IpDeniedError = require('express-ipfilter').IpDeniedError
 const Promise =       require('promise')
 const Tokens =        require('./tokens')
 const Tools =         require('./tools')
-log_levels = {none:"none", warning:"warning", info:"info"}
+const log_levels = {none:"none", warning:"warning", info:"info"}
 
 // lowdb init
 const Low = require('lowdb')
@@ -189,7 +189,7 @@ if (use_ip_blacklist) {
   console.log(log_string)
 }
 
-console.log("Log level: " + log_level)
+console.log("Main log level: " + log_level)
 // ---
 
 // Define the proxy app
@@ -572,7 +572,12 @@ if (use_https) {
 
 // Log function
 function logThis(str, level) {
-  if (user_log_level == "info" || level == user_log_level) {
-    console.log(str)
+  if (user_log_level == log_levels.info || level == user_log_level) {
+    if (level == log_levels.info) {
+      console.info(str)
+    }
+    else {
+      console.warn(str)
+    }
   }
 }
