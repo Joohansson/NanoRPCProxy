@@ -174,6 +174,8 @@ The curl command looks just a tiny bit different than for a direct node request.
 
     curl --user user1:user1 http://localhost:9950/proxy?action=block_count
 
+![Curl demo](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/demo_curl.png)
+
 ### Using python
 **POST: No authentication**
 
@@ -311,6 +313,12 @@ Returns the current price set by the server
       "token_price": 0.0001
     }
 
+Demo of purchasing tokens using the React demo client:
+![React demo app - Token purchase](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_react_02.png)
+
+Order completed:
+![React demo app - Token purchase complete](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_react_03.png)
+
 ## How to install and test the demo clients
 The proxy server can be tested and experimented with using provided demo clients. They can also help you getting starting with your own setup.
 
@@ -344,8 +352,6 @@ The only demo client that has full functionality for purchasing request tokens
 3. If you change the user credentials in the server <creds.json> you will also need to change the reactjs/src/rpc.js credentials and re-build the app from source (instructions below). Don't share your creds file if you are going to make it live!
 
 ![React demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_react_01.png)
-![React demo app - Token purchase](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_react_02.png)
-![React demo app - Token purchase complete](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_react_03.png)
 
 **To run or build the app from source**
 
