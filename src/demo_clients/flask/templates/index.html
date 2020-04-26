@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <title>NanoRPCProxy Client</title>
+
+    <style>
+      body {
+        background-color: #000034;
+        color:#EEE;
+        margin-top: 10vh;
+        width: 100%;
+        text-align: center;
+      }
+      .btn {
+        padding-left:10px;
+        padding-right: 10px;
+        height: 30px;
+        margin-top: 10px;
+      }
+      form {
+        width: 100%;
+        display: contents;
+      }
+      textarea {
+        width: 100%;
+      }
+      #command {
+        width: 100%;
+      }
+      .main {
+        width: 80%;
+        max-width: 1100px;
+        margin: 0 auto;
+        margin-top: 2vh;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+      a {
+        color: #4a90e2;
+        text-decoration: none;
+      }
+
+      a:hover, a:focus {
+        color: #377ccc;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>RPC demo client for communicating with <a href="https://github.com/Joohansson/NanoRPCProxy">NanoRPCProxy</a></h3>
+    <p>Send to a live Nano node using RPC json requests<br/>
+      See <a href="https://docs.nano.org/commands/rpc-protocol/">documentation</a> for more commands<br/>
+    </p>
+    <form action="" method="post" role="form">
+      <div class="main">
+        <button type="submit" class="btn btn-success" name="action" value="block_count">block_count</button>
+        <button type="submit" class="btn btn-success" name="action" value="account_info">account_info</button>
+        <button type="submit" class="btn btn-success" name="action" value="account_history">account_history</button>
+        <button type="submit" class="btn btn-success" name="action" value="active_difficulty">active_difficulty</button>
+        <button type="submit" class="btn btn-success" name="action" value="block_info">block_info</button>
+        <button type="submit" class="btn btn-success" name="action" value="pending">pending</button>
+        <button type="submit" class="btn btn-success" name="action" value="representatives_online">representatives_online</button>
+        <button type="submit" class="btn btn-success" name="action" value="price">price</button>
+      </div>
+      <div class="main">
+          <input type="text" class="form-control" id="command" name="action" placeholder="RPC Command" value={{ active_command }}>
+          <button type="submit" class="btn btn-success">Request</button>
+
+      </div>
+      <div class="main">
+        <textarea id="myTextarea" rows="15">{{ result }}</textarea>
+      </div>
+    </form>
+  </body>
+</html>
