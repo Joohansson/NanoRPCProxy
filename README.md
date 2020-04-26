@@ -5,7 +5,7 @@ NanoRPCProxy is a relay and protection system that sits between a client and a N
 
 The built in token system makes it possible to serve requests beyond the default limits and monetize your backend via direct Nano token purchases.
 
-Demo clients/code for Curl, JS, REACT, Python, Flask and PHP are available to test your own server.
+Demo clients/code for Curl, JS, REACT, Python and Flask are available to test your own server.
 
 **A public demo client with token and API support on the live network is available [here](https://example.com)!**
 
@@ -57,6 +57,9 @@ Before making changes, stop any running servers with "pm2 stop proxy.js" and del
 #### Update pm2:
 1. npm install pm2@latest -g
 2. pm2 update
+
+Example of PM2 web monitor. Can track all your apps and with realtime logs.
+![PM2 Web Monitor](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/pm2_monitor.png)
 
 ### Option2: Install as a service using systemd on Linux
 https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-systemd
@@ -312,12 +315,16 @@ Returns the current price set by the server
 The proxy server can be tested and experimented with using provided demo clients. They can also help you getting starting with your own setup.
 
 ### Python client
-1. Make sure you have at least python3 installed
-2. Locate the directory demo_clients/python/
-3. Run this to install required libraries: "pip3 install -r requirements.txt"
-4. Make sure you have the proxy server running locally
-5. Test a request with "python3 client.py --c 1" where 1 means command example 1. Run "python3 client.py --help" to find out more.
-6. To test a server that is using authentication: "python3 client.py --c 1 --a"
+1. Locate the directory demo_clients/python/
+2. If you haven't, install pipenv to run the app in a virtual environment: **pip install pipenv**
+3. Start the environment: **pipenv shell**
+4. Install the packages required: **pipenv sync**
+5. Test a request with "python client.py --c 1" where 1 means command example 1. Run "python client.py --help" to find out more.
+6. To test a server that is using authentication: "python client.py --c 1 --a"
+
+Exit pipenv: **exit**
+
+![Python demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_python.png)
 
 ### JS client
 1. Locate the directory demo_clients/js
@@ -325,7 +332,7 @@ The proxy server can be tested and experimented with using provided demo clients
 
 Note: The credentials for authentication is hard coded in the javascript and to my knowledge it's not possible to hide. However, the reactjs client is compiled and thus have the creds hidden inside the app. As far as I know, that should be safe as long as the source code cred file is not shared publicly.
 
-![ReactJS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/js_client_demo.png)
+![JS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_js.png)
 
 ### REACT client
 The only demo client that has full functionality for purchasing request tokens
@@ -336,7 +343,9 @@ The only demo client that has full functionality for purchasing request tokens
 2. Open index.html in a browser (Chrome/Firefox recommended)
 3. If you change the user credentials in the server <creds.json> you will also need to change the reactjs/src/rpc.js credentials and re-build the app from source (instructions below). Don't share your creds file if you are going to make it live!
 
-![ReactJS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/reactjs_client_demo.png)
+![React demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_react_01.png)
+![React demo app - Token purchase](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_react_02.png)
+![React demo app - Token purchase complete](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_react_03.png)
 
 **To run or build the app from source**
 
@@ -348,6 +357,17 @@ The only demo client that has full functionality for purchasing request tokens
 5. To build from source: "npm build" or "yarn build"
 6. The final build is located in clients/reactjs/build
 
+### Flask client
+1. Locate the directory demo_clients/python/
+2. If you haven't, install pipenv to run the app in a virtual environment: **pip install pipenv**
+3. Start the environment: **pipenv shell**
+4. Install the packages required: **pipenv sync**
+5. Test the app: **python client.py**
+6. Open in browser: **http://127.0.0.1:5000/**
+
+Exit pipenv: **exit**
+
+![Flask demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_js.png)
 
 ## Special Notes
 
