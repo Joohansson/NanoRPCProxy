@@ -4,6 +4,7 @@ import * as rpc from './rpc' //rpc creds not shared on github
 import { Base64 } from 'js-base64';
 import { Dropdown, DropdownButton, InputGroup, FormControl, Button} from 'react-bootstrap'
 import QrImageStyle from './components/qrImageStyle'
+import Parser from 'html-react-parser'
 import * as Nano from 'nanocurrency'
 import $ from 'jquery'
 
@@ -19,7 +20,7 @@ export const constants = {
   SAMPLE_COMMANDS: [
     '{"action":"account_history", "account":"nano_3cpz7oh9qr5b7obbcb5867omqf8esix4sdd5w6mh8kkknamjgbnwrimxsaaf","count":"20"}',
     '{"action":"account_info","account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"}',
-    '{"account_representative","account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"}',
+    '{"action":"account_representative","account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"}',
     '{"action":"active_difficulty"}',
     '{"action":"available_supply"}',
     '{"action":"block_info","json_block":"true","hash":"87434F8041869A01C8F6F263B87972D7BA443A72E0A97D7A3FD0CCC2358FD6F9"}',
@@ -371,8 +372,8 @@ class App extends Component {
   // Inform user how to pay and check status
   prepareForPayment(json) {
     this.setState({
-      tokenText1: "Pay " + json.payment_amount + " Nano to " + json.address,
-      tokenText2: "Your request key is: " + json.token_key,
+      tokenText1: 'Pay ' + json.payment_amount + 'Nano: <a href="nano:' + json.address + '?amount=' + this.MnanoToRaw(json.payment_amount.toString()) + '&message=RPC Proxy Tokens">' + json.address + '</a>',
+      tokenText2: "Request key: " + json.token_key,
       paymentActive: true
     })
     this.updateQR(json.address, json.payment_amount)
@@ -392,7 +393,7 @@ class App extends Component {
           this.writeOutput(data)
           this.setState({
             tokenText1: "Payment completed for " + data.tokens_ordered + " tokens! You now have " + data.tokens_total + " tokens to use",
-            tokenText2: "Your request key is: " + json.token_key,
+            tokenText2: "Request key: " + json.token_key,
             tokenText3: "",
             paymentActive: false,
           })
@@ -490,6 +491,9 @@ class App extends Component {
               else if(response.status === 401) {
                   resolve({"error": "unauthorized"})
               }
+              else if(response.status === 500) {
+                  resolve(await response.json())
+              }
               else {
                 throw new RPCError(response.status, resolve(response))
               }
@@ -572,12 +576,15 @@ class App extends Component {
               </InputGroup.Text>
             </InputGroup.Prepend>
             <FormControl className="edit-short" id="amount" aria-describedby="amount" value={this.state.amount} title="Number of tokens to purchase" maxLength="9" placeholder='' onChange={this.handleAmountChange} autoComplete="off"/>
+          </InputGroup>
+
+          <InputGroup size="sm" className="mb-3">
             <InputGroup.Prepend>
               <InputGroup.Text id="nano">
                 Nano Amount
               </InputGroup.Text>
             </InputGroup.Prepend>
-            <FormControl id="nano" aria-describedby="nano" value={this.state.nanoAmount} title="Amount of Nano to pay" maxLength="9" placeholder='' onChange={this.handleNanoChange} autoComplete="off"/>
+            <FormControl className="edit-short" id="nano" aria-describedby="nano" value={this.state.nanoAmount} title="Amount of Nano to pay" maxLength="9" placeholder='' onChange={this.handleNanoChange} autoComplete="off"/>
           </InputGroup>
 
           <InputGroup size="sm" className="mb-3">
@@ -587,7 +594,9 @@ class App extends Component {
           </InputGroup>
 
           <div className={ this.state.payinfoHidden ? "hidden token-text" : "token-text"}>
-            <span>{this.state.tokenText1}<br/>{this.state.tokenText2}<br/>{this.state.tokenText3}<br/></span>
+            <p>{Parser(this.state.tokenText1)}</p>
+            <p>{this.state.tokenText2}</p>
+            <p>{this.state.tokenText3}</p>
           </div>
 
           <div className={ this.state.qrHidden ? "hidden" : ""}>

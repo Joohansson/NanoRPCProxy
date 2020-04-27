@@ -78,7 +78,7 @@ a:hover, a:focus {
 
 /* Special margin for double text box */
 .edit-short {
-  margin-right: 20px;
+  max-width: 200px;
 }
 
 .btn-active {
@@ -140,10 +140,6 @@ a:hover, a:focus {
   width: 160px;
   margin-bottom: 0;
 }
-.btn-small {
-  width: 100px;
-  margin-bottom: 2vh;
-}
 
 /* Token output text */
 .token-text {
@@ -151,6 +147,11 @@ a:hover, a:focus {
   padding: 5px;
   margin-bottom: 10px;
   overflow-wrap: break-word;
+}
+.token-text p {
+  font-size: calc(10px + 0.5vmin);
+  line-height: calc(10px + 0.8vmin);
+  margin-bottom: 0.5vh;
 }
 
 /* The left thing of input boxes */
@@ -182,4 +183,26 @@ a:hover, a:focus {
 /* RADIO BUTTONS */
 .auth-title {
   width: 100px;
+}
+
+@media screen and (max-width: 800px) {
+  h3{font-size: 1.5rem;}
+  .App {
+    font-size: calc(10px + 0.4vmin);
+    line-height: calc(10px + 1.0vmin);
+  }
+  .App-header {
+    width: 95%;
+    margin: 0 auto;
+    padding: 0 0;
+  }
+
+  .dropdown-toggle.btn-primary {
+    width: 100%;
+  }
+
+  .btn-medium {
+    width: 160px;
+    margin-bottom: 1vh;
+  }
 }
