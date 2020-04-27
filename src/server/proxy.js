@@ -437,12 +437,12 @@ async function processRequest(query, req, res) {
         return res.status(500).json({ error: 'No token key provided'})
       }
     }
+  }
 
-    // Check token price
-    if (query.action === 'tokenprice_check') {
-      let status = await Tokens.checkTokenPrice()
-      return res.json(status)
-    }
+  // Check token price
+  if (query.action === 'tokenprice_check') {
+    let status = await Tokens.checkTokenPrice()
+    return res.json(status)
   }
 
   // Block non-allowed RPC commands

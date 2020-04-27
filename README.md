@@ -35,8 +35,17 @@ Demo clients/code for Curl, JS, REACT, Python and Flask are available to test yo
 ### Setup nodejs and test server
 1. Make sure you have node.js installed. [Windows Guide](https://www.liquidweb.com/kb/install-react-js-windows/) | [Ubuntu Guide](https://medium.com/@DanielSayidi/install-and-setup-react-app-on-ubuntu-18-04-3-lts-fcd2c875885a)
 2. Locate the directory srs/server
-3. Install required libraries: **npm install**
-4. Start and test the server: **node proxy.js**
+3. Copy the default setting files to your own editable ones:
+
+These will not be affected if later updating the server via git pull
+
+    cp creds.json.default creds.json
+    cp settings.json.default settings.json
+    cp user_settings.json.default user_settings.json
+    cp token_settings.json.default token_settings.json
+
+4. Install required libraries: **npm install**
+5. Start and test the server: **node proxy.js**
 
 ### Option1: Install as a service using PM2 (Recommended)
 https://pm2.keymetrics.io/docs/usage/quick-start/

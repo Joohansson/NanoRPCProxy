@@ -10,7 +10,7 @@
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
     "bootstrap": "^4.4.1",
-    "jquery": "^1.12.4",
+    "jquery": "^3.5.0",
     "js-base64": "^2.5.2",
     "nanocurrency": "^2.4.0",
     "popper.js": "^1.16.1",
