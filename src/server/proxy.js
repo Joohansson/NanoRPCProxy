@@ -339,8 +339,13 @@ function useToken(token_key) {
       // Count down token by 1 and store new value in DB
       order_db.get('orders').find({token_key: token_key}).assign({tokens:tokens-1}).write()
       logThis("A token was used by: " + token_key, log_levels.info)
+      return true
+    }
+    else {
+      return false
     }
   }
+  return false
 }
 
 // Custom error class
@@ -451,10 +456,12 @@ async function processRequest(query, req, res) {
     return res.status(500).json({ error: `Action ${query.action} not allowed`})
   }
 
-  // Decrease user tokens
+  // Decrease user tokens and block if zero left
   if (use_tokens) {
     if ('token_key' in query) {
-      useToken(query.token_key)
+      if (!useToken(query.token_key)) {
+        return res.status(500).json({ error: 'You have no more tokens to use!'})
+      }
     }
   }
 
