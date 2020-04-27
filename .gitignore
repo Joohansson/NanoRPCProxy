@@ -103,6 +103,10 @@ dist
 # TernJS port file
 .tern-port
 
+#NanoNodeProxy Server
 db.json
 counters.stat
 samples.stat
+settings.json
+token_settings.json
+user_settings.json

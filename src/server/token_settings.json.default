@@ -1,12 +1,12 @@
 {
-  "work_server":                "http://[::1]:55000",
+  "work_server":                "http://[::1]:7076",
   "token_price":                0.0001,
   "payment_timeout":            180,
   "pending_interval":           2,
   "pending_threshold":          "100000000000000000000000",
   "pending_count":              10,
   "difficulty_multiplier":      "1.0",
-  "payment_receive_account":    "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue",
+  "payment_receive_account":    "nano_1gur37mt5cawjg5844bmpg8upo4hbgnbbuwcerdobqoeny4ewoqshowfakfo",
   "min_token_amount":           "1",
   "max_token_amount":           "10000000",
   "log_level":                  "info"

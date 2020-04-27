@@ -119,7 +119,7 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **limited_commands:** A list of commands [key] to limit the output response for with max count as [value]
 * **ip_blacklist:** A list of IPs to always block. If calling from localhost you can test this with 127.0.0.1 (::ffff:127.0.0.1 for ipv6)
 * **speed_limiter:** Contains the settings for slowing down clients. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will start slowing down requests with increments of <delay_increment> [ms] with a maximum total delay defined in <max_delay> [ms]
-* **ip_block:** Contains the settings for blocking IPs when they request too much. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will block the IP until the time slot has passed. Then the IP can start requesting again. To permantenly ban IPs they have to be manually added to <ip_blacklist> and activating <use_ip_blacklist>. **The IP block is disabled if a token_key is provided with enough tokens.** The token system is disabled by default.
+* **ip_block:** Contains the settings for blocking IPs when they request too much. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will block the IP until the time slot has passed. Then the IP can start requesting again. To permanently ban IPs they have to be manually added to <ip_blacklist> and activating <use_ip_blacklist>. The token system is disabled by default.
 * **log_level:** It can be set to either "info" which will output all logs, "warning" which will only output warning messages or "none" which will only log the initial settings.
 
 The following parameters can be set in **user_settings.json** to override the default ones for specific users defined in **creds.json**. Anything in this file will override even if there are less sub entries like only 1 allowed command or 2 limited commands.
@@ -331,10 +331,10 @@ The proxy server can be tested and experimented with using provided demo clients
 
 ### Python client
 1. Locate the directory demo_clients/python/
-2. If you haven't, install pipenv to run the app in a virtual environment: **pip install pipenv**
+2. If you haven't, install pipenv to run the app in a virtual environment: **pip install pipenv** for Linux or **py -m pip install --user pipenv** for Windows. To call "pipenv" in Windows instead of "py -m pipenv" you can add the python script folder (provided by the installation log) to your environment PATH.
 3. Start the environment: **pipenv shell**
 4. Install the packages required: **pipenv sync**
-5. Test a request with "python client.py --c 1" where 1 means command example 1. Run "python client.py --help" to find out more.
+5. Test a request with "python client.py --c 1" where 1 means command example 1. Run "python client.py --help" to find out more. In windows you use "py client.py".
 6. To test a server that is using authentication: "python client.py --c 1 --a"
 
 Exit pipenv: **exit**
@@ -372,11 +372,11 @@ The only demo client that has full functionality for purchasing request tokens
 
 ### Flask client
 1. Locate the directory demo_clients/python/
-2. If you haven't, install pipenv to run the app in a virtual environment: **pip install pipenv**
+2. If you haven't, install pipenv to run the app in a virtual environment: **pip install pipenv** for Linux or **py -m pip install --user pipenv** for Windows. To call "pipenv" in Windows instead of "py -m pipenv" you can add the python script folder (provided by the installation log) to your environment PATH.
 3. Start the environment: **pipenv shell**
 4. Install the packages required: **pipenv sync**
-5. Test the app: **python client.py**
-6. Open in browser: **http://127.0.0.1:5000/**
+5. Test the app: **python client.py** (In windows you use "py client.py")
+6. Open in browser: **http://127.0.0.1:5000/** (If site not reachable in Windows, you may have to disable third party firewall)
 
 Exit pipenv: **exit**
 
