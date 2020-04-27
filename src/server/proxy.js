@@ -345,7 +345,7 @@ function useToken(token_key) {
       return false
     }
   }
-  return false
+  return 0
 }
 
 // Custom error class
@@ -459,8 +459,12 @@ async function processRequest(query, req, res) {
   // Decrease user tokens and block if zero left
   if (use_tokens) {
     if ('token_key' in query) {
-      if (!useToken(query.token_key)) {
+      let status = useToken(query.token_key)
+      if (status === false) {
         return res.status(500).json({ error: 'You have no more tokens to use!'})
+      }
+      else if (status === 0) {
+        return res.status(500).json({ error: 'Provided key does not exist!'})
       }
     }
   }
