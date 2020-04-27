@@ -27,6 +27,9 @@ Demo clients/code for Curl, JS, REACT, Python and Flask are available to test yo
 * Works with both beta and main Nano network
 * Demo clients/code
 
+**Possible use cases**
+![NanoRPCProxy](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCPRoxy.png)
+
 
 ## Install and run the proxy server
 ### Setup nodejs and test server
