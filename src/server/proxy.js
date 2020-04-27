@@ -531,6 +531,7 @@ async function processRequest(query, req, res) {
   }
   catch(err) {
     res.status(500).json(err.toString())
+    logThis("Node conection error: " + err.toString())
   }
 }
 
