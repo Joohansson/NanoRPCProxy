@@ -187,7 +187,6 @@ module.exports = {
 }
 
 // Check if order payment has arrived as a pending block, continue check at intervals until time is up
-// TODO for a better day: Use websocket instead and subscribe only to accounts needed
 async function checkPending(address, order_db, total_received = 0) {
   // Check pending and claim
   let priv_key = order_db.get('orders').find({address: address}).value().priv_key
@@ -329,6 +328,7 @@ async function processAccount(privKey) {
 // Create pending blocks based on current balance and previous block (or start with an open block)
 async function createPendingBlocks(privKey, address, balance, adjustedBalance, previous, subType, representative, pubKey, callback, accountCallback) {
   // check for pending first
+  // Solving this with websocket subscription instead of checking pending x times for each order would be nice but since we must check for previous pending that was done before the order initated, it makes it very complicated without rewriting the whole thing..
   var command = {}
   command.action = 'pending'
   command.account = address
