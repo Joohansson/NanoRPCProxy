@@ -271,12 +271,15 @@ app.use((err, req, res, _next) => {
   } else {
     res.status(err.status || 500)
   }
+  return res.status(500).json({ error: 'IP has been blocked'})
 
+  /*
   res.render('index', {
     title: 'RPCProxy Error',
     message: 'You shall not pass',
     error: err
   })
+  */
 })
 
 // To verify username and password provided via basicAuth. Support multiple users
@@ -491,7 +494,7 @@ async function processRequest(query, req, res) {
       res.json(data) // sending back full json price response (Coinpaprika)
     }
     catch(err) {
-      res.status(500).json(err.toString())
+      res.status(500).json({error: err.toString()})
     }
     return
   }
@@ -541,7 +544,7 @@ async function processRequest(query, req, res) {
     res.json(data) // sending back json response
   }
   catch(err) {
-    res.status(500).json(err.toString())
+    res.status(500).json({error: err.toString()})
     logThis("Node conection error: " + err.toString())
   }
 }
