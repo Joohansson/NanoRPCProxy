@@ -351,7 +351,7 @@ function useToken(token_key) {
       // Count down token by 1 and store new value in DB
       order_db.get('orders').find({token_key: token_key}).assign({tokens:tokens-1}).write()
       logThis("A token was used by: " + token_key, log_levels.info)
-      return tokens
+      return tokens-1
     }
     else {
       return 0
@@ -494,6 +494,9 @@ async function processRequest(query, req, res) {
       const cachedValue = rpcCache.get('price')
       if (Tools.isValidJson(cachedValue)) {
         logThis("Cache requested: " + 'price', log_levels.info)
+        if (tokens_left != null) {
+          cachedValue.tokens_total = tokens_left
+        }
         return res.json(cachedValue)
       }
 
