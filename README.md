@@ -31,6 +31,15 @@ Demo clients/code for Curl, JS, REACT, Python and Flask are available to test yo
 ![NanoRPCProxy](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCPRoxy.png)
 
 
+## Index
+
+* [Install and run the proxy server](#install-and-run-the-proxy-server)
+* [How customize the proxy server](#how-customize-the-proxy-server)
+* [How to use the proxy server](#how-to-use-the-proxy-server)
+* [How to install and test the demo clients](#how-to-install-and-test-the-demo-clients)
+* [Developer Donations](#developer-donations)
+
+
 ## Install and run the proxy server
 ### Setup nodejs and test server
 1. Make sure you have node.js installed. [Windows Guide](https://www.liquidweb.com/kb/install-react-js-windows/) | [Ubuntu Guide](https://medium.com/@DanielSayidi/install-and-setup-react-app-on-ubuntu-18-04-3-lts-fcd2c875885a)
@@ -410,8 +419,6 @@ Exit pipenv: **exit**
 
 ![Flask demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_js.png)
 
-## Special Notes
 
-
-## Developer instructions
-Find this useful? Send me a Nano donation at `nano_1gur37mt5cawjg5844bmpg8upo4hbgnbbuwcerdobqoeny4ewoqshowfakfo`
+## Developer Donations
+Find this useful? Consider sending me a Nano donation at `nano_1gur37mt5cawjg5844bmpg8upo4hbgnbbuwcerdobqoeny4ewoqshowfakfo`
