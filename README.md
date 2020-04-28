@@ -421,4 +421,4 @@ Exit pipenv: **exit**
 
 
 ## Developer Donations
-Find this useful? Consider sending me a Nano donation at `nano_1gur37mt5cawjg5844bmpg8upo4hbgnbbuwcerdobqoeny4ewoqshowfakfo`
+Find this useful? Consider sending me a Nano donation at nano_1gur37mt5cawjg5844bmpg8upo4hbgnbbuwcerdobqoeny4ewoqshowfakfo
