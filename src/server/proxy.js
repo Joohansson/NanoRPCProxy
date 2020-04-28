@@ -392,7 +392,7 @@ async function processRequest(query, req, res) {
       var token_amount = 0
       var token_key = ""
       if ('token_amount' in query) {
-        token_amount = query.token_amount
+        token_amount = Math.round(query.token_amount)
       }
       else {
         return res.status(500).json({ error: 'The amount of tokens (token_amount) to purchase must be provided'})
