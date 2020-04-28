@@ -505,6 +505,9 @@ async function processRequest(query, req, res) {
       }
       //res.json({"Price USD":data.data["1567"].quote.USD.price}) // sending back json price response (CMC)
       //res.json({"Price USD":data.quotes.USD.price}) // sending back json price response (Coinpaprika)
+      if (tokens_left != null) {
+        data.tokens_total = tokens_left
+      }
       res.json(data) // sending back full json price response (Coinpaprika)
     }
     catch(err) {
@@ -521,6 +524,9 @@ async function processRequest(query, req, res) {
         const cachedValue = rpcCache.get(key)
         if (Tools.isValidJson(cachedValue)) {
           logThis("Cache requested: " + key, log_levels.info)
+          if (tokens_left != null) {
+            cachedValue.tokens_total = tokens_left
+          }
           return res.json(cachedValue)
         }
         break
