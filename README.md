@@ -105,6 +105,16 @@ https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-syst
 7. Start service on boot: **sudo systemctl enable nanorpcproxy.service**
 8. Follow logs in realtime: **sudo journalctl --follow -u nanorpcproxy**
 
+### Updating the server
+1. Go to the root folder -> git pull
+2. Go to srs/server -> npm install
+3. Restart the proxy.js
+
+It may happen that the settings files are expanded. In that case, you need to do this again in order for the new variables to be modified by you (or insert them manually). Save your old settings first!
+
+    cp settings.json.default settings.json
+    cp user_settings.json.default user_settings.json
+    cp token_settings.json.default token_settings.json
 
 ## How customize the proxy server
 The proxy server is configured via the **settings.json** file found in the server folder
