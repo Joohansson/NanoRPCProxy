@@ -34,7 +34,7 @@ Demo clients/code for Curl, JS, REACT, Python and Flask are available to test yo
 ## Index
 
 * [Install and run the proxy server](#install-and-run-the-proxy-server)
-* [How customize the proxy server](#how-customize-the-proxy-server)
+* [How to customize the proxy server](#how-to-customize-the-proxy-server)
 * [How to use the proxy server](#how-to-use-the-proxy-server)
 * [How to install and test the demo clients](#how-to-install-and-test-the-demo-clients)
 * [Developer Donations](#developer-donations)
@@ -125,7 +125,7 @@ It may happen that the settings files are expanded. In that case, you need to do
     cp user_settings.json.default user_settings.json
     cp token_settings.json.default token_settings.json
 
-## How customize the proxy server
+## How to customize the proxy server
 The proxy server is configured via the **settings.json** file found in the server folder
 
 * **node_url:** Nano node RPC url (default for main network is 'http://[::1]:7076' and for beta network 'http://[::1]:55000') [number]
@@ -173,6 +173,10 @@ More info about [The Token System](#the-token-system).
 * **min_token_amount**: The minimum amount of tokens to allow for purchase
 * **max_token_amount**: The maximum amount of tokens to allow for purchase
 * **log_level**: It can be set to either "info" which will output all logs, "warning" which will only output warning messages or "none" which will only log the initial settings.
+
+
+**The effect of the settings**
+![Protection System](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCProxy_limiter.png)
 
 
 ## How to use the proxy server
