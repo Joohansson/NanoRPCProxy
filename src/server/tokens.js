@@ -193,20 +193,27 @@ async function checkPending(address, order_db, total_received = 0) {
   let nano_amount = order_db.get('orders').find({address: address}).value().nano_amount
   order_db.get('orders').find({address: address}).assign({"processing":true}).write() // set processing status (to avoid stealing of the private key via orderCancel before pending has been retrieved)
   try {
-    let pending_result = await processAccount(priv_key)
+    let pending_result = await processAccount(priv_key, order_db)
     order_db.get('orders').find({address: address}).assign({"processing":false}).write() // reset processing status
 
     // Payment is OK when combined pending is equal or larger than was ordered (to make sure spammed pending is not counted as an order)
     if('amount' in pending_result && pending_result.amount > 0) {
       total_received = total_received + pending_result.amount
-      if(total_received >= nano_amount) {
+      // Get the right order based on address
+      const order = order_db.get('orders').find({address: address}).value()
+      if(total_received >= nano_amount-0.000001) { // add little margin here because of floating number precision deviation when adding many tx together
         let tokens_purchased = Math.round(total_received / token_price)
-        // Get the right order based on address
-        const order = order_db.get('orders').find({address: address}).value()
+
         if (order) {
-          // Update the total tokens count and actual nano paid
+          // Save previous hashes to be appended with new discovered hashes
+          var prev_hashes = []
+          if ('hashes' in order && Array.isArray(order.hashes)) {
+            prev_hashes = order.hashes
+          }
+
+          // Update the total tokens count, actual nano paid and pending hashes that was processed
           logThis("Enough pending amount detected: Order successfully updated! Continuing processing pending internally", log_levels.info)
-          order_db.get('orders').find({address: address}).assign({tokens: order.tokens + tokens_purchased, nano_amount: total_received, token_amount:order.token_amount + tokens_purchased, order_waiting: false}).write()
+          order_db.get('orders').find({address: address}).assign({tokens: order.tokens + tokens_purchased, nano_amount: total_received, token_amount:order.token_amount + tokens_purchased, order_waiting: false, hashes:prev_hashes.concat(pending_result.hashes)}).write()
           return
         }
         logThis("Address paid was not found in the DB", log_levels.warning)
@@ -214,6 +221,16 @@ async function checkPending(address, order_db, total_received = 0) {
       }
       else {
         logThis("Still need " + (nano_amount - total_received)  + " Nano to finilize the order", log_levels.info)
+        if (order) {
+          // Save previous hashes to be appended with new discovered hashes
+          var prev_hashes = []
+          if ('hashes' in order && Array.isArray(order.hashes)) {
+            prev_hashes = order.hashes
+          }
+
+          // Update the pending hashes
+          order_db.get('orders').find({address: address}).assign({hashes:prev_hashes.concat(pending_result.hashes)}).write()
+        }
       }
     }
     else if (!'amount' in pending_result) {
@@ -224,7 +241,7 @@ async function checkPending(address, order_db, total_received = 0) {
     logThis(err.toString(), log_levels.warning)
   }
 
-  // pause 5sec and check again
+  // pause x sec and check again
   await sleep(pending_interval * 1000)
 
   // Find the order and update the timeout key
@@ -258,7 +275,7 @@ function genSecureKey() {
 }
 
 // Process an account
-async function processAccount(privKey) {
+async function processAccount(privKey, order_db) {
   let promise = new Promise(async (resolve, reject) => {
     let pubKey = Nano.derivePublicKey(privKey)
     let address = Nano.deriveAddress(pubKey, {useNanoPrefix: true})
@@ -272,6 +289,7 @@ async function processAccount(privKey) {
     var balance = 0 // balance will be 0 if open block
     var adjustedBalance = balance
     var previous = null // previous is null if we create open block
+    order_db.get('orders').find({priv_key: privKey}).assign({previous: previous}).write()
     var representative = 'nano_1iuz18n4g4wfp9gf7p1s8qkygxw7wx9qfjq6a9aq68uyrdnningdcjontgar'
     var subType = 'open'
 
@@ -285,6 +303,7 @@ async function processAccount(privKey) {
         balance = data.balance
         adjustedBalance = balance
         previous = data.frontier
+        order_db.get('orders').find({priv_key: privKey}).assign({previous: previous}).write()
         representative = data.representative
         subType = 'receive'
         validResponse = true
@@ -295,10 +314,10 @@ async function processAccount(privKey) {
       }
       if (validResponse) {
         // create and publish all pending
-        createPendingBlocks(privKey, address, balance, adjustedBalance, previous, subType, representative, pubKey, function(previous,newAdjustedBalance) {
+        createPendingBlocks(order_db, privKey, address, balance, adjustedBalance, previous, subType, representative, pubKey, function(previous,newAdjustedBalance) {
           // the previous is the last received block and will be used to create the final send block
           if (parseInt(newAdjustedBalance) > 0) {
-            processSend(privKey, previous, representative, () => {
+            processSend(order_db, privKey, previous, representative, () => {
               logThis("Done processing final send", log_levels.info)
             })
           }
@@ -326,7 +345,7 @@ async function processAccount(privKey) {
 }
 
 // Create pending blocks based on current balance and previous block (or start with an open block)
-async function createPendingBlocks(privKey, address, balance, adjustedBalance, previous, subType, representative, pubKey, callback, accountCallback) {
+async function createPendingBlocks(order_db, privKey, address, balance, adjustedBalance, previous, subType, representative, pubKey, callback, accountCallback) {
   // check for pending first
   // Solving this with websocket subscription instead of checking pending x times for each order would be nice but since we must check for previous pending that was done before the order initated, it makes it very complicated without rewriting the whole thing..
   var command = {}
@@ -343,25 +362,46 @@ async function createPendingBlocks(privKey, address, balance, adjustedBalance, p
     let data = await Tools.postData(command, node_url, API_TIMEOUT)
     // if there are any pending, process them
     if (data.blocks) {
-      // sum all raw amounts
+      // sum all raw amounts and create receive blocks for all pending
       var raw = '0'
-      Object.keys(data.blocks).forEach(function(key) {
-        raw = Tools.bigAdd(raw,data.blocks[key].amount)
-      })
-      let nanoAmount = Tools.rawToMnano(raw)
-      let pending = {count: Object.keys(data.blocks).length, raw: raw, NANO: nanoAmount, blocks: data.blocks}
-      let row = "Found " + pending.count + " pending containing total " + pending.NANO + " NANO"
-      logThis(row,log_levels.info)
-      accountCallback({'amount':parseFloat(nanoAmount)})
-
-      // create receive blocks for all pending
       var keys = []
-      // create an array with all keys to be used recurively
-      Object.keys(pending.blocks).forEach(function(key) {
-        keys.push(key)
+      var blocks = {}
+      const order = order_db.get('orders').find({address: address}).value()
+      Object.keys(data.blocks).forEach(function(key) {
+        var found = false
+        // Check if the pending hashes have not already been processed
+        if (order && 'hashes' in order) {
+          order.hashes.forEach(function(hash) {
+            if (key === hash) {
+              found = true
+            }
+          })
+        }
+        if (!found) {
+          raw = Tools.bigAdd(raw,data.blocks[key].amount)
+          keys.push(key)
+          blocks[key] = data.blocks[key] // copy the original dictionary key and value to new dictionary
+        }
       })
+      // if no new pending found, continue checking for pending
+      if (keys.length == 0) {
+        accountCallback({'amount':0})
+      }
+      else {
+        let nanoAmount = Tools.rawToMnano(raw)
+        let row = "Found " + keys.length + " new pending containing total " + nanoAmount + " NANO"
+        logThis(row,log_levels.info)
 
-      processPending(pending.blocks, keys, 0, privKey, previous, subType, representative, pubKey, adjustedBalance, callback)
+        accountCallback({'amount':parseFloat(nanoAmount), 'hashes':keys})
+
+        // use previous from db instead for full compatability with multiple pendings
+        previous = order.previous
+        // If there is a previous in db it means there already has been an open block thus next block must be a receive
+        if (previous != null) {
+          subType = 'receive'
+        }
+        processPending(order_db, blocks, keys, 0, privKey, previous, subType, representative, pubKey, adjustedBalance, callback)
+      }
     }
     else if (data.error) {
       logThis(data.error, log_levels.warning)
@@ -370,7 +410,7 @@ async function createPendingBlocks(privKey, address, balance, adjustedBalance, p
     // no pending, create final block directly
     else {
       if (parseInt(adjustedBalance) > 0) {
-        processSend(privKey, previous, representative, () => {
+        processSend(order_db, privKey, previous, representative, () => {
           accountCallback({'amount':0})
         })
       }
@@ -385,12 +425,12 @@ async function createPendingBlocks(privKey, address, balance, adjustedBalance, p
 }
 
 // For each pending block: Create block, generate work and process
-async function processPending(blocks, keys, keyCount, privKey, previous, subType, representative, pubKey, adjustedBalance, pendingCallback) {
+async function processPending(order_db, blocks, keys, keyCount, privKey, previous, subType, representative, pubKey, adjustedBalance, pendingCallback) {
   let key = keys[keyCount]
-  var newAdjustedBalance = Tools.bigAdd(adjustedBalance,blocks[key].amount)
 
   // generate local work
   try {
+    var newAdjustedBalance = Tools.bigAdd(adjustedBalance,blocks[key].amount)
     logThis("Started generating PoW...", log_levels.info)
 
     // determine input work hash depending if open block or receive block
@@ -429,10 +469,13 @@ async function processPending(blocks, keys, keyCount, privKey, previous, subType
           if (data.hash) {
             logThis("Processed pending: " + data.hash, log_levels.info)
 
+            // update db with latest previous (must use this if final block was sent before the next pending could be processed in the same account, in the rare event of multiple pending)
+            order_db.get('orders').find({priv_key: privKey}).assign({previous: previous}).write()
+
             // continue with the next pending
             keyCount += 1
             if (keyCount < keys.length) {
-              processPending(blocks, keys, keyCount, privKey, previous, subType, representative, pubKey, newAdjustedBalance, pendingCallback)
+              processPending(order_db, blocks, keys, keyCount, privKey, previous, subType, representative, pubKey, newAdjustedBalance, pendingCallback)
             }
             // all pending done, now we process the final send block
             else {
@@ -468,7 +511,7 @@ async function processPending(blocks, keys, keyCount, privKey, previous, subType
 }
 
 // Process final send block to payment destination
-async function processSend(privKey, previous, representative, sendCallback) {
+async function processSend(order_db, privKey, previous, representative, sendCallback) {
   let pubKey = Nano.derivePublicKey(privKey)
   let address = Nano.deriveAddress(pubKey, {useNanoPrefix: true})
 
@@ -497,6 +540,8 @@ async function processSend(privKey, previous, representative, sendCallback) {
         let data = await Tools.postData(jsonBlock, node_url, API_TIMEOUT)
         if (data.hash) {
           logThis("Funds transferred at block: " + data.hash + " to " + payment_receive_account, log_levels.info)
+          // update the db with latest hash to be used if processing pending for the same account
+          order_db.get('orders').find({priv_key: privKey}).assign({previous: data.hash}).write()
         }
         else {
           logThis("Failed processing block: " + data.error, log_levels.warning)

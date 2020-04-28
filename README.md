@@ -408,7 +408,7 @@ The only demo client that has full functionality for purchasing request tokens
 3. Install required libraries: "npm install" or "yarn install"
 3. Test the app in development mode: "npm start" or "yarn start"
 4. Navigate to http://localhost:3000/
-5. To build from source: "npm build" or "yarn build"
+5. To build from source: "npm run-script build"
 6. The final build is located in clients/reactjs/build
 
 ### Flask client

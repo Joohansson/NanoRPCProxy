@@ -1,0 +1,1 @@
+/*! jquery-qrcode v0.14.0 - https://larsjung.de/jquery-qrcode/ */
