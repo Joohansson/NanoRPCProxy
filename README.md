@@ -156,7 +156,7 @@ More info about [The Token System](#the-token-system).
 * **log_level**: It can be set to either "info" which will output all logs, "warning" which will only output warning messages or "none" which will only log the initial settings.
 
 
-## How to call the proxy server
+## How to use the proxy server
 You call the proxy server just like you would call the node RPC. It's a normal POST request to "/proxy" with json formatted data.
 The node commands are found here: https://docs.nano.org/commands/rpc-protocol/
 
@@ -334,6 +334,15 @@ Demo of purchasing tokens using the React demo client:
 
 Order completed:
 ![React demo app - Token purchase complete](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_react_03.png)
+
+### Error handling
+If error or warnings occurs in the server when calling it the client will need to handle that. The response is (along with a http status code != 200):
+
+    {"error": "The error message"}
+
+### Logging and Stats
+The server will write a standard log depending on the "log_level" in settings.json and token_settings.json. Additionally, a request-stat.log is written in the server dir every day at midnight with a daily request count and timestamp.
+
 
 ## How to install and test the demo clients
 The proxy server can be tested and experimented with using provided demo clients. They can also help you getting starting with your own setup.

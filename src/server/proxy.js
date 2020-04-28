@@ -12,6 +12,7 @@ const Cors =          require('cors')
 const IpFilter =      require('express-ipfilter').IpFilter
 const IpDeniedError = require('express-ipfilter').IpDeniedError
 const Promise =       require('promise')
+const Schedule =      require('node-schedule')
 const Tokens =        require('./tokens')
 const Tools =         require('./tools')
 const log_levels = {none:"none", warning:"warning", info:"info"}
@@ -64,6 +65,23 @@ var user_allowed_commands = null
 var user_cached_commands = null
 var user_limited_commands = null
 var user_log_level = null
+
+// track daily requests and save to a log file (daily stat is reset if the server is restarted)
+// ---
+var rpcCount = 0
+Schedule.scheduleJob('0 0 * * *', () => {
+    appendFile(new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '') + ": " + rpcCount + "\n")
+    rpcCount = 0
+})
+function appendFile(msg) {
+  Fs.appendFile("request-stat.log", msg, function(err) {
+    if(err) {
+        return logThis("Error saving request stat file: " + err.toString(), log_levels.info)
+    }
+    logThis("The request stat file was updated!", log_levels.info)
+  });
+}
+// ---
 
 // Read credentials from file
 // ---
@@ -265,21 +283,12 @@ if (use_ip_blacklist) {
 
 // Error handling
 app.use((err, req, res, _next) => {
-  //console.log('Error handler', err)
   if (err instanceof IpDeniedError) {
-    res.status(401)
-  } else {
-    res.status(err.status || 500)
+    return res.status(401).json({error: 'IP has been blocked'})
   }
-  return res.status(500).json({ error: 'IP has been blocked'})
-
-  /*
-  res.render('index', {
-    title: 'RPCProxy Error',
-    message: 'You shall not pass',
-    error: err
-  })
-  */
+  else {
+    return res.status(500).json({error: err.status})
+  }
 })
 
 // To verify username and password provided via basicAuth. Support multiple users
@@ -384,6 +393,7 @@ app.post('/proxy', (req, res) => {
 async function processRequest(query, req, res) {
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
+    rpcCount++
   }
 
   if (use_tokens) {
