@@ -351,13 +351,13 @@ function useToken(token_key) {
       // Count down token by 1 and store new value in DB
       order_db.get('orders').find({token_key: token_key}).assign({tokens:tokens-1}).write()
       logThis("A token was used by: " + token_key, log_levels.info)
-      return true
+      return tokens
     }
     else {
-      return false
+      return 0
     }
   }
-  return 0
+  return -1
 }
 
 // Custom error class
@@ -470,14 +470,18 @@ async function processRequest(query, req, res) {
   }
 
   // Decrease user tokens and block if zero left
+  var tokens_left = null
   if (use_tokens) {
     if ('token_key' in query) {
       let status = useToken(query.token_key)
-      if (status === false) {
+      if (status === 0) {
         return res.status(500).json({ error: 'You have no more tokens to use!'})
       }
-      else if (status === 0) {
+      else if (status === -1) {
         return res.status(500).json({ error: 'Provided key does not exist!'})
+      }
+      else {
+        tokens_left = status
       }
     }
   }
@@ -550,6 +554,9 @@ async function processRequest(query, req, res) {
           break
         }
       }
+    }
+    if (tokens_left != null) {
+      data.tokens_total = tokens_left
     }
     res.json(data) // sending back json response
   }
