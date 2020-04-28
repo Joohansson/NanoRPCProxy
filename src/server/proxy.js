@@ -354,10 +354,10 @@ function useToken(token_key) {
       return tokens-1
     }
     else {
-      return 0
+      return -1
     }
   }
-  return -1
+  return -2
 }
 
 // Custom error class
@@ -474,10 +474,10 @@ async function processRequest(query, req, res) {
   if (use_tokens) {
     if ('token_key' in query) {
       let status = useToken(query.token_key)
-      if (status === 0) {
+      if (status === -1) {
         return res.status(500).json({ error: 'You have no more tokens to use!'})
       }
-      else if (status === -1) {
+      else if (status === -2) {
         return res.status(500).json({ error: 'Provided key does not exist!'})
       }
       else {
