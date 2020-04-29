@@ -20,12 +20,13 @@ Demo clients/code for Curl, JS, REACT, Python and Flask are available to test yo
 * Supports basic authentication (username / password)
 * Supports multiple users via authentication
 * User specific settings override
-* Additional request tokens purchasable with Nano
+* Optional token system for requests with built-in Nano purchases => independent of any 3rd party payment processors => unlimited implementation possibilities
 * Supports POST requests like the RPC, ie. payload = {"action":"block_count"}
 * Supports GET requests, ie. URL query = /proxy/?action=block_count
 * Listens on http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
 * Works with both beta and main Nano network
 * Demo clients/code
+* 100% free to use, develop or sell with MIT license
 
 **Possible use cases**
 ![NanoRPCProxy](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCPRoxy.png)
@@ -426,3 +427,5 @@ Exit pipenv: **exit**
 
 ## Developer Donations
 Find this useful? Consider sending me a Nano donation at nano_1gur37mt5cawjg5844bmpg8upo4hbgnbbuwcerdobqoeny4ewoqshowfakfo
+
+Discord support server: https://discord.gg/RVCuFvc
