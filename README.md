@@ -326,18 +326,20 @@ Initiates a refill order of existing key for 10 tokens
 Check status of initiated order. Either the time left to pay the order:
 
     {
+      "token_key": "741eb3ad2df88427e19c9b01ec326c36c184fbcbd0bf25004982e9bb223e1acf",
       "order_time_left": 135
     }
 
 Or status:
 
     {
-      "error": "Order timed out"
+      "error": "Order timed out for key: 741eb3ad2df88427e19c9b01ec326c36c184fbcbd0bf25004982e9bb223e1acf"
     }
 
 Or final tokens bought based on the amount paid:
 
     {
+      "token_key": "741eb3ad2df88427e19c9b01ec326c36c184fbcbd0bf25004982e9bb223e1acf",
       "tokens_ordered": 1000,
       "tokens_total": 2000
     }

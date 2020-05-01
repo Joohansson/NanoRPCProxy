@@ -119,17 +119,17 @@ module.exports = {
     const order = order_db.get('orders').find({token_key: token_key}).value()
     if (order) {
       if (order.order_waiting === false && order.order_time_left > 0) {
-        return {"tokens_ordered": order.token_amount, "tokens_total":order.tokens}
+        return {"token_key":token_key, "tokens_ordered": order.token_amount, "tokens_total":order.tokens}
       }
       else if (order.order_time_left > 0){
-        return {"order_time_left":order.order_time_left}
+        return {"token_key":token_key, "order_time_left":order.order_time_left}
       }
       else {
-        return {"error":"Order timed out"}
+        return {"error":"Order timed out for key: " + token_key}
       }
     }
     else {
-      return {"error":"Order not found"}
+      return {"error":"Order not found for key: " + token_key}
     }
   },
   // Cancel order by replacing the account and return the previous private key for client to claim the funds
@@ -265,7 +265,7 @@ async function checkPending(address, order_db, moveOn = true, total_received = 0
 
     // continue checking as long as the db order has time left
     if (order.order_time_left > 0) {
-      checkPending(address, order_db, total_received) // check again
+      checkPending(address, order_db, true, total_received) // check again
     }
     else {
       order_db.get('orders').find({address: address}).assign({order_waiting: false}).write()
