@@ -220,7 +220,7 @@ console.log("Main log level: " + log_level)
 // Periodically check, recover and remove old invactive olders
 if (use_tokens) {
   // Each hour
-  Schedule.scheduleJob('* * * * *', () => {
+  Schedule.scheduleJob('0 * * * *', () => {
     checkOldOrders()
   })
 }
