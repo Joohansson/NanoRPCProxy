@@ -284,7 +284,7 @@ See the js demo client for full example with error handling
       })
 
 ### The Token System
-Only a certain amount of requests per time period is allowed and configured in the settings. Users who need more requests (however still affected by the "slow down rate limiter") can purchase tokens with Nano. The system requires the <use_tokens> to be active in **settings.json**.
+Only a certain amount of requests per time period is allowed and configured in the settings. Users who need more requests (however still affected by the "slow down rate limiter") can purchase tokens with Nano. The system requires the <use_tokens> to be active in **settings.json**. The system will also check orders older than 1h one time per hour and repair broken orders (by assigning tokens for any pending found), also removing unprocessed and empty orders older than one month.
 
 ![Token System](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCPRoxy_tokens.png)
 

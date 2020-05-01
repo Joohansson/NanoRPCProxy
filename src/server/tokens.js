@@ -99,7 +99,7 @@ module.exports = {
       let pub_key = Nano.derivePublicKey(priv_key)
       address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
 
-      const order = {"address":address, "token_key":token_key, "priv_key":priv_key, "tokens":0, "order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}
+      const order = {"address":address, "token_key":token_key, "priv_key":priv_key, "tokens":0, "order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000), "previous": null, "hashes": []}
       order_db.get("orders").push(order).write()
     }
 
@@ -183,11 +183,16 @@ module.exports = {
   // Client checks status of owned tokens
   checkTokenPrice: async function () {
     return {"token_price":token_price}
+  },
+  // Check pending and repair old order
+  repairOrder: async function(address, order_db, url) {
+    node_url = url
+    checkPending(address, order_db, false)
   }
 }
 
-// Check if order payment has arrived as a pending block, continue check at intervals until time is up
-async function checkPending(address, order_db, total_received = 0) {
+// Check if order payment has arrived as a pending block, continue check at intervals until time is up. If continue is set to false it will only check one time
+async function checkPending(address, order_db, moveOn = true, total_received = 0) {
   // Check pending and claim
   let priv_key = order_db.get('orders').find({address: address}).value().priv_key
   let nano_amount = order_db.get('orders').find({address: address}).value().nano_amount
@@ -241,6 +246,10 @@ async function checkPending(address, order_db, total_received = 0) {
     logThis(err.toString(), log_levels.warning)
   }
 
+  // If repairing accounts, only check one time and stop here
+  if (!moveOn) {
+    return
+  }
   // pause x sec and check again
   await sleep(pending_interval * 1000)
 

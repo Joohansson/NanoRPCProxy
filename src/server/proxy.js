@@ -216,6 +216,36 @@ if (proxy_hops > 0) {
 console.log("Main log level: " + log_level)
 // ---
 
+
+// Periodically check, recover and remove old invactive olders
+if (use_tokens) {
+  // Each hour
+  Schedule.scheduleJob('* * * * *', () => {
+    checkOldOrders()
+  })
+}
+
+async function checkOldOrders() {
+  let now = Math.floor(Date.now()/1000)
+  // get all orders older than 60min
+  let orders = order_db.get('orders')
+    .filter(order => parseInt(order.timestamp) < now - 3600)
+    .value()
+  // Process all old orders
+  logThis("Checking old orders...", log_levels.info)
+  orders.forEach(async function(order) {
+    // Reset status in case the order was interrupted and set a small nano_amount to allow small pending to create tokens
+    order_db.get('orders').find({priv_key: order.priv_key}).assign({order_waiting: false, processing: false, nano_amount: 0.000000001}).write()
+    await Tokens.repairOrder(order.address, order_db, node_url)
+
+    // Remove if order has been unprocessed with a timeout for 1 month
+    if (order.tokens === 0 && order.order_time_left === 0 && order.hashes.length === 0 && order.timestamp < now - 3600*24*31) {
+      logThis("REMOVING ORDER:", log_levels.info)
+      logThis(order_db.get('orders').remove({token_key:order.token_key}).write(), log_levels.info)
+    }
+  })
+}
+
 // Define the proxy app
 const app = Express()
 app.set('view engine', 'pug')
