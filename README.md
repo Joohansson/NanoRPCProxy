@@ -291,7 +291,14 @@ Only a certain amount of requests per time period is allowed and configured in t
 
 * **{"action":"block_count","token_key":"815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74"}**
 
-Any RPC command can be made by including a request key. For each request 1 token will be deducted.
+Any RPC command can be made by including a request key. For each request 1 token will be deducted and the total left will be included in each response as tokens_total.
+
+    {
+      "count": "24613996",
+      "unchecked": "0",
+      "cemented": "24613996",
+      "tokens_total": 4999
+    }
 
 * **{"action":"tokens_buy","token_amount":10}**
 
@@ -315,16 +322,23 @@ Initiates a refill order of existing key for 10 tokens
 
 * **{"action":"tokenorder_check","token_key":"815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74"}**
 
-Check status of initiated order. Either the time left to pay the order
+Check status of initiated order. Either the time left to pay the order:
 
     {
       "order_time_left": 135
     }
 
-Or status
+Or status:
 
     {
       "error": "Order timed out"
+    }
+
+Or final tokens bought based on the amount paid:
+
+    {
+      "tokens_ordered": 1000,
+      "tokens_total": 2000
     }
 
 * **{"action":"tokenorder_cancel","token_key":"815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74"}**
