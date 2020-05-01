@@ -373,7 +373,7 @@ class App extends Component {
   prepareForPayment(json) {
     this.setState({
       tokenText1: 'Pay ' + json.payment_amount + 'Nano: <a href="nano:' + json.address + '?amount=' + this.MnanoToRaw(json.payment_amount.toString()) + '&message=RPC Proxy Tokens">' + json.address + '</a>',
-      tokenText2: "Request key: " + json.token_key,
+      tokenText2: "Request key (save): " + json.token_key,
       paymentActive: true
     })
     this.updateQR(json.address, json.payment_amount)
