@@ -48,7 +48,7 @@ var speed_limiter = {}              // contains the settings for slowing down cl
 var ip_block = {}                   // contains the settings for blocking IP that does too many requests
 var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
 var ip_blacklist = []               // a list of IPs to deny always
-var proxy_hops = 0                  // if the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intented. Enter the number of additional proxies here.
+var proxy_hops = 0                  // if the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here.
 
 // default vars
 cache_duration_default = 60
@@ -287,9 +287,9 @@ if (use_cache) {
   rpcCache = new NodeCache( { stdTTL: cache_duration_default, checkperiod: 10 } )
 }
 
-// Set up blacklist
+// Set up blacklist and use the proxy number defined in the settings. Log only IP if blocked
 if (use_ip_blacklist) {
-  app.use(IpFilter(ip_blacklist, {logLevel: 'deny'}))
+  app.use(IpFilter(ip_blacklist, {logLevel: 'deny', trustProxy: proxy_hops}))
 }
 
 // Error handling
