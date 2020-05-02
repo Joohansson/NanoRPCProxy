@@ -7,7 +7,9 @@ The built in token system makes it possible to serve requests beyond the default
 
 Demo clients/code for Curl, JS, REACT, Python and Flask are available to test your own server.
 
-**A public demo client with token purchases and API support for the the live Nano network is available [here](https://example.com)!**
+**A public demo client with token purchases and API support for the the live Nano network is available [HERE](https://example.com)!**
+
+* [Demo video for purchasing request tokens](https://youtu.be/Q6Y5MDUkcEY)
 
 
 ## Features
@@ -65,7 +67,7 @@ https://pm2.keymetrics.io/docs/usage/quick-start/
 3. Start the server: **pm2 start proxy.js**
 
 #### Other useful pm2 commands
-* pm2 restart proxy.js, **pm2 stop proxy.js, pm2 delete proxy.js**
+* pm2 **restart proxy.js, pm2 stop proxy.js, pm2 delete proxy.js**
 * Make pm2 auto-boot at server restart: **pm2 startup**
 * Realtime online monitor: **pm2 monitor**
 * Status: **pm2 status**
