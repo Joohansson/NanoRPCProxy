@@ -19,6 +19,11 @@ commands = [
         '{"action":"pending","account":"nano_1111111111111111111111111111111111111111111111111117353trpda","count":"5"}',
         '{"action":"representatives_online"}',
         '{"action":"price"}',
+        '{"action":"tokens_buy","token_amount":10}',
+        '{"action":"tokens_buy","token_amount":10,"token_key":"xxx"}',
+        '{"action":"tokenorder_check","token_key":"xxx"}',
+        '{"action":"tokens_check","token_key":"xxx"}',
+        '{"action":"tokenorder_cancel","token_key":"xxx"}',
     ]
 
 username = "user1"
@@ -34,27 +39,14 @@ class ReusableForm(Form):
         result_formatted = ''
 
         if request.method == 'POST':
-            # If any input command button
-            if request.form['action'] == 'block_count':
-                active_command = commands[0]
-            elif request.form['action'] == 'account_info':
-                active_command = commands[1]
-            elif request.form['action'] == 'account_history':
-                active_command = commands[2]
-            elif request.form['action'] == 'active_difficulty':
-                active_command = commands[3]
-            elif request.form['action'] == 'block_info':
-                active_command = commands[4]
-            elif request.form['action'] == 'pending':
-                active_command = commands[5]
-            elif request.form['action'] == 'representatives_online':
-                active_command = commands[6]
-            elif request.form['action'] == 'price':
-                active_command = commands[7]
-
-            # Proxy request submit button
-            else:
-                active_command = request.form['action']
+            action = request.form['action']
+            try:
+                # If any input command button with a number
+                action_number = int(action)
+                active_command = commands[action_number]
+            except ValueError:
+                # Proxy request submit button
+                active_command = action
                 result = getRPC(active_command)
                 # Be able to print both json and error messages
                 try:

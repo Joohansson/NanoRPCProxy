@@ -9,6 +9,11 @@ const SAMPLE_COMMANDS = [
   '{"action":"pending","account":"nano_1111111111111111111111111111111111111111111111111117353trpda","count": "5"}',
   '{"action":"representatives_online"}',
   '{"action":"price"}',
+  '{"action":"tokens_buy","token_amount":10}',
+  '{"action":"tokens_buy","token_amount":10,"token_key":"xxx"}',
+  '{"action":"tokenorder_check","token_key":"xxx"}',
+  '{"action":"tokens_check","token_key":"xxx"}',
+  '{"action":"tokenorder_cancel","token_key":"xxx"}',
 ]
 const NODE_SERVER = 'http://localhost:9950/proxy'
 const CREDS = 'user1:user1'

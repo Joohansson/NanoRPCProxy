@@ -232,7 +232,7 @@ async function checkOldOrders() {
     .filter(order => parseInt(order.timestamp) < now - 3600)
     .value()
   // Process all old orders
-  logThis("Checking old orders...", log_levels.info)
+  logThis("Checking old orders", log_levels.info)
   orders.forEach(async function(order) {
     // Reset status in case the order was interrupted and set a small nano_amount to allow small pending to create tokens
     order_db.get('orders').find({priv_key: order.priv_key}).assign({order_waiting: false, processing: false, nano_amount: 0.000000001}).write()
