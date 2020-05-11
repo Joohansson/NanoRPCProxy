@@ -9,7 +9,8 @@ Demo clients/code for Curl, JS, REACT, Python and Flask are available to test yo
 
 **A public demo client with token purchases and API support for the the live Nano network is available [HERE](https://example.com)!**
 
-* [Demo video for purchasing request tokens](https://youtu.be/Q6Y5MDUkcEY)
+* [Video - Full features / settings walk-through with live demo](https://youtu.be/1GfX3OZrq34)
+* [Video - Demo purchasing request tokens](https://youtu.be/Q6Y5MDUkcEY)
 
 
 ## Features
