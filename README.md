@@ -17,9 +17,10 @@ Demo clients/code for Curl, JS, REACT, Python and Flask are available to test yo
 * Fully customizable via a settings file
 * Caching of certain request actions to lower the RPC burden
 * Limits number of response objects, like number of pending transactions
-* Slows down IPs that doing requests above limit (Including purchased tokens)
-* Blocks IPs for a certain amount of time that are doing requests above limit (Overridden by purchased tokens)
-* IP black list (Overrides purchased tokens)
+* Slows down IPs that doing requests above limit
+* IP filter for max allowed requests per time window (Overridden by purchased tokens)
+* Extra DDOS protection layer (defaults to max 2 requests/sec, also for purchased tokens)
+* IP black list (also for purchased tokens)
 * Supports basic authentication (username / password)
 * Supports multiple users via authentication
 * User specific settings override

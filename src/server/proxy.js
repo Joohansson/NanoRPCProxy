@@ -2,7 +2,6 @@ require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
 const NodeCache =     require("node-cache" )
 const SlowDown =      require("express-slow-down")
-const RateLimit =     require("express-rate-limit")
 const BasicAuth =     require('express-basic-auth')
 const Http =          require('http')
 const Https =         require('https')
@@ -16,6 +15,7 @@ const Schedule =      require('node-schedule')
 const Tokens =        require('./tokens')
 const Tools =         require('./tools')
 const log_levels = {none:"none", warning:"warning", info:"info"}
+const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init
 const Low = require('lowdb')
@@ -59,6 +59,8 @@ const PriceUrl = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
 //const PriceUrl2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
 //const CMC_API_KEY = 'xxx'
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
+const DDOS_LIMIT_COUNT = 2 // no more than X requests allowed per DDOS_LIMIT_WINDOW
+const DDOS_LIMIT_WINDOW = 1 // X sec interval
 
 var user_use_cache = null
 var user_use_output_limiter = null
@@ -253,68 +255,9 @@ app.use(Cors())
 app.use(Express.json())
 app.use(Express.static('static'))
 
-// Define authentication service
-if (use_auth) {
-  app.use(BasicAuth({ authorizer: myAuthorizer }))
-}
-
 // Define the number of proxy hops on the system to detect correct source IP for the filters below
 if (proxy_hops > 0) {
   app.set('trust proxy', proxy_hops)
-}
-
-// Limit by slowing down requests
-if (use_speed_limiter) {
-  const speed_limiter_settings = SlowDown({
-    windowMs: speed_limiter.time_window, // rolling time window in ms
-    delayAfter: speed_limiter.request_limit, // allow x requests per time window, then start slowing down
-    delayMs: speed_limiter.delay_increment, // begin adding X ms of delay per request when delayAfter has been reached
-    maxDelayMs: speed_limiter.max_delay, // max delay in ms to slow down
-    // skip limit for certain requests
-    skip: function(req, res) {
-      if (use_tokens) {
-        if (req.body.action === 'tokenorder_check' || req.query.action === 'tokenorder_check') {
-          return true
-        }
-      }
-      return false
-    }
-  })
-  app.use(speed_limiter_settings)
-}
-
-// Block IP if requesting too much but skipped if a valid token_key is provided
-if (use_ip_block) {
-  const ip_block_settings = RateLimit({
-    windowMs: ip_block.time_window, // rolling time window in ms
-    max: ip_block.request_limit, // limit each IP to x requests per windowMs
-    message: 'You have sent too many RPC requests. You can try again later.',
-    // Check if token key exist in DB and have enough tokens, then skip IP block by returning true
-    skip: function(req, res) {
-      if (use_tokens) {
-        if ('token_key' in req.body && order_db.get('orders').find({token_key: req.body.token_key}).value()) {
-          if (order_db.get('orders').find({token_key: req.body.token_key}).value().tokens > 0) {
-            return true
-          }
-        }
-        if ('token_key' in req.query && order_db.get('orders').find({token_key: req.query.token_key}).value()) {
-          if (order_db.get('orders').find({token_key: req.query.token_key}).value().tokens > 0) {
-            return true
-          }
-        }
-        if (req.body.action === 'tokenorder_check' || req.query.action === 'tokenorder_check') {
-          return true
-        }
-      }
-      return false
-    }
-  })
-  app.use(ip_block_settings)
-}
-
-// Set up cache
-if (use_cache) {
-  rpcCache = new NodeCache( { stdTTL: cache_duration_default, checkperiod: 10 } )
 }
 
 // Set up blacklist and use the proxy number defined in the settings. Log only IP if blocked
@@ -331,6 +274,116 @@ app.use((err, req, res, _next) => {
     return res.status(500).json({error: err.status})
   }
 })
+
+// Define authentication service
+if (use_auth) {
+  app.use(BasicAuth({ authorizer: myAuthorizer }))
+}
+
+// Block IP if requesting too much but skipped if a valid token_key is provided
+if (use_ip_block) {
+  const limiter1 = new RateLimiterMemory({
+    keyPrefix: 'limit1',
+    points: ip_block.request_limit, // limit each IP to x requests per duration
+    duration: Math.round(ip_block.time_window/1000), // rolling time window in sec
+  })
+
+  const rateLimiterMiddleware1 = (req, res, next) => {
+    if (use_tokens) {
+      // Check if token key exist in DB and have enough tokens, then skip IP block by returning true
+      if ('token_key' in req.body && order_db.get('orders').find({token_key: req.body.token_key}).value()) {
+        if (order_db.get('orders').find({token_key: req.body.token_key}).value().tokens > 0) {
+          next()
+          return
+        }
+      }
+      if ('token_key' in req.query && order_db.get('orders').find({token_key: req.query.token_key}).value()) {
+        if (order_db.get('orders').find({token_key: req.query.token_key}).value().tokens > 0) {
+          next()
+          return
+        }
+      }
+      // Don't count order check here, we do that in the ddos protection step
+      if (req.body.action === 'tokenorder_check' || req.query.action === 'tokenorder_check') {
+        next()
+        return
+      }
+    }
+    limiter1.consume(req.ip)
+      .then((response) => {
+        res.set("X-RateLimit-Limit", ip_block.request_limit)
+        res.set("X-RateLimit-Remaining", ip_block.request_limit-response.consumedPoints)
+        res.set("X-RateLimit-Reset", new Date(Date.now() + response.msBeforeNext))
+        next()
+      })
+      .catch((rej) => {
+        res.set("X-RateLimit-Limit", ip_block.request_limit)
+        res.set("X-RateLimit-Remaining", Math.max(ip_block.request_limit-rej.consumedPoints, 0))
+        res.set("X-RateLimit-Reset", new Date(Date.now() + rej.msBeforeNext))
+        res.status(429).send('Max allowed requests of ' + ip_block.request_limit + ' reached. Time left: ' + Math.round(rej.msBeforeNext/1000) + 'sec')
+      })
+   }
+
+   app.use(rateLimiterMiddleware1)
+}
+
+// Ddos protection for all requests
+const limiter2 = new RateLimiterMemory({
+  //points: ip_block.request_limit, // limit each IP to x requests per duration
+  //duration: Math.round(ip_block.time_window / 1000), // rolling time window in sec
+  keyPrefix: 'limit2',
+  points: DDOS_LIMIT_COUNT, // limit each IP to x requests per duration
+  duration: DDOS_LIMIT_WINDOW, // rolling time window in sec
+})
+
+const rateLimiterMiddleware2 = (req, res, next) => {
+  limiter2.consume(req.ip)
+    .then((response) => {
+      next()
+    })
+    .catch((rej) => {
+      res.status(429).send('You are making requests too fast, please slow down!')
+    })
+ }
+
+ app.use(rateLimiterMiddleware2)
+
+// Limit by slowing down requests
+if (use_speed_limiter) {
+  const speed_limiter_settings = SlowDown({
+    windowMs: speed_limiter.time_window, // rolling time window in ms
+    delayAfter: speed_limiter.request_limit, // allow x requests per time window, then start slowing down
+    delayMs: speed_limiter.delay_increment, // begin adding X ms of delay per request when delayAfter has been reached
+    maxDelayMs: speed_limiter.max_delay, // max delay in ms to slow down
+    // skip limit for certain requests
+    skip: function(req, res) {
+      if (use_tokens) {
+        // Check if token key exist in DB and have enough tokens, then skip IP block by returning true
+        if ('token_key' in req.body && order_db.get('orders').find({token_key: req.body.token_key}).value()) {
+          if (order_db.get('orders').find({token_key: req.body.token_key}).value().tokens > 0) {
+            return true
+          }
+        }
+        if ('token_key' in req.query && order_db.get('orders').find({token_key: req.query.token_key}).value()) {
+          if (order_db.get('orders').find({token_key: req.query.token_key}).value().tokens > 0) {
+            return true
+          }
+        }
+
+        if (req.body.action === 'tokenorder_check' || req.query.action === 'tokenorder_check') {
+          return true
+        }
+      }
+      return false
+    }
+  })
+  app.use(speed_limiter_settings)
+}
+
+// Set up cache
+if (use_cache) {
+  rpcCache = new NodeCache( { stdTTL: cache_duration_default, checkperiod: 10 } )
+}
 
 // To verify username and password provided via basicAuth. Support multiple users
 function myAuthorizer(username, password) {
