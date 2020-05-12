@@ -304,7 +304,11 @@ if (use_ip_block) {
         }
       }
       // Don't count order check here, we do that in the ddos protection step
-      if (req.body.action === 'tokenorder_check' || req.query.action === 'tokenorder_check') {
+      if (req.body.action === 'tokenorder_check' || req.query.action === 'tokenorder_check' ||
+          req.body.action === 'tokens_buy' || req.query.action === 'tokens_buy' ||
+          req.body.action === 'tokenorder_cancel' || req.query.action === 'tokenorder_cancel' ||
+          req.body.action === 'tokens_check' || req.query.action === 'tokens_check' ||
+          req.body.action === 'tokenprice_check' || req.query.action === 'tokenprice_check') {
         next()
         return
       }
@@ -370,7 +374,11 @@ if (use_speed_limiter) {
           }
         }
 
-        if (req.body.action === 'tokenorder_check' || req.query.action === 'tokenorder_check') {
+        if (req.body.action === 'tokenorder_check' || req.query.action === 'tokenorder_check' ||
+            req.body.action === 'tokens_buy' || req.query.action === 'tokens_buy' ||
+            req.body.action === 'tokenorder_cancel' || req.query.action === 'tokenorder_cancel' ||
+            req.body.action === 'tokens_check' || req.query.action === 'tokens_check' ||
+            req.body.action === 'tokenprice_check' || req.query.action === 'tokenprice_check') {
           return true
         }
       }
@@ -452,6 +460,19 @@ function useToken(token_key) {
     }
   }
   return -2
+}
+
+// Read headers and append result
+function appendRateLimiterStatus(res, data) {
+  let requestsLimit = res.get("X-RateLimit-Limit")
+  let requestsRemaining = res.get("X-RateLimit-Remaining")
+  let requestLimitReset = res.get("X-RateLimit-Reset")
+  if (requestsLimit && requestsRemaining && requestLimitReset) {
+    data.requestsLimit = requestsLimit
+    data.requestsRemaining = requestsRemaining
+    data.requestLimitReset = requestLimitReset
+  }
+  return data
 }
 
 // Custom error class
@@ -554,7 +575,7 @@ async function processRequest(query, req, res) {
   // Check token price
   if (query.action === 'tokenprice_check') {
     let status = await Tokens.checkTokenPrice()
-    return res.json(status)
+    return res.json(appendRateLimiterStatus(res, status))
   }
 
   // Block non-allowed RPC commands
@@ -591,7 +612,7 @@ async function processRequest(query, req, res) {
         if (tokens_left != null) {
           cachedValue.tokens_total = tokens_left
         }
-        return res.json(cachedValue)
+        return res.json(appendRateLimiterStatus(res, cachedValue))
       }
 
       let data = await Tools.getData(PriceUrl, API_TIMEOUT)
@@ -605,7 +626,7 @@ async function processRequest(query, req, res) {
       if (tokens_left != null) {
         data.tokens_total = tokens_left
       }
-      res.json(data) // sending back full json price response (Coinpaprika)
+      res.json(appendRateLimiterStatus(res, data)) // sending back full json price response (Coinpaprika)
     }
     catch(err) {
       res.status(500).json({error: err.toString()})
@@ -624,7 +645,7 @@ async function processRequest(query, req, res) {
           if (tokens_left != null) {
             cachedValue.tokens_total = tokens_left
           }
-          return res.json(cachedValue)
+          return res.json(appendRateLimiterStatus(res, cachedValue))
         }
         break
       }
@@ -661,7 +682,7 @@ async function processRequest(query, req, res) {
     if (tokens_left != null) {
       data.tokens_total = tokens_left
     }
-    res.json(data) // sending back json response
+    res.json(appendRateLimiterStatus(res, data)) // sending back json response
   }
   catch(err) {
     res.status(500).json({error: err.toString()})

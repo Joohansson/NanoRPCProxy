@@ -138,7 +138,7 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **https_port:** Port to listen on for https (disabled default with the setting <use_https>) [number]
 * **use_auth:** If require username and password when connecting to the proxy. Defined in **creds.json** [true/false]
 * **use_speed_limiter:** If slowing down IPs when they request above set limit (defined in <speed_limiter>) [true/false]
-* **use_ip_block:** If blocking IPs for a certain amount of time when they request above set limit (defined in <ip_block>) [true/false]
+* **use_ip_block:** If blocking IPs for a certain amount of time when they request above set limit (defined in <ip_block>). This request limit, requests remaining and timestamp for reset will also be included in the response header as "X-RateLimit-Limit", "X-RateLimit-Remaining", and "X-RateLimit-Reset". Additionally included in the json response as well as "requestsLimit", "requestsRemaining" and "requestLimitReset". For example if 1000 / day is allowed for free, the user will see how many are left to use. [true/false]
 * **use_cache:** If caching certain commands set in <cached_commands> [true/false]
 * **use_http:** Listen on http [true/false]
 * **use_https:** Listen on https (a valid cert and key file is needed via <https_cert> and <https_key>) [true/false]
