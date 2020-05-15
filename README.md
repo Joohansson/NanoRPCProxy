@@ -1,3 +1,4 @@
+
 # NanoRPCProxy
 NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has NO built in functionality for user authentication, rate limiting or caching which makes it dangerous to open up without protection like this proxy provides. With NanoRPCProxy you can for example serve a mobile app or web frontend with indirect node calls.
 
@@ -9,9 +10,8 @@ Demo clients/code for Curl, JS, REACT, Python and Flask are available to test yo
 
 **A public demo client with token purchases and API support for the the live Nano network is available [HERE](https://example.com)!**
 
-* [Video - Full features / settings walk-through with live demo](https://youtu.be/1GfX3OZrq34)
-* [Video - Demo purchasing request tokens](https://youtu.be/Q6Y5MDUkcEY)
-
+* [Video - Full features / settings walk-through with live demo](https://youtu.be/DHdau-hFri4)
+* [Video - Demo purchasing request tokens](https://youtu.be/PEKiYhJbi5o)
 
 ## Features
 * Fully customizable via a settings file
@@ -35,7 +35,6 @@ Demo clients/code for Curl, JS, REACT, Python and Flask are available to test yo
 **Possible use cases**
 ![NanoRPCProxy](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCPRoxy.png)
 
-
 ## Index
 
 * [Install and run the proxy server](#install-and-run-the-proxy-server)
@@ -44,7 +43,9 @@ Demo clients/code for Curl, JS, REACT, Python and Flask are available to test yo
 * [How to install and test the demo clients](#how-to-install-and-test-the-demo-clients)
 * [Developer Donations](#developer-donations)
 
-
+---
+---
+---
 ## Install and run the proxy server
 ### Setup nodejs and test server
 1. Make sure you have node.js installed. [Windows Guide](https://www.liquidweb.com/kb/install-react-js-windows/) | [Ubuntu Guide](https://medium.com/@DanielSayidi/install-and-setup-react-app-on-ubuntu-18-04-3-lts-fcd2c875885a)
@@ -60,6 +61,7 @@ These will not be affected if later updating the server via git pull
 
 4. Install required libraries: **npm install**
 5. Start and test the server: **node proxy.js**
+---
 
 ### Option1: Install as a service using PM2 (Recommended)
 https://pm2.keymetrics.io/docs/usage/quick-start/
@@ -87,6 +89,7 @@ Before making changes, stop any running servers with "pm2 stop proxy.js" and del
 Example of PM2 web monitor. Can track all your apps and with realtime logs.
 ![PM2 Web Monitor](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/pm2_monitor.png)
 
+---
 ### Option2: Install as a service using systemd on Linux
 https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-systemd
 
@@ -119,6 +122,7 @@ https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-syst
 7. Start service on boot: **sudo systemctl enable nanorpcproxy.service**
 8. Follow logs in realtime: **sudo journalctl --follow -u nanorpcproxy**
 
+---
 ### Updating the server
 1. Go to the root folder -> git pull
 2. Go to srs/server -> npm install
@@ -130,6 +134,9 @@ It may happen that the settings files are expanded. In that case, you need to do
     cp user_settings.json.default user_settings.json
     cp token_settings.json.default token_settings.json
 
+---
+---
+---
 ## How to customize the proxy server
 The proxy server is configured via the **settings.json** file found in the server folder
 
@@ -156,6 +163,7 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **proxy_hops** If the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here. Example: api.example.com is proxied through Cloudflare to IP 1.1.1.1 and then local Nginx server is proxying api.example.com to localhost:9950. Proxyhops will be 2.
 * **log_level:** It can be set to either "info" which will output all logs, "warning" which will only output warning messages or "none" which will only log the initial settings.
 
+---
 The following parameters can be set in **user_settings.json** to override the default ones for specific users defined in **creds.json**. Anything in this file will override even if there are less sub entries like only 1 allowed command or 2 limited commands.
 
 * **use_cache**
@@ -165,6 +173,7 @@ The following parameters can be set in **user_settings.json** to override the de
 * **limited_commands**
 * **log_level**
 
+---
 The following parameters can be set in **token_settings.json** for configuration of the token system. The system require the <use_tokens> to be active in **settings.json**
 More info about [The Token System](#the-token-system).
 
@@ -180,11 +189,13 @@ More info about [The Token System](#the-token-system).
 * **max_token_amount**: The maximum amount of tokens to allow for purchase
 * **log_level**: It can be set to either "info" which will output all logs, "warning" which will only output warning messages or "none" which will only log the initial settings.
 
-
+---
 **The effect of the settings**
 ![Protection System](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCProxy_limiter.png)
 
-
+---
+---
+---
 ## How to use the proxy server
 You call the proxy server just like you would call the node RPC. It's a normal POST request to "/proxy" with json formatted data.
 The node commands are found here: https://docs.nano.org/commands/rpc-protocol/
@@ -196,6 +207,7 @@ However, if authentication is activated in the server settings, basic auth heade
 The proxy server also support special commands not supported in the Nano RPC. They need to be listed in the **settings.json** under "allowed_commands"
 * **{"action":"price"}** Returns the latest Nano price quote from Coinpaprika. Will always be cached for 10sec.
 
+---
 ### Using curl
 The curl command looks just a tiny bit different than for a direct node request. You just have to define it with a json content type. You can also use the -i flag to include response headers.
 
@@ -217,6 +229,7 @@ The curl command looks just a tiny bit different than for a direct node request.
 
 ![Curl demo](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/demo_curl.png)
 
+---
 ### Using python
 **POST: No authentication**
 
@@ -244,6 +257,7 @@ Note: verify=False means we ignore possible SSL certificate errors. Recommended 
 
     r = requests.get('http://localhost:9950/proxy?action=block_count', auth=HTTPBasicAuth(username, password))
 
+---
 ### Using JS
 **POST: Async with authentication (Without: remove the Authorization header)**
 
@@ -287,6 +301,7 @@ See the js demo client for full example with error handling
          success: function(data, status) {console.log(data)}
       })
 
+---
 ### The Token System
 Only a certain amount of requests per time period is allowed and configured in the settings. Users who need more requests (however still affected by the "slow down rate limiter") can purchase tokens with Nano. The system requires the <use_tokens> to be active in **settings.json**. The system will also check orders older than 1h one time per hour and repair broken orders (by assigning tokens for any pending found), also removing unprocessed and empty orders older than one month.
 
@@ -380,15 +395,19 @@ Demo of purchasing tokens using the React demo client:
 Order completed:
 ![React demo app - Token purchase complete](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_react_03.png)
 
+---
 ### Error handling
 If error or warnings occurs in the server when calling it the client will need to handle that. The response is (along with a http status code != 200):
 
     {"error": "The error message"}
 
+---
 ### Logging and Stats
 The server will write a standard log depending on the "log_level" in settings.json and token_settings.json. Additionally, a request-stat.log is written in the server dir every day at midnight with a daily request count and timestamp.
 
-
+---
+---
+---
 ## How to install and test the demo clients
 The proxy server can be tested and experimented with using provided demo clients. They can also help you getting starting with your own setup.
 
@@ -404,6 +423,7 @@ Exit pipenv: **exit**
 
 ![Python demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_python.png)
 
+---
 ### JS client
 1. Locate the directory demo_clients/js
 2. Open index.html in a browser
@@ -412,6 +432,7 @@ Note: The credentials for authentication is hard coded in the javascript and to 
 
 ![JS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_js.png)
 
+---
 ### REACT client
 The only demo client that has full functionality for purchasing request tokens
 
@@ -433,6 +454,7 @@ The only demo client that has full functionality for purchasing request tokens
 5. To build from source: "npm run-script build"
 6. The final build is located in clients/reactjs/build
 
+---
 ### Flask client
 1. Locate the directory demo_clients/python/
 2. If you haven't, install pipenv to run the app in a virtual environment: **pip install pipenv** for Linux or **py -m pip install --user pipenv** for Windows. To call "pipenv" in Windows instead of "py -m pipenv" you can add the python script folder (provided by the installation log) to your environment PATH.
@@ -445,8 +467,10 @@ Exit pipenv: **exit**
 
 ![Flask demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_js.png)
 
-
+---
+---
+---
 ## Developer Donations
 Find this useful? Consider sending me a Nano donation at nano_1gur37mt5cawjg5844bmpg8upo4hbgnbbuwcerdobqoeny4ewoqshowfakfo
 
-Discord support server: https://discord.gg/RVCuFvc
+Discord support server and feedback: https://discord.gg/RVCuFvc
