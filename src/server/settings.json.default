@@ -3,8 +3,8 @@
   "http_port":              9950,
   "https_port":             9951,
   "use_auth":               false,
-  "use_speed_limiter":      true,
-  "use_ip_block":           true,
+  "use_slow_down":          true,
+  "use_rate_limiter":       true,
   "use_cache":              true,
   "use_http":               true,
   "use_https":              false,
@@ -45,13 +45,13 @@
   "ip_blacklist":          [
     "8.8.8.8"
   ],
-  "speed_limiter":        {
+  "slow_down":        {
     "time_window":        600000,
     "request_limit":      100,
     "delay_increment":    200,
     "max_delay":          5000
   },
-  "ip_block":        {
+  "rate_limiter":        {
     "time_window":        86400000,
     "request_limit":      1000
   },

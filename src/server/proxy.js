@@ -31,8 +31,8 @@ var http_port = 9950                // port to listen on for http (enabled defau
 var https_port = 9951               // port to listen on for https (disabled default with use_https)
 var max_request_count = 500         // max count of various rpc responses like pending transactions
 var use_auth = false                // if require username and password when connecting to proxy
-var use_speed_limiter = false       // if slowing down IPs when they request above set limit (defined in speed_limiter)
-var use_ip_block = false            // if blocking IPs for a certain amount of time when they request above set limit (defined in ip_block)
+var use_slow_down = false           // if slowing down requests for IPs doing above set limit (defined in slow_down)
+var use_rate_limiter = false        // if blocking IPs for a certain amount of time when they request above set limit (defined in rate_limiter)
 var use_cache = false               // if caching certain commands set in cached_commands
 var use_http = true                 // listen on http (active by default)
 var use_https = false               // listen on https (inactive by default) (a valid cert and key file is needed via https_cert and https_key)
@@ -44,8 +44,8 @@ var https_key = ""                  // file path for private key file
 var allowed_commands = []           // only allow RPC actions in this list
 var cached_commands = []            // a list of commands [key] that will be cached for corresponding duration in seconds as [value]
 var limited_commands = []           // a list of commands [key] to limit the output response for with max count as [value]
-var speed_limiter = {}              // contains the settings for slowing down clients with speed limiter
-var ip_block = {}                   // contains the settings for blocking IP that does too many requests
+var slow_down = {}                  // contains the settings for the slow down filter
+var rate_limiter = {}               // contains the settings for the rate limiter
 var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
 var ip_blacklist = []               // a list of IPs to deny always
 var proxy_hops = 0                  // if the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here.
@@ -105,8 +105,8 @@ try {
   http_port = settings.http_port
   https_port = settings.https_port
   use_auth = settings.use_auth
-  use_speed_limiter = settings.use_speed_limiter
-  use_ip_block = settings.use_ip_block
+  use_slow_down = settings.use_slow_down
+  use_rate_limiter = settings.use_rate_limiter
   use_cache = settings.use_cache
   use_output_limiter = settings.use_output_limiter
   use_http = settings.use_http
@@ -119,8 +119,8 @@ try {
   allowed_commands = settings.allowed_commands
   limited_commands = settings.limited_commands
   log_level = settings.log_level
-  speed_limiter = settings.speed_limiter
-  ip_block = settings.ip_block
+  slow_down = settings.slow_down
+  rate_limiter = settings.rate_limiter
   ip_blacklist = settings.ip_blacklist
   proxy_hops = settings.proxy_hops
 
@@ -156,8 +156,8 @@ console.log("Node url: " + node_url)
 console.log("Http port: " + String(http_port))
 console.log("Https port: " + String(https_port))
 console.log("Use authentication: " + use_auth)
-console.log("Use speed limiter: " + use_speed_limiter)
-console.log("Use IP block: " + use_ip_block)
+console.log("Use slow down: " + use_slow_down)
+console.log("Use rate limiter: " + use_rate_limiter)
 console.log("Use cached requests: " + use_cache)
 console.log("Use output limiter: " + use_output_limiter)
 console.log("Use IP blacklist: " + use_ip_blacklist)
@@ -187,17 +187,17 @@ if (use_output_limiter) {
   console.log(log_string)
 }
 
-if (use_speed_limiter) {
-  log_string = "Speed limiter settings:\n"
-  for (const [key, value] of Object.entries(speed_limiter)) {
+if (use_slow_down) {
+  log_string = "Slow down settings:\n"
+  for (const [key, value] of Object.entries(slow_down)) {
     log_string = log_string + key + " : " + value + "\n"
   }
   console.log(log_string)
 }
 
-if (use_ip_block) {
-  log_string = "IP block settings:\n"
-  for (const [key, value] of Object.entries(ip_block)) {
+if (use_rate_limiter) {
+  log_string = "Rate limiter settings:\n"
+  for (const [key, value] of Object.entries(rate_limiter)) {
     log_string = log_string + key + " : " + value + "\n"
   }
   console.log(log_string)
@@ -280,12 +280,12 @@ if (use_auth) {
   app.use(BasicAuth({ authorizer: myAuthorizer }))
 }
 
-// Block IP if requesting too much but skipped if a valid token_key is provided
-if (use_ip_block) {
+// Block IP if requesting too much but skipped if a valid token_key is provided (long interval)
+if (use_rate_limiter) {
   const limiter1 = new RateLimiterMemory({
     keyPrefix: 'limit1',
-    points: ip_block.request_limit, // limit each IP to x requests per duration
-    duration: Math.round(ip_block.time_window/1000), // rolling time window in sec
+    points: rate_limiter.request_limit, // limit each IP to x requests per duration
+    duration: Math.round(rate_limiter.time_window/1000), // rolling time window in sec
   })
 
   const rateLimiterMiddleware1 = (req, res, next) => {
@@ -315,26 +315,24 @@ if (use_ip_block) {
     }
     limiter1.consume(req.ip)
       .then((response) => {
-        res.set("X-RateLimit-Limit", ip_block.request_limit)
-        res.set("X-RateLimit-Remaining", ip_block.request_limit-response.consumedPoints)
+        res.set("X-RateLimit-Limit", rate_limiter.request_limit)
+        res.set("X-RateLimit-Remaining", rate_limiter.request_limit-response.consumedPoints)
         res.set("X-RateLimit-Reset", new Date(Date.now() + response.msBeforeNext))
         next()
       })
       .catch((rej) => {
-        res.set("X-RateLimit-Limit", ip_block.request_limit)
-        res.set("X-RateLimit-Remaining", Math.max(ip_block.request_limit-rej.consumedPoints, 0))
+        res.set("X-RateLimit-Limit", rate_limiter.request_limit)
+        res.set("X-RateLimit-Remaining", Math.max(rate_limiter.request_limit-rej.consumedPoints, 0))
         res.set("X-RateLimit-Reset", new Date(Date.now() + rej.msBeforeNext))
-        res.status(429).send('Max allowed requests of ' + ip_block.request_limit + ' reached. Time left: ' + Math.round(rej.msBeforeNext/1000) + 'sec')
+        res.status(429).send('Max allowed requests of ' + rate_limiter.request_limit + ' reached. Time left: ' + Math.round(rej.msBeforeNext/1000) + 'sec')
       })
    }
 
    app.use(rateLimiterMiddleware1)
 }
 
-// Ddos protection for all requests
+// Ddos protection for all requests (short interval)
 const limiter2 = new RateLimiterMemory({
-  //points: ip_block.request_limit, // limit each IP to x requests per duration
-  //duration: Math.round(ip_block.time_window / 1000), // rolling time window in sec
   keyPrefix: 'limit2',
   points: DDOS_LIMIT_COUNT, // limit each IP to x requests per duration
   duration: DDOS_LIMIT_WINDOW, // rolling time window in sec
@@ -353,12 +351,12 @@ const rateLimiterMiddleware2 = (req, res, next) => {
  app.use(rateLimiterMiddleware2)
 
 // Limit by slowing down requests
-if (use_speed_limiter) {
-  const speed_limiter_settings = SlowDown({
-    windowMs: speed_limiter.time_window, // rolling time window in ms
-    delayAfter: speed_limiter.request_limit, // allow x requests per time window, then start slowing down
-    delayMs: speed_limiter.delay_increment, // begin adding X ms of delay per request when delayAfter has been reached
-    maxDelayMs: speed_limiter.max_delay, // max delay in ms to slow down
+if (use_slow_down) {
+  const slow_down_settings = SlowDown({
+    windowMs: slow_down.time_window, // rolling time window in ms
+    delayAfter: slow_down.request_limit, // allow x requests per time window, then start slowing down
+    delayMs: slow_down.delay_increment, // begin adding X ms of delay per request when delayAfter has been reached
+    maxDelayMs: slow_down.max_delay, // max delay in ms to slow down
     // skip limit for certain requests
     skip: function(req, res) {
       if (use_tokens) {
@@ -385,7 +383,7 @@ if (use_speed_limiter) {
       return false
     }
   })
-  app.use(speed_limiter_settings)
+  app.use(slow_down_settings)
 }
 
 // Set up cache
