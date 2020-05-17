@@ -55,6 +55,10 @@
     "time_window":        86400000,
     "request_limit":      1000
   },
+  "ddos_protection":        {
+    "time_window":        1000,
+    "request_limit":      2
+  },
   "proxy_hops":           0,
   "log_level":            "info"
 }

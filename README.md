@@ -8,7 +8,7 @@ The built in token system makes it possible to serve requests beyond the default
 
 Demo clients/code for Curl, JS, REACT, Python and Flask are available to test your own server.
 
-**A public demo client with token purchases and API support for the the live Nano network is available [HERE](https://example.com)!**
+**A public demo client with token purchases and API support for the the live Nano network is available [HERE](https://api.nanos.cc)!**
 
 * [Video - Full features / settings walk-through with live demo](https://youtu.be/DHdau-hFri4)
 * [Video - Demo purchasing request tokens](https://youtu.be/PEKiYhJbi5o)

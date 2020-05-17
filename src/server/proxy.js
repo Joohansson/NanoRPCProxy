@@ -46,6 +46,7 @@ var cached_commands = []            // a list of commands [key] that will be cac
 var limited_commands = []           // a list of commands [key] to limit the output response for with max count as [value]
 var slow_down = {}                  // contains the settings for the slow down filter
 var rate_limiter = {}               // contains the settings for the rate limiter
+var ddos_protection = {}            // contains the settings for the ddos protection
 var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
 var ip_blacklist = []               // a list of IPs to deny always
 var proxy_hops = 0                  // if the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here.
@@ -59,8 +60,6 @@ const PriceUrl = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
 //const PriceUrl2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
 //const CMC_API_KEY = 'xxx'
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
-const DDOS_LIMIT_COUNT = 2 // no more than X requests allowed per DDOS_LIMIT_WINDOW
-const DDOS_LIMIT_WINDOW = 1 // X sec interval
 
 var user_use_cache = null
 var user_use_output_limiter = null
@@ -121,6 +120,7 @@ try {
   log_level = settings.log_level
   slow_down = settings.slow_down
   rate_limiter = settings.rate_limiter
+  ddos_protection = settings.ddos_protection
   ip_blacklist = settings.ip_blacklist
   proxy_hops = settings.proxy_hops
 
@@ -202,6 +202,12 @@ if (use_rate_limiter) {
   }
   console.log(log_string)
 }
+
+log_string = "DDOS protection settings:\n"
+for (const [key, value] of Object.entries(ddos_protection)) {
+  log_string = log_string + key + " : " + value + "\n"
+}
+console.log(log_string)
 
 if (use_ip_blacklist) {
   log_string = "IPs blacklisted:\n"
@@ -334,8 +340,8 @@ if (use_rate_limiter) {
 // Ddos protection for all requests (short interval)
 const limiter2 = new RateLimiterMemory({
   keyPrefix: 'limit2',
-  points: DDOS_LIMIT_COUNT, // limit each IP to x requests per duration
-  duration: DDOS_LIMIT_WINDOW, // rolling time window in sec
+  points: ddos_protection.request_limit, // limit each IP to x requests per duration
+  duration: Math.round(ddos_protection.time_window/1000), // rolling time window in sec
 })
 
 const rateLimiterMiddleware2 = (req, res, next) => {
