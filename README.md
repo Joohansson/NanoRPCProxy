@@ -1,36 +1,37 @@
 
 # NanoRPCProxy
-NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has NO built in functionality for user authentication, rate limiting or caching which makes it dangerous to open up without protection like this proxy provides. With NanoRPCProxy you can for example serve a mobile app or web frontend with indirect node calls.
+NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has no built-in functionality for user authentication, rate-limiting or caching which makes it dangerous to open up without protection as this proxy provides. With NanoRPCProxy you can, for example, serve a mobile app or web frontend with indirect node calls.
 
 **In reality, it can be used for Nano wallets, exchanges, block explorers, public APIs, monitor systems, Point of Sale or anything that communicates with a node.**
 
-The built in token system makes it possible to serve requests beyond the default limits and monetize your backend via direct Nano token purchases.
+The built-in token system makes it possible to serve requests beyond the default limits and monetize your backend via direct Nano token purchases.
 
 Demo clients/code for Curl, JS, REACT, Python and Flask are available to test your own server.
 
-**A public demo client with token purchases and API support for the the live Nano network is available [HERE](https://api.nanos.cc)!**
+**A public API demo client with token purchases for the live Nano network is available [HERE](https://api.nanos.cc)**
 
-* [Video - Full features / settings walk-through with live demo](https://youtu.be/DHdau-hFri4)
+* [Video - Full features / settings walk-through with live demo](https://youtu.be/j6qxOYWWpSE)
 * [Video - Demo purchasing request tokens](https://youtu.be/PEKiYhJbi5o)
 
 ## Features
 * Fully customizable via a settings file
+* Supports any RPC command for any remote client; like wallets, exchanges, apps, games, bots or public API
 * Caching of certain request actions to lower the RPC burden
-* Limits number of response objects, like number of pending transactions
-* Slows down IPs that doing requests above limit
+* Limits the number of response objects, like the number of pending transactions
+* Slows down IPs that doing requests above limit (Overridden by purchased tokens)
 * IP filter for max allowed requests per time window (Overridden by purchased tokens)
 * Extra DDOS protection layer (defaults to max 2 requests/sec, also for purchased tokens)
 * IP black list (also for purchased tokens)
-* Supports basic authentication (username / password)
+* Supports basic authentication (username / password) (also for purchased tokens)
 * Supports multiple users via authentication
-* User specific settings override
+* User-specific settings override
 * Optional token system for requests with built-in Nano purchases => independent of any 3rd party payment processors => unlimited implementation possibilities
 * Supports POST requests like the RPC, ie. payload = {"action":"block_count"}
 * Supports GET requests, ie. URL query = /proxy/?action=block_count
 * Listens on http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
 * Works with both beta and main Nano network
 * Demo clients/code
-* 100% free to use, develop or sell with MIT license
+* 100% free to use, develop or sell with open-source MIT license
 
 **Possible use cases**
 ![NanoRPCProxy](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCPRoxy.png)
