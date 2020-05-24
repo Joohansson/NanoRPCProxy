@@ -8,12 +8,13 @@ function sleep_simple(ms) {
 var socket_nano
 
 function callWebsocket() {
+  var nanoWebsocketOffline = false
   let tracked_accounts = document.getElementById("myInput").value.split(',')
 
   // Websocket for NANO with automatic reconnect
   async function socket_sleep(sleep=5000) {
     await sleep_simple(sleep)
-    socket_nano = new WebSocket(WS_SERVER, "echo-protocol")
+    socket_nano = new WebSocket(WS_SERVER)
     socket_nano.addEventListener('open', socketOpenListener)
     socket_nano.addEventListener('error', socketErrorListener)
     socket_nano.addEventListener('message', socketMessageListener)

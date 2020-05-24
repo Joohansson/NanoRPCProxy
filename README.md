@@ -7,7 +7,7 @@ The built-in token system makes it possible to serve requests beyond the default
 
 Demo clients/code for Curl, JS, REACT, Python and Flask are available to test your own server.
 
-**A public API demo client with token support: https://api.nanos.cc**
+**Public API demo client with token support: https://api.nanos.cc**
 
 * [Video - Full features / settings walk-through with live demo](https://youtu.be/j6qxOYWWpSE)
 * [Video - Demo purchasing request tokens](https://youtu.be/PEKiYhJbi5o)
@@ -21,13 +21,13 @@ Similar to the RPC, the websocket is DDOS protected and acts as a secure layer b
 * Web apps with features activated by payments, wallet alert/tracking, payment listener, games, etc
 
 Demo clients for websocket is available for JS (web) and Node.js. More info in the "how to use" section.
-**A public websocket demo: https://api.nanos.cc/socket**
+**Public websocket demo: https://api.nanos.cc/socket**
 
 
 ## Features
 * Fully customizable via a settings file
 * Supports any RPC command for any remote client; like wallets, exchanges, apps, games, bots or public API
-* Support websocket subscriptions for block confirmations (multiple accounts allowed)
+* Supports websocket subscriptions for block confirmations; like account tracking (multiple accounts allowed)
 * Caching of certain request actions to lower the RPC burden
 * Limits the number of response objects, like the number of pending transactions
 * Slows down IPs that doing requests above limit (Overridden by purchased tokens)
@@ -418,43 +418,45 @@ Order completed:
 A Nano node provides a websocket that can be subscribed to for real-time messages, for example block confirmation, voting analysis and telemetry. More info can be found [here](https://docs.nano.org/integration-guides/websockets/).
 Like the RPC interface, NanoRPCProxy provide a websocket server with DDOS protection and bandwidth limitation by only allowing certain subscriptions and data amount. It subscribes to the Nano node locally with the clients subscribing to the proxy itself to act as a secure layer and protect the node. This means only one node subscription is needed to serve all clients and several clients can listen on the same account with no increase in node communication. Thus, the node websocket does not need to be exposed publicly.
 
+![NanoRPCProxy](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCProxy_ws.png)
+
 The supported messages are shown below:
 
 **Subscribe to block confirmations**
-Just like the node you can subscribe to confirmed blocks on the network with one difference. Here you must specify the accounts with the maximum allowed number defined in the settings parameter <websocket_max_accounts>.
+Just like the node you can subscribe to confirmed blocks on the network. However, one exception is you MUST specify a list of accounts. The maximum allowed number is defined in the settings parameter <websocket_max_accounts>.
 
-	{
-      "action": "subscribe",
-      "topic": "confirmation",
-      "options": {
-        "accounts": [<account1>,<account2>]
-      }
-	}
+    {
+        "action": "subscribe",
+        "topic": "confirmation",
+        "options": {
+          "accounts": [<account1>,<account2>]
+        }
+    }
 
 **Response**
 
-  {
-    "topic": "confirmation",
-    "time": "1590331435605",
-    "message": {
-      "account": "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue",
-      "amount": "10000000",
-      "hash": "2B779B43B3CF95AFAA63AD696E6546DB7945BCE5CC5A78F670FFD41BCA998D1E",
-      "confirmation_type": "active_quorum",
-      "block": {
-        "type": "state",
+    {
+      "topic": "confirmation",
+      "time": "1590331435605",
+      "message": {
         "account": "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue",
-        "previous": "FC5AE29E3BD13A5D8D26EA2632871D2CFE7856BF4E83E75FA90B72AC95054635",
-        "representative": "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue",
-        "balance": "946740088999999996972769989996",
-        "link": "90A12364A96F6F31EDC3ADA115E88B3AEAEA05C6A78A79023CFDEFB4D901FCD6",
-        "link_as_account": "nano_36736fkckuuh89pw9df34qnapgqcxa4wfbwch635szhhpmei5z8pttkxawk1",
-        "signature": "9C6A45460C946387A267EE6B5AEFE17C4C036C7B5E10239BC492CAAD180B4E0AD42A02875DC7B4FEF52B5FE8FD73BA3D28E0CCF8FDCFF86AA2938822E88A600B",
-        "work": "bed7a7d8ab438039",
-        "subtype": "send"
+        "amount": "10000000",
+        "hash": "2B779B43B3CF95AFAA63AD696E6546DB7945BCE5CC5A78F670FFD41BCA998D1E",
+        "confirmation_type": "active_quorum",
+        "block": {
+          "type": "state",
+          "account": "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue",
+          "previous": "FC5AE29E3BD13A5D8D26EA2632871D2CFE7856BF4E83E75FA90B72AC95054635",
+          "representative": "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue",
+          "balance": "946740088999999996972769989996",
+          "link": "90A12364A96F6F31EDC3ADA115E88B3AEAEA05C6A78A79023CFDEFB4D901FCD6",
+          "link_as_account": "nano_36736fkckuuh89pw9df34qnapgqcxa4wfbwch635szhhpmei5z8pttkxawk1",
+          "signature": "9C6A45460C946387A267EE6B5AEFE17C4C036C7B5E10239BC492CAAD180B4E0AD42A02875DC7B4FEF52B5FE8FD73BA3D28E0CCF8FDCFF86AA2938822E88A600B",
+          "work": "bed7a7d8ab438039",
+          "subtype": "send"
+        }
       }
     }
-  }
 
 
 ---

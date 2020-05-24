@@ -813,11 +813,6 @@ if (use_https) {
 if (use_websocket) {
   wsServer = new WebSocketServer({
     httpServer: websocket_servers,
-    // You should not use autoAcceptConnections for production
-    // applications, as it defeats all standard cross-origin protection
-    // facilities built into the protocol and the browser.  You should
-    // *always* verify the connection's origin and decide whether or not
-    // to accept it.
     autoAcceptConnections: false
   })
 
@@ -832,13 +827,21 @@ if (use_websocket) {
     if (!originIsAllowed(request.origin)) {
       // Make sure we only accept requests from an allowed origin
       request.reject()
-      logThis('Connection from origin ' + request.origin + ' rejected.', log_levels.info)
+      //logThis('Connection from origin ' + request.origin + ' rejected.', log_levels.info)
+      return
+    }
+
+    let remote_ip = request.remoteAddress
+
+    // Black list protection
+    if (ip_blacklist.includes(remote_ip)) {
+      request.reject()
       return
     }
 
     // DDOS Protection
     try {
-      await websocket_limiter.consume(request.remoteAddress, 1) // consume 1 point
+      await websocket_limiter.consume(remote_ip, 1) // consume 1 point
     }
     // max amount of connections reached
     catch (rlRejected) {
@@ -850,17 +853,17 @@ if (use_websocket) {
       }
     }
     try {
-      var connection = request.accept('echo-protocol', request.origin)
+      var connection = request.accept()
     }
     catch {
       logThis('Bad protocol from connecting client', log_levels.info)
       return
     }
-    let remote_ip = connection.remoteAddress
+
     logThis('Websocket Connection accepted from: ' + remote_ip, log_levels.info)
     connection.on('message', function(message) {
       if (message.type === 'utf8') {
-          console.log('Received Message: ' + message.utf8Data + ' from ' + remote_ip)
+          //console.log('Received Message: ' + message.utf8Data + ' from ' + remote_ip)
           try {
             let msg = JSON.parse(message.utf8Data)
             // new subscription
@@ -900,13 +903,15 @@ if (use_websocket) {
             }
           }
           catch (e) {
-            console.log(e)
+            //console.log(e)
           }
       }
     })
     connection.on('close', function(reasonCode, description) {
       logThis('Websocket disconnected for: ' + remote_ip, log_levels.info)
+      // clean up db and dictionary
       tracking_db.get('users').remove({ip: remote_ip}).write()
+      delete websocket_connections[remote_ip]
     })
   })
 }

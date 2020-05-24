@@ -4,7 +4,7 @@ let ws_host = 'ws://localhost:9952'
 // Subscribe to these accounts
 let tracked_accounts = ['nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue', 'nano_3g81wxaobotd7ocqpqto4exxeei7mazufaq9xzfogtaqosy9orcnxuybnyjo']
 
-var client = new W3CWebSocket(ws_host, 'echo-protocol')
+var client = new W3CWebSocket(ws_host)
 console.log("Requesting to subscribe to accounts:\n", tracked_accounts)
 
 client.onerror = function() {
