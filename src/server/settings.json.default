@@ -1,7 +1,10 @@
 {
   "node_url":               "http://[::1]:7076",
+  "node_ws_url":            "ws://127.0.0.1:57000",
   "http_port":              9950,
   "https_port":             9951,
+  "websocket_http_port":    9952,
+  "websocket_http_port":    9953,
   "use_auth":               false,
   "use_slow_down":          true,
   "use_rate_limiter":       true,
@@ -13,6 +16,7 @@
   "use_output_limiter":     true,
   "use_ip_blacklist":       true,
   "use_tokens":             false,
+  "use_websocket":          false,
   "allowed_commands":       [
       "account_history",
       "account_info",
@@ -37,28 +41,29 @@
     "representatives_online": 300
   },
   "limited_commands":       {
-    "account_history":      500,
-    "chain":                500,
-    "frontiers":            500,
-    "pending":              500
+    "account_history":        500,
+    "chain":                  500,
+    "frontiers":              500,
+    "pending":                500
   },
-  "ip_blacklist":          [
+  "ip_blacklist":           [
     "8.8.8.8"
   ],
-  "slow_down":        {
-    "time_window":        600000,
-    "request_limit":      100,
-    "delay_increment":    200,
-    "max_delay":          5000
+  "slow_down":              {
+    "time_window":            600000,
+    "request_limit":          100,
+    "delay_increment":        200,
+    "max_delay":              5000
   },
-  "rate_limiter":        {
-    "time_window":        86400000,
-    "request_limit":      1000
+  "rate_limiter":           {
+    "time_window":            86400000,
+    "request_limit":          1000
   },
   "ddos_protection":        {
-    "time_window":        1000,
-    "request_limit":      2
+    "time_window":            1000,
+    "request_limit":          2
   },
-  "proxy_hops":           0,
-  "log_level":            "info"
+  "proxy_hops":               0,
+  "websocket_max_accounts":   100,
+  "log_level":                "info"
 }

@@ -1,4 +1,3 @@
-
 # NanoRPCProxy
 NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has no built-in functionality for user authentication, rate-limiting or caching which makes it dangerous to open up without protection as this proxy provides. With NanoRPCProxy you can, for example, serve a mobile app or web frontend with indirect node calls.
 
@@ -8,14 +7,27 @@ The built-in token system makes it possible to serve requests beyond the default
 
 Demo clients/code for Curl, JS, REACT, Python and Flask are available to test your own server.
 
-**A public API demo client with token purchases for the live Nano network is available [HERE](https://api.nanos.cc)**
+**A public API demo client with token support: https://api.nanos.cc**
 
 * [Video - Full features / settings walk-through with live demo](https://youtu.be/j6qxOYWWpSE)
 * [Video - Demo purchasing request tokens](https://youtu.be/PEKiYhJbi5o)
 
+---
+
+In addition to the RPC interface, NanoRPCProxy also has built-in support for certain websocket subscriptions offered by the Nano node, for example block confirmations.
+Similar to the RPC, the websocket is DDOS protected and acts as a secure layer between the client and the node. This allows for example a public websocket open to everyone who needs to track certain accounts in real-time, without the need to set up their own node. That could be, but not limited to:
+
+* Microprocessors controlling hardware (IoT) like animal feeder, beer dispenser, door locks, arcade machines, exhibition demos, hobby projects, etc
+* Web apps with features activated by payments, wallet alert/tracking, payment listener, games, etc
+
+Demo clients for websocket is available for JS (web) and Node.js. More info in the "how to use" section.
+**A public websocket demo: https://api.nanos.cc/socket**
+
+
 ## Features
 * Fully customizable via a settings file
 * Supports any RPC command for any remote client; like wallets, exchanges, apps, games, bots or public API
+* Support websocket subscriptions for block confirmations (multiple accounts allowed)
 * Caching of certain request actions to lower the RPC burden
 * Limits the number of response objects, like the number of pending transactions
 * Slows down IPs that doing requests above limit (Overridden by purchased tokens)
@@ -141,9 +153,12 @@ It may happen that the settings files are expanded. In that case, you need to do
 ## How to customize the proxy server
 The proxy server is configured via the **settings.json** file found in the server folder
 
-* **node_url:** Nano node RPC url (default for main network is 'http://[::1]:7076' and for beta network 'http://[::1]:55000') [number]
-* **http_port:** Port to listen on for http (enabled default with the setting <use_http>) [number]
-* **https_port:** Port to listen on for https (disabled default with the setting <use_https>) [number]
+* **node_url:** Nano node RPC url (default for main network is 'http://[::1]:7076' and for beta network 'http://[::1]:55000') [url]
+* **node_ws_url:** Nano node websocket url (default for main network is 'http://[::1]:7078' and for beta network 'http://[::1]:57000') [url]
+* **http_port:** Port to listen on for http (requires <use_http>) [number]
+* **https_port:** Port to listen on for https (requires <use_https>) [number]
+* **websocket_http_port:** Port to listen on for http websocket connection (requires <use_http> and <use_websocket>) [number]
+* **websocket_https_port:** Port to listen on for https websocket connection (requires <use_https> and <use_websocket>) [number]
 * **use_auth:** If require username and password when connecting to the proxy. Defined in **creds.json** [true/false]
 * **use_slow_down:** If slowing down requests for IPs doing above set limit (defined in <slow_down>) [true/false]
 * **use_rate_limiter:** If blocking IPs for a certain amount of time when they request above set limit (defined in <rate_limiter>). This request limit, requests remaining and timestamp for reset will also be included in the response header as "X-RateLimit-Limit", "X-RateLimit-Remaining", and "X-RateLimit-Reset". Additionally included in the json response as well as "requestsLimit", "requestsRemaining" and "requestLimitReset". For example if 1000 / day is allowed for free, the user will see how many are left to use. This filter is skipped when using tokens. [true/false]
@@ -153,8 +168,9 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **use_output_limiter:** If limiting number of response objects, like pending transactions, to a certain max amount set in <limited_commands>. Only valid for RPC actions that have a "count" key [true/false] [true/false]
 * **use_ip_blacklist:** If always blocking certain IPs set in <ip_blacklist> [true/false]
 * **use_tokens** If activating the token system for purchase via Nano [true/false] (more information further down)
-* **https_cert:** File path for pub cert file [absolute path string]
-* **https_key:** File path for private key file [absolute path string]
+* **use_websocket** If activating the websocket system [true/false] (more information further down)
+* **https_cert:** File path for pub cert file (requires <use_https>) [absolute path string]
+* **https_key:** File path for private key file (requires <use_https>) [absolute path string]
 * **allowed_commands:** A list of RPC actions to allow [list]
 * **cached_commands:** A list of commands [key] that will be cached for corresponding duration in seconds as [value]
 * **limited_commands:** A list of commands [key] to limit the output response for with max count as [value]
@@ -162,6 +178,7 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **slow_down:** Contains the settings for slowing down requests. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will start slowing down requests with increments of <delay_increment> [ms] with a maximum total delay defined in <max_delay> [ms]
 * **rate_limiter:** Contains the settings for the rate limiter. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will block the IP until the time slot has passed. Then the IP can start requesting again. To permanently ban IPs they have to be manually added to <ip_blacklist> and activating <use_ip_blacklist>.
 * **proxy_hops** If the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here. Example: api.example.com is proxied through Cloudflare to IP 1.1.1.1 and then local Nginx server is proxying api.example.com to localhost:9950. Proxyhops will be 2.
+* **websocket_max_accounts** Maximum number of accounts per IP allowed for block confirmation subscription [number]
 * **log_level:** It can be set to either "info" which will output all logs, "warning" which will only output warning messages or "none" which will only log the initial settings.
 
 ---
@@ -246,7 +263,7 @@ The curl command looks just a tiny bit different than for a direct node request.
             print(r.json())
         except:
             print(r)
-    except Exception as e:
+            except Exception as e:
         print("Fatal error", e)
 
 **POST: With authentication**
@@ -397,10 +414,52 @@ Order completed:
 ![React demo app - Token purchase complete](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_react_03.png)
 
 ---
+### The Websocket System
+A Nano node provides a websocket that can be subscribed to for real-time messages, for example block confirmation, voting analysis and telemetry. More info can be found [here](https://docs.nano.org/integration-guides/websockets/).
+Like the RPC interface, NanoRPCProxy provide a websocket server with DDOS protection and bandwidth limitation by only allowing certain subscriptions and data amount. It subscribes to the Nano node locally with the clients subscribing to the proxy itself to act as a secure layer and protect the node. This means only one node subscription is needed to serve all clients and several clients can listen on the same account with no increase in node communication. Thus, the node websocket does not need to be exposed publicly.
+
+The supported messages are shown below:
+
+**Subscribe to block confirmations**
+Just like the node you can subscribe to confirmed blocks on the network with one difference. Here you must specify the accounts with the maximum allowed number defined in the settings parameter <websocket_max_accounts>.
+
+	{
+      "action": "subscribe",
+      "topic": "confirmation",
+      "options": {
+        "accounts": [<account1>,<account2>]
+      }
+	}
+
+**Response**
+
+  {
+    "topic": "confirmation",
+    "time": "1590331435605",
+    "message": {
+      "account": "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue",
+      "amount": "10000000",
+      "hash": "2B779B43B3CF95AFAA63AD696E6546DB7945BCE5CC5A78F670FFD41BCA998D1E",
+      "confirmation_type": "active_quorum",
+      "block": {
+        "type": "state",
+        "account": "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue",
+        "previous": "FC5AE29E3BD13A5D8D26EA2632871D2CFE7856BF4E83E75FA90B72AC95054635",
+        "representative": "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue",
+        "balance": "946740088999999996972769989996",
+        "link": "90A12364A96F6F31EDC3ADA115E88B3AEAEA05C6A78A79023CFDEFB4D901FCD6",
+        "link_as_account": "nano_36736fkckuuh89pw9df34qnapgqcxa4wfbwch635szhhpmei5z8pttkxawk1",
+        "signature": "9C6A45460C946387A267EE6B5AEFE17C4C036C7B5E10239BC492CAAD180B4E0AD42A02875DC7B4FEF52B5FE8FD73BA3D28E0CCF8FDCFF86AA2938822E88A600B",
+        "work": "bed7a7d8ab438039",
+        "subtype": "send"
+      }
+    }
+  }
+
+
+---
 ### Error handling
 If error or warnings occurs in the server when calling it the client will need to handle that. The response is (along with a http status code != 200):
-
-    {"error": "The error message"}
 
 ---
 ### Logging and Stats

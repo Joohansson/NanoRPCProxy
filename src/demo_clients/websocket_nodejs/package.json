@@ -1,0 +1,16 @@
+{
+  "name": "NanoRPCProxy",
+  "version": "1.0.0",
+  "description": "Websocket demo",
+  "main": "client.js",
+  "license": "MIT",
+  "repository": "https://github.com/Joohansson/NanoRPCProxy",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node -r esm client.js"
+  },
+  "homepage": "https://github.com/joohansson/NanoRPCProxy",
+  "dependencies": {
+    "websocket": "^1.0.31"
+  }
+}

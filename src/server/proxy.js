@@ -1,19 +1,22 @@
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
-const NodeCache =     require("node-cache" )
-const SlowDown =      require("express-slow-down")
-const BasicAuth =     require('express-basic-auth')
-const Http =          require('http')
-const Https =         require('https')
-const Fs =            require('fs')
-const Express =       require('express')
-const Cors =          require('cors')
-const IpFilter =      require('express-ipfilter').IpFilter
-const IpDeniedError = require('express-ipfilter').IpDeniedError
-const Promise =       require('promise')
-const Schedule =      require('node-schedule')
-const Tokens =        require('./tokens')
-const Tools =         require('./tools')
+const NodeCache =             require("node-cache" )
+const SlowDown =              require("express-slow-down")
+const BasicAuth =             require('express-basic-auth')
+const Http =                  require('http')
+const Https =                 require('https')
+const Fs =                    require('fs')
+const Express =               require('express')
+const Cors =                  require('cors')
+const IpFilter =              require('express-ipfilter').IpFilter
+const IpDeniedError =         require('express-ipfilter').IpDeniedError
+const Promise =               require('promise')
+const Schedule =              require('node-schedule')
+const WebSocketServer =       require('websocket').server
+const ReconnectingWebSocket = require('reconnecting-websocket')
+const WS =                    require('ws')
+const Tokens =                require('./tokens')
+const Tools =                 require('./tools')
 const log_levels = {none:"none", warning:"warning", info:"info"}
 const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
@@ -21,14 +24,21 @@ const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 const Low = require('lowdb')
 const FileSync = require('lowdb/adapters/FileSync')
 const Adapter = new FileSync('db.json')
+const Adapter2 = new FileSync('websocket.json')
 const order_db = Low(Adapter)
+const tracking_db = Low(Adapter2)
 order_db.defaults({orders: []}).write()
+tracking_db.defaults({users: []}).write()
+tracking_db.update('users', n => []).write() //emty db on each new run
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
 var users = []                      // a list of base64 user/password credentials
 var node_url = 'http://[::1]:7076'  // nano node RPC url (default for beta network is 'http://[::1]:55000')
+var node_ws_url = "ws://127.0.0.1:57000" // node websocket server (only used if activated with use_websocket)
 var http_port = 9950                // port to listen on for http (enabled default with use_http)
 var https_port = 9951               // port to listen on for https (disabled default with use_https)
+var websocket_http_port = 9952      // port to listen on for http websocket connection (only used if activated with use_websocket)
+var websocket_https_port = 9953     // port to listen on for https websocket connection (only used if activated with use_websocket)
 var max_request_count = 500         // max count of various rpc responses like pending transactions
 var use_auth = false                // if require username and password when connecting to proxy
 var use_slow_down = false           // if slowing down requests for IPs doing above set limit (defined in slow_down)
@@ -39,6 +49,7 @@ var use_https = false               // listen on https (inactive by default) (a 
 var use_output_limiter = false      // if limiting number of response objects, like pending transactions, to a certain max amount set in limited_commands. Only supported for RPC actions that have a "count" key
 var use_ip_blacklist = false        // if blocking access to IPs listed in ip_blacklist
 var use_tokens = false              // if activating the token system for purchase via Nano
+var use_websocket = false           // if enable subscriptions on the node websocket (protected by the proxy)
 var https_cert = ""                 // file path for pub cert file
 var https_key = ""                  // file path for private key file
 var allowed_commands = []           // only allow RPC actions in this list
@@ -50,6 +61,7 @@ var ddos_protection = {}            // contains the settings for the ddos protec
 var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
 var ip_blacklist = []               // a list of IPs to deny always
 var proxy_hops = 0                  // if the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here.
+var websocket_max_accounts = 100    // maximum number of accounts allowed to subscribe to for block confirmations
 
 // default vars
 cache_duration_default = 60
@@ -60,6 +72,9 @@ const PriceUrl = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
 //const PriceUrl2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
 //const CMC_API_KEY = 'xxx'
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
+var ws = null
+var global_tracked_accounts = [] // the accounts to track in websocket (synced with database)
+var websocket_connections = {} // active ws connections
 
 var user_use_cache = null
 var user_use_output_limiter = null
@@ -81,7 +96,7 @@ function appendFile(msg) {
         return logThis("Error saving request stat file: " + err.toString(), log_levels.info)
     }
     logThis("The request stat file was updated!", log_levels.info)
-  });
+  })
 }
 // ---
 
@@ -101,8 +116,11 @@ catch(e) {
 try {
   const settings = JSON.parse(Fs.readFileSync('settings.json', 'UTF-8'))
   node_url = settings.node_url
+  node_ws_url = settings.node_ws_url
   http_port = settings.http_port
   https_port = settings.https_port
+  websocket_http_port = settings.websocket_http_port
+  websocket_https_port = settings.websocket_https_port
   use_auth = settings.use_auth
   use_slow_down = settings.use_slow_down
   use_rate_limiter = settings.use_rate_limiter
@@ -112,6 +130,7 @@ try {
   use_https = settings.use_https
   use_ip_blacklist = settings.use_ip_blacklist
   use_tokens = settings.use_tokens
+  use_websocket = settings.use_websocket
   https_cert = settings.https_cert
   https_key = settings.https_key
   cached_commands = settings.cached_commands
@@ -123,6 +142,7 @@ try {
   ddos_protection = settings.ddos_protection
   ip_blacklist = settings.ip_blacklist
   proxy_hops = settings.proxy_hops
+  websocket_max_accounts = settings.websocket_max_accounts
 
   // Clone default settings for custom user specific vars, to be used if no auth
   if (!use_auth) {
@@ -155,6 +175,11 @@ console.log("PROXY SETTINGS:\n-----------")
 console.log("Node url: " + node_url)
 console.log("Http port: " + String(http_port))
 console.log("Https port: " + String(https_port))
+if (use_websocket) {
+  console.log("Websocket http port: " + String(websocket_http_port))
+  console.log("Websocket https port: " + String(websocket_https_port))
+  console.log("Websocket nax accounts: " + String(websocket_max_accounts))
+}
 console.log("Use authentication: " + use_auth)
 console.log("Use slow down: " + use_slow_down)
 console.log("Use rate limiter: " + use_rate_limiter)
@@ -162,6 +187,7 @@ console.log("Use cached requests: " + use_cache)
 console.log("Use output limiter: " + use_output_limiter)
 console.log("Use IP blacklist: " + use_ip_blacklist)
 console.log("Use token system: " + use_tokens)
+console.log("Use websocket system: " + use_websocket)
 console.log("Listen on http: " + use_http)
 console.log("Listen on https: " + use_https)
 
@@ -479,6 +505,30 @@ function appendRateLimiterStatus(res, data) {
   return data
 }
 
+// Update current list of tracked accounts
+function updateTrackedAccounts() {
+  const confirmation_subscription = {
+    "action": "subscribe",
+    "topic": "confirmation",
+    "ack":true,
+    "options": { "all_local_accounts": false,
+      "accounts": global_tracked_accounts
+    }}
+  ws.send(JSON.stringify(confirmation_subscription))
+}
+
+// Log function
+function logThis(str, level) {
+  if (user_log_level == log_levels.info || level == user_log_level) {
+    if (level == log_levels.info) {
+      console.info(str)
+    }
+    else {
+      console.warn(str)
+    }
+  }
+}
+
 // Custom error class
 class APIError extends Error {
   constructor(code, ...params) {
@@ -694,10 +744,24 @@ async function processRequest(query, req, res) {
   }
 }
 
+var websocket_servers = []
 // Create an HTTP service
 if (use_http) {
-  console.log("Starting http server")
-  Http.createServer(app).listen(http_port)
+  Http.createServer(app).listen(http_port, function() {
+    console.log("Http server started on port: " + http_port)
+  })
+
+  // websocket
+  if (use_websocket) {
+    var ws_http_server = Http.createServer(function(request, response) {
+      response.writeHead(404)
+      response.end()
+    })
+    ws_http_server.listen(websocket_http_port, function() {
+      console.log('Websocket server is listening on port ' + websocket_http_port)
+    })
+    websocket_servers.push(ws_http_server)
+  }
 }
 
 // Create an HTTPS service
@@ -705,13 +769,13 @@ if (use_https) {
   // Verify that cert files exists
   var cert_exists = false
   var key_exists = false
-  Fs.access(https_cert, fs.F_OK, (err) => {
+  Fs.access(https_cert, Fs.F_OK, (err) => {
     if (err) {
       console.log("Warning: Https cert file does not exist!")
     }
     cert_exists = true
   })
-  Fs.access(https_key, fs.F_OK, (err) => {
+  Fs.access(https_key, Fs.F_OK, (err) => {
     if (err) {
       console.log("Warning: Https key file does not exist!")
     }
@@ -722,22 +786,238 @@ if (use_https) {
       cert: Fs.readFileSync(https_cert),
       key: Fs.readFileSync(https_key)
     }
-    console.log("Starting https server")
-    Https.createServer(https_options, app).listen(https_port)
+
+    Https.createServer(https_options, app).listen(https_port, function() {
+      console.log("Https server started on port: " + https_port)
+    })
+
+    // websocket
+    if (use_websocket) {
+      var ws_https_server = Https.createServer(https_options, function(request, response) {
+        response.writeHead(404)
+        response.end()
+      })
+      ws_https_server.listen(websocket_https_port, function() {
+        console.log('Websocket server is listening on port ' + websocket_https_port)
+      })
+      websocket_servers.push(ws_https_server)
+    }
   }
   else {
     console.log("Warning: Will not listen on https!")
   }
 }
 
-// Log function
-function logThis(str, level) {
-  if (user_log_level == log_levels.info || level == user_log_level) {
-    if (level == log_levels.info) {
-      console.info(str)
+// WEBSOCKET SERVER
+//---------------------
+if (use_websocket) {
+  wsServer = new WebSocketServer({
+    httpServer: websocket_servers,
+    // You should not use autoAcceptConnections for production
+    // applications, as it defeats all standard cross-origin protection
+    // facilities built into the protocol and the browser.  You should
+    // *always* verify the connection's origin and decide whether or not
+    // to accept it.
+    autoAcceptConnections: false
+  })
+
+  // websocket ddos protection settings
+  const websocket_limiter = new RateLimiterMemory({
+    keyPrefix: 'limit_websocket',
+    points: ddos_protection.request_limit, // limit each IP to x requests per duration
+    duration: Math.round(ddos_protection.time_window/1000), // rolling time window in sec
+  })
+
+  wsServer.on('request', async function(request) {
+    if (!originIsAllowed(request.origin)) {
+      // Make sure we only accept requests from an allowed origin
+      request.reject()
+      logThis('Connection from origin ' + request.origin + ' rejected.', log_levels.info)
+      return
     }
-    else {
-      console.warn(str)
+
+    // DDOS Protection
+    try {
+      await websocket_limiter.consume(request.remoteAddress, 1) // consume 1 point
+    }
+    // max amount of connections reached
+    catch (rlRejected) {
+      if (rlRejected instanceof Error) {
+        throw rlRejected;
+      } else {
+        request.reject()
+        return
+      }
+    }
+    try {
+      var connection = request.accept('echo-protocol', request.origin)
+    }
+    catch {
+      logThis('Bad protocol from connecting client', log_levels.info)
+      return
+    }
+    let remote_ip = connection.remoteAddress
+    logThis('Websocket Connection accepted from: ' + remote_ip, log_levels.info)
+    connection.on('message', function(message) {
+      if (message.type === 'utf8') {
+          console.log('Received Message: ' + message.utf8Data + ' from ' + remote_ip)
+          try {
+            let msg = JSON.parse(message.utf8Data)
+            // new subscription
+            if ('action' in msg && 'topic' in msg && msg.action === 'subscribe') {
+              if (msg.topic === 'confirmation') {
+                if ('options' in msg && 'accounts' in msg.options) {
+                  if (msg.options.accounts.length <= websocket_max_accounts) {
+                    // save connection to global dicionary to reuse when getting messages from the node websocket
+                    websocket_connections[remote_ip] = connection
+
+                    // mirror the subscription to the real websocket
+                    var tracking_updated = false
+                    msg.options.accounts.forEach(function(address) {
+                      if (trackAccount(connection, address)) {
+                        tracking_updated = true
+                      }
+                    })
+                    if (tracking_updated) {
+                      updateTrackedAccounts() //update the websocket subscription
+                    }
+                    connection.sendUTF(JSON.stringify({'ack':'subscribe'}, null, 2))
+                  }
+                  else {
+                    connection.sendUTF(JSON.stringify({'error':'Too many accounts subscribed'}, null, 2))
+                  }
+                }
+                else {
+                  connection.sendUTF(JSON.stringify({'error':'You must provide the accounts to track via the options parameter'}, null, 2))
+                }
+              }
+            }
+            else if ('action' in msg && 'topic' in msg && msg.action === 'unsubscribe') {
+              if (msg.topic === 'confirmation') {
+                logThis('User unsubscribed from confirmation: ' + remote_ip, log_levels.info)
+                tracking_db.get('users').find({ip: remote_ip}).assign({'tracked_accounts':[]}).write()
+              }
+            }
+          }
+          catch (e) {
+            console.log(e)
+          }
+      }
+    })
+    connection.on('close', function(reasonCode, description) {
+      logThis('Websocket disconnected for: ' + remote_ip, log_levels.info)
+      tracking_db.get('users').remove({ip: remote_ip}).write()
+    })
+  })
+}
+
+function originIsAllowed(origin) {
+  // put logic here to detect whether the specified origin is allowed.
+  // TODO
+  return true
+}
+
+// Start websocket subscription for an address
+function trackAccount(connection, address) {
+  if (!Tools.validateAddress(address)) {
+    return false
+  }
+  let remote_ip = connection.remoteAddress
+  // get existing tracked accounts
+  let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
+  var current_tracked_accounts = {} //if not in db, use empty dict
+  if (current_user !== undefined) {
+    current_tracked_accounts = current_user.tracked_accounts
+  }
+
+  // check if account is not already tracked
+  var address_exists = false
+  for (const [key, value] of Object.entries(current_tracked_accounts)) {
+    if (key === address)  {
+      address_exists = true
     }
   }
+
+  // start tracking new address
+  if (!address_exists) {
+    current_tracked_accounts[address] = {timestamp: Math.floor(Date.now()/1000)} // append new tracking
+
+    // add user and tracked account to db
+    if (current_user === undefined) {
+      const userinfo = {
+        ip : remote_ip,
+        tracked_accounts : current_tracked_accounts
+      }
+      tracking_db.get('users').push(userinfo).write()
+    }
+    // update existing user
+    else {
+      tracking_db.get('users').find({ip: remote_ip}).assign({tracked_accounts: current_tracked_accounts}).write()
+    }
+
+    // check if account is already tracked globally or start tracking
+    var tracking_exists = false
+    global_tracked_accounts.forEach(function(tracked_address) {
+      if (tracked_address === address) {
+        tracking_exists = true
+      }
+    })
+    if (!tracking_exists) {
+      global_tracked_accounts.push(address)
+      return true
+    }
+  }
+  return false
+}
+
+//WEBSOCKET CLIENT FOR NANO NODE
+// Create a reconnecting WebSocket.
+// we wait a maximum of 2 seconds before retrying.
+if (use_websocket) {
+  ws = new ReconnectingWebSocket(node_ws_url, [], {
+    WebSocket: WS,
+    connectionTimeout: 1000,
+    maxRetries: 100000,
+    maxReconnectionDelay: 2000,
+    minReconnectionDelay: 10 // if not set, initial connection will take a few seconds by default
+  })
+
+  // A tracked account was detected
+  ws.onmessage = msg => {
+    data_json = JSON.parse(msg.data)
+
+    // Check if the tracked account belongs to a user
+    if (data_json.topic === "confirmation") {
+      let observed_account = data_json.message.account
+      let observed_link = data_json.message.block.link_as_account
+
+      // FOR ACCOUNT TRACKING
+      let tracked_accounts = tracking_db.get('users').value()
+      // loop all existing tracked accounts as subscribed to by users
+      tracked_accounts.forEach(async function(user) {
+        if ("tracked_accounts" in user && "ip" in user) {
+          // loop all existing accounts for that user
+          for (const [key, value] of Object.entries(user.tracked_accounts)) {
+            if (key === observed_account || key === observed_link) {
+              // send message to each subscribing user for this particular account
+              logThis('A tracked account was pushed to client: ' + key, log_levels.info)
+              websocket_connections[user.ip].sendUTF(msg.data)
+            }
+          }
+        }
+      })
+    }
+    else if ("ack" in data_json) {
+      if (data_json.ack === "subscribe") {
+        console.log("Websocket subscription updated")
+      }
+    }
+  }
+
+  // As soon as we connect, subscribe to confirmations (as of now there are none while we start up the server)
+  /*
+  ws.onopen = () => {
+    updateTrackedAccounts()
+  }
+  */
 }

@@ -105,6 +105,7 @@ dist
 
 #NanoNodeProxy Server
 db.json
+websocket.json
 counters.stat
 samples.stat
 settings.json

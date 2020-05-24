@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <title>NanoRPCProxy Client</title>
+    <script type="text/javascript" src="client.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-base64@2.5.2/base64.min.js"></script>
+
+    <style>
+      body {
+        background-color: #000034;
+        color:#EEE;
+        margin-top: 5vh;
+        width: 100%;
+        text-align: center;
+      }
+      .btn {
+        padding-left:10px;
+        padding-right: 10px;
+        height: 30px;
+        margin-top: 10px;
+      }
+      textarea {
+        width: 100%;
+      }
+      #myInput {
+        width: 100%;
+      }
+      .main {
+        width: 80%;
+        max-width: 1100px;
+        margin: 0 auto;
+        margin-top: 2vh;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+      .code {
+        width: 400px;
+        margin: 0 auto;
+        margin-top: 2vh;
+      }
+      pre {
+        text-align: left;
+      }
+      a {
+        color: #4a90e2;
+        text-decoration: none;
+      }
+
+      a:hover, a:focus {
+        color: #377ccc;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Demo client for subscribing to <a href="https://github.com/Joohansson/NanoRPCProxy">NanoRPCProxy</a> websocket</h3>
+    <p>Enter Nano accounts to track (comma separated)<br/>
+      See <a href="https://docs.nano.org/integration-guides/websockets/">documentation</a> for more info about websockets<br/>
+    </p>
+    <p>
+      <strong>Websocket message for block confirmations (ws://localhost:9952)</strong>
+    </p>
+    <div class="code">
+    <pre><code>      {
+        &quot;action&quot;: &quot;subscribe&quot;,
+        &quot;topic&quot;: &quot;confirmation&quot;,
+        &quot;options&quot;: {
+          &quot;accounts&quot;: [&quot;account1&quot;,&quot;account2&quot;]
+        }
+      }
+    </code></pre>
+    </div>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div class="main">
+      <input id="myInput" type="text" placeholder="nano_xxx,nano_yyy"/>
+      <input class="btn" type="button" value="Subscribe" onclick="callWebsocket();" />
+    </div>
+    <div class="main">
+      <textarea id="myTextarea" rows="15"></textarea>
+    </div>
+  </body>
+</html>
