@@ -58,15 +58,8 @@ function callRPC() {
 
 function handleRPCError(error) {
   if (error.code) {
-    // IP blocked
-    if (error.code === 429) {
-      console.log(RPC_LIMIT)
-      document.getElementById("myTextarea").value = RPC_LIMIT
-    }
-    else {
-      console.log("RPC request failed: "+error.message)
-      document.getElementById("myTextarea").value = "RPC request failed: "+error.message
-    }
+    console.log("RPC request failed: "+error.message)
+    document.getElementById("myTextarea").value = "RPC request failed: "+error.message
   }
   else {
     console.log("RPC request failed: "+error)
@@ -97,12 +90,23 @@ async function postData(data = {}, server=NODE_SERVER) {
         referrerPolicy: 'no-referrer', // no-referrer, *client
         body: JSON.stringify(data) // body data type must match "Content-Type" header
       })
-      .then(function(response) {
+      .then(async function(response) {
           // Clear the timeout as cleanup
           clearTimeout(timeout);
           if(!didTimeOut) {
             if(response.status === 200) {
-                resolve(response);
+                resolve(await response.json())
+            }
+            // catch blocked (to display on the site)
+            else if(response.status === 429) {
+                resolve({"error":await response.text()})
+            }
+            // catch unauthorized (to display on the site)
+            else if(response.status === 401) {
+                resolve({"error": "unauthorized"})
+            }
+            else if(response.status === 500) {
+                resolve(await response.json())
             }
             else {
               throw new RPCError(response.status, resolve(response))
@@ -118,7 +122,7 @@ async function postData(data = {}, server=NODE_SERVER) {
   })
   .then(async function(result) {
       // Request success and no timeout
-      return await result.json()
+      return await result
   })
 }
 
