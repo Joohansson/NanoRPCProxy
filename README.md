@@ -530,6 +530,23 @@ Exit pipenv: **exit**
 ![Flask demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_js.png)
 
 ---
+### Websocket JS client
+1. Locate the directory demo_clients/websocket_js
+2. Open index.html in a browser
+
+![JS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_websocket_js.png)
+
+---
+### Websocket Node.js client
+1. Locate the directory demo_clients/websocket_nodejs
+2. Install required libraries: "npm install"
+3. Open client.js and edit the accounts to track (and possibly the ws_host url)
+4. Test the app in development mode: "node client.js"
+5. Watch the console when the Nano network detects a new confirmed block
+
+![JS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_websocket_nodejs.png)
+
+---
 ---
 ---
 ## Developer Donations
