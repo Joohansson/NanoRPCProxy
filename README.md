@@ -416,7 +416,7 @@ Order completed:
 ---
 ### The Websocket System
 A Nano node provides a websocket that can be subscribed to for real-time messages, for example block confirmation, voting analysis and telemetry. More info can be found [here](https://docs.nano.org/integration-guides/websockets/).
-Like with the RPC interface, NanoRPCProxy provides a websocket server with DDOS protection and bandwidth limitation by only allowing certain subscriptions and data amount. It subscribes to the Nano node locally with the clients subscribing to the proxy itself to act as a secure layer and protect the node. This means only one node subscription is needed to serve all clients and several clients can listen on the same account with no increase in node communication. Thus, the node websocket does not need to be exposed publicly.
+Like with the RPC interface, NanoRPCProxy provides a websocket server with blacklist / DDOS protection and bandwidth limitation by only allowing certain subscriptions and data amount. It subscribes to the Nano node locally with the clients subscribing to the proxy itself to act as a secure layer and protect the node. This means only one node subscription is needed to serve all clients and several clients can listen on the same account with no increase in node communication. Thus, the node websocket does not need to be exposed publicly. This solves the scalability issue where a node can't serve too many clients and lets the node do what it's supposed to do, ie. process blocks.
 
 ![NanoRPCProxy](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCProxy_ws.png)
 
