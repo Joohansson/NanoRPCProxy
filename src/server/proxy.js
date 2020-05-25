@@ -1014,7 +1014,7 @@ if (use_websocket) {
     }
     else if ("ack" in data_json) {
       if (data_json.ack === "subscribe") {
-        console.log("Websocket subscription updated")
+        logThis("Websocket subscription updated"), log_levels.info)
       }
     }
   }
