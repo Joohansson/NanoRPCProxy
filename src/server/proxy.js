@@ -982,9 +982,9 @@ if (use_websocket) {
   ws = new ReconnectingWebSocket(node_ws_url, [], {
     WebSocket: WS,
     connectionTimeout: 1000,
-    maxRetries: 100000,
-    maxReconnectionDelay: 2000,
-    minReconnectionDelay: 10 // if not set, initial connection will take a few seconds by default
+    maxRetries: Infinity,
+    maxReconnectionDelay: 8000,
+    minReconnectionDelay: 3000
   })
 
   // A tracked account was detected
@@ -1014,15 +1014,20 @@ if (use_websocket) {
     }
     else if ("ack" in data_json) {
       if (data_json.ack === "subscribe") {
-        logThis("Websocket subscription updated"), log_levels.info)
+        logThis("Websocket subscription updated", log_levels.info)
       }
     }
   }
 
   // As soon as we connect, subscribe to confirmations (as of now there are none while we start up the server)
-  /*
   ws.onopen = () => {
+    logThis("Node websocket is open", log_levels.info)
     updateTrackedAccounts()
   }
-  */
+  ws.onclose = () => {
+    logThis("Node websocket is closed", log_levels.info)
+  }
+  ws.onerror = (e) => {
+    logThis("Main websocket: " + e.error, log_levels.warning)
+  }
 }

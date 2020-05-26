@@ -11,6 +11,7 @@
   },
   "homepage": "https://github.com/joohansson/NanoRPCProxy",
   "dependencies": {
-    "websocket": "^1.0.31"
+    "reconnecting-websocket": "^4.4.0",
+    "ws": "^7.3.0"
   }
 }
