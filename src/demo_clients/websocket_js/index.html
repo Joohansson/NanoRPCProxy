@@ -15,35 +15,60 @@
         margin-top: 5vh;
         width: 100%;
         text-align: center;
+        font-size: calc(10px + 0.5vmin);
+        line-height: calc(10px + 1.2vmin);
       }
       .btn {
         padding-left:10px;
         padding-right: 10px;
-        height: 30px;
+        height: 35px;
+        width: 100px;
         margin-top: 10px;
+        background-color: #4a90e2;
+        border-radius: 6px;
+        border: none;
+        color: #fff;
+        font-size:
+      }
+      .btn:focus, .btn:hover {
+          color: #fff;
+          background-color: #0069d9;
+          border-color: #0062cc;
+          cursor: pointer;
       }
       textarea {
         width: 100%;
+        margin-top: 5px;
+        padding: 6px;
+        border-radius: 5px;
+        border: 1px #999 solid;
+        font-size: calc(10px + 0.3vmin);
       }
       #myInput {
         width: 100%;
+        padding: 6px;
+        border-radius: 5px;
+        border: 1px #999 solid;
+        font-size: calc(10px + 0.3vmin);
       }
       .main {
         width: 80%;
-        max-width: 1100px;
+        max-width: 900px;
         margin: 0 auto;
         margin-top: 2vh;
-        display: flex;
-        justify-content: space-between;
-        flex-wrap: wrap;
-      }
-      .code {
-        width: 400px;
-        margin: 0 auto;
-        margin-top: 2vh;
+        text-align: left;
       }
       pre {
         text-align: left;
+        font-size: calc(10px + 0.2vmin);
+        line-height: calc(10px + 0.7vmin);
+        margin-left: 20px;
+      }
+      h3{font-size: 1.5rem;}
+      p {
+        font-size: calc(10px + 0.7vmin);
+        line-height: calc(10px + 1.0vmin);
+        margin-bottom: 0.5rem;
       }
       a {
         color: #4a90e2;
@@ -58,29 +83,28 @@
     </style>
   </head>
   <body>
-    <h3>Demo client for subscribing to <a href="https://github.com/Joohansson/NanoRPCProxy">NanoRPCProxy</a> websocket</h3>
-    <p>Enter Nano accounts to track (comma separated)<br/>
-      See <a href="https://docs.nano.org/integration-guides/websockets/">documentation</a> for more info about websockets<br/>
-    </p>
-    <p>
-      <strong>Websocket message for block confirmations (ws://localhost:9952)</strong>
-    </p>
-    <div class="code">
-    <pre><code>      {
-        &quot;action&quot;: &quot;subscribe&quot;,
-        &quot;topic&quot;: &quot;confirmation&quot;,
-        &quot;options&quot;: {
-          &quot;accounts&quot;: [&quot;account1&quot;,&quot;account2&quot;]
-        }
-      }
-    </code></pre>
-    </div>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div class="main">
+      <div class="main">
+      <h3>Demo client for subscribing to <a href="https://github.com/Joohansson/NanoRPCProxy">NanoRPCProxy</a> websocket</h3>
+      <p>Enter Nano accounts to track (comma separated)<br/>
+        See <a href="https://docs.nano.org/integration-guides/websockets/">documentation</a> for more info about websockets<br/>
+      </p>
+      <p>
+        <strong>Message for block confirmations (ws://localhost:9952)</strong>
+      </p>
+      <div class="code">
+      <pre><code>{
+    &quot;action&quot;: &quot;subscribe&quot;,
+    &quot;topic&quot;: &quot;confirmation&quot;,
+    &quot;options&quot;: {
+      &quot;accounts&quot;: [&quot;account1&quot;,&quot;account2&quot;]
+    }
+}
+      </code></pre>
+      </div>
+      <noscript>You need to enable JavaScript to run this app.</noscript>
       <input id="myInput" type="text" placeholder="nano_xxx,nano_yyy"/>
       <input class="btn" type="button" value="Subscribe" onclick="callWebsocket();" />
-    </div>
-    <div class="main">
+
       <textarea id="myTextarea" rows="15"></textarea>
     </div>
   </body>
