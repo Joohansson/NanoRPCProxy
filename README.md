@@ -547,6 +547,19 @@ Exit pipenv: **exit**
 ![JS demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_websocket_nodejs.png)
 
 ---
+### Websocket Python client
+1. Locate the directory demo_clients/websocket_python/
+2. If you haven't, install pipenv to run the app in a virtual environment: **pip install pipenv** for Linux or **py -m pip install --user pipenv** for Windows. To call "pipenv" in Windows instead of "py -m pipenv" you can add the python script folder (provided by the installation log) to your environment PATH.
+3. Start the environment: **pipenv shell**
+4. Install the packages required: **pipenv sync**
+5. Open client.js and edit the accounts to track (and possibly the ws_host url)
+6. Test the subscription with "python client.py --a nano_xxx nano_yyy". In windows you use "py client.py".
+
+Exit pipenv: **exit**
+
+![Python demo app](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/client_demo_websocket_python.png)
+
+---
 ---
 ---
 ## Developer Donations
