@@ -3,7 +3,7 @@ NanoRPCProxy is a relay and protection system that operates between a client and
 
 **In reality, it can be used for Nano wallets, exchanges, block explorers, public APIs, monitor systems, Point of Sale or anything that communicates with a node.**
 
-The built-in token system makes it possible to serve requests beyond the default limits and monetize your backend via direct Nano token purchases.
+The built-in token system makes it possible to serve requests beyond the default limits and monetize your backend via direct Nano token purchases. More info in the [token section](#the-token-system).
 
 Demo clients/code for Curl, JS, REACT, Python and Flask are available to test your own server.
 
@@ -20,7 +20,7 @@ Similar to the RPC, the websocket is DDOS protected and acts as a secure layer b
 * Microprocessors controlling hardware (IoT) like animal feeder, beer dispenser, door locks, arcade machines, exhibition demos, hobby projects, etc
 * Web apps with features activated by payments, wallet alert/tracking, payment listener, games, etc
 
-Demo clients for websocket is available for JS (web) and Node.js. More info in the "how to use" section.
+Demo clients for websocket is available for JS (web) and Node.js. More info in the [websocket section](#the-websocket-system).
 
 **Public websocket demo: https://api.nanos.cc/socket**
 
@@ -195,7 +195,8 @@ The following parameters can be set in **user_settings.json** to override the de
 
 ---
 The following parameters can be set in **token_settings.json** for configuration of the token system. The system require the <use_tokens> to be active in **settings.json**
-More info about [The Token System](#the-token-system).
+
+More info about the token system [in this section](#the-token-system)
 
 * **work_server** Source for calculating PoW. Can be a node (http://[::1]:7076) (with enable_control active) or a [work server](https://github.com/nanocurrency/nano-work-server) which can be run as "./nano-work-server --gpu 0:0 -l 127.0.0.1:7000" and then set work_server to http://127.0.0.1:7000. Also available pre-compiled [here](https://github.com/guilhermelawless/nano-dpow/tree/master/client).
 * **token_price**: Purchase price per token [Nano]
