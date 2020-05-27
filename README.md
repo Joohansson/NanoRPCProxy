@@ -1,5 +1,5 @@
 # NanoRPCProxy
-NanoRPCProxy is a relay and protection system that sits between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has no built-in functionality for user authentication, rate-limiting or caching which makes it dangerous to open up without protection as this proxy provides. With NanoRPCProxy you can, for example, serve a mobile app or web frontend with indirect node calls.
+NanoRPCProxy is a relay and protection system that operates between a client and a Nano node RPC interface. It makes it possible to set the RPC interface public to the Internet without compromising the security of the node itself. The Nano node has no built-in functionality for user authentication, rate-limiting or caching which makes it dangerous to open up without protection as this proxy provides. With NanoRPCProxy you can, for example, serve a mobile app or web frontend with indirect node calls.
 
 **In reality, it can be used for Nano wallets, exchanges, block explorers, public APIs, monitor systems, Point of Sale or anything that communicates with a node.**
 
@@ -21,13 +21,15 @@ Similar to the RPC, the websocket is DDOS protected and acts as a secure layer b
 * Web apps with features activated by payments, wallet alert/tracking, payment listener, games, etc
 
 Demo clients for websocket is available for JS (web) and Node.js. More info in the "how to use" section.
+
 **Public websocket demo: https://api.nanos.cc/socket**
 
+Apart from increased security, NanoRPCProxy solves the scalability issue where a node can't serve too many clients and lets the node do what it's supposed to do, ie. process blocks as fast as possible. The system can be scaled up to serve thousands of clients with only one connection to the node per proxy server.
 
 ## Features
 * Fully customizable via a settings file
 * Supports any RPC command for any remote client; like wallets, exchanges, apps, games, bots or public API
-* Supports websocket subscriptions for block confirmations; like account tracking (multiple accounts allowed)
+* Supports websocket subscriptions for block confirmations; like account tracking (multiple accounts allowed) and public endpoint
 * Caching of certain request actions to lower the RPC burden
 * Limits the number of response objects, like the number of pending transactions
 * Slows down IPs that doing requests above limit (Overridden by purchased tokens)
@@ -40,9 +42,9 @@ Demo clients for websocket is available for JS (web) and Node.js. More info in t
 * Optional token system for requests with built-in Nano purchases => independent of any 3rd party payment processors => unlimited implementation possibilities
 * Supports POST requests like the RPC, ie. payload = {"action":"block_count"}
 * Supports GET requests, ie. URL query = /proxy/?action=block_count
-* Listens on http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
+* Both RPC and websocket support http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
 * Works with both beta and main Nano network
-* Demo clients/code
+* Multiple demo clients for developers
 * 100% free to use, develop or sell with open-source MIT license
 
 **Possible use cases**
@@ -416,7 +418,7 @@ Order completed:
 ---
 ### The Websocket System
 A Nano node provides a websocket that can be subscribed to for real-time messages, for example block confirmation, voting analysis and telemetry. More info can be found [here](https://docs.nano.org/integration-guides/websockets/).
-Like with the RPC interface, NanoRPCProxy provides a websocket server with blacklist / DDOS protection and bandwidth limitation by only allowing certain subscriptions and data amount. It subscribes to the Nano node locally with the clients subscribing to the proxy itself to act as a secure layer and protect the node. This means only one node subscription is needed to serve all clients and several clients can listen on the same account with no increase in node communication. Thus, the node websocket does not need to be exposed publicly. This solves the scalability issue where a node can't serve too many clients and lets the node do what it's supposed to do, ie. process blocks.
+Like with the RPC interface, NanoRPCProxy provides a websocket server with blacklist / DDOS protection and bandwidth limitation by only allowing certain subscriptions and data amount. It subscribes to the Nano node locally with the clients subscribing to the proxy itself to act as a secure layer and protect the node. This means only one node subscription is needed to serve all clients and several clients can listen on the same account with no increase in node communication. Thus, the node websocket does not need to be exposed publicly.
 
 ![NanoRPCProxy](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCProxy_ws.png)
 
