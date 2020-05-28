@@ -77,8 +77,10 @@ module.exports = {
     return insert.add(val).toString()
   },
   rawToMnano: function (input) {
-    //return this.isNumeric(input) ? nano.convert(input, {from: nano.Unit.raw, to: nano.Unit.NANO}) : 'N/A'
     return isNumeric(input) ? Nano.convert(input, {from: Nano.Unit.raw, to: Nano.Unit.NANO}) : 'N/A'
+  },
+  MnanoToRaw: function (input) {
+    return isNumeric(input) ? Nano.convert(input, {from: Nano.Unit.NANO, to: Nano.Unit.raw}) : 'N/A'
   },
   // Validate nano address, both format and checksum
   validateAddress: function (address) {

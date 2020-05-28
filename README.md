@@ -226,7 +226,55 @@ However, if authentication is activated in the server settings, basic auth heade
 
 ### Special RPC commands
 The proxy server also support special commands not supported in the Nano RPC. They need to be listed in the **settings.json** under "allowed_commands"
-* **{"action":"price"}** Returns the latest Nano price quote from Coinpaprika. Will always be cached for 10sec.
+* **{"action":"price"}**
+
+Returns the latest Nano price quote from Coinpaprika. Will always be cached for 10sec.
+
+    {
+      "id": "nano-nano",
+      "name": "Nano",
+      "symbol": "NANO",
+      "rank": 62,
+      "circulating_supply": 133248297,
+      "total_supply": 133248297,
+      "max_supply": 133248290,
+      "beta_value": 0.975658,
+      "last_updated": "2020-05-28T12:34:54Z",
+      "quotes": {
+        "USD": {
+          "price": 0.86498056,
+          "volume_24h": 5450637.5460105,
+          "volume_24h_change_24h": 12,
+          "market_cap": 115257186,
+          "market_cap_change_24h": -5.21,
+          "percent_change_1h": -0.59,
+          "percent_change_12h": -5.67,
+          "percent_change_24h": -5.21,
+          "percent_change_7d": -6.96,
+          "percent_change_30d": 45.21,
+          "percent_change_1y": -49.99,
+          "ath_price": 37.6212,
+          "ath_date": "2018-01-02T06:39:00Z",
+          "percent_from_price_ath": -97.7
+        }
+      }
+    }
+
+* **{"action":"mnano_to_raw","amount":"1"}**
+
+Converts NANO to raw
+
+    {
+      "amount": "1000000000000000000000000000000"
+    }
+
+* **{"action":"mnano_from_raw","amount":"1"}**
+
+Converts raw to NANO
+
+    {
+      "amount": "0.000000000000000000000000000001"
+    }
 
 ---
 ### Using curl

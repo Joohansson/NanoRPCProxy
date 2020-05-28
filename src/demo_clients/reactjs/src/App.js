@@ -32,7 +32,8 @@ export const constants = {
     '{"action":"pending","account":"nano_1111111111111111111111111111111111111111111111111117353trpda","count":"5"}',
     '{"action": "process","json_block": "true","subtype": "send","block": {"type": "state","account": "nano_1qato4k7z3spc8gq1zyd8xeqfbzsoxwo36a45ozbrxcatut7up8ohyardu1z","previous": "6CDDA48608C7843A0AC1122BDD46D9E20E21190986B19EAC23E7F33F2E6A6766","representative": "nano_3pczxuorp48td8645bs3m6c3xotxd3idskrenmi65rbrga5zmkemzhwkaznh","balance": "40200000001000000000000000000000000","link": "87434F8041869A01C8F6F263B87972D7BA443A72E0A97D7A3FD0CCC2358FD6F9","link_as_account":"nano_33t5by1653nt196hfwm5q3wq7oxtaix97r7bhox5zn8eratrzoqsny49ftsd","signature": "A5DB164F6B81648F914E49CAB533900C389FAAD64FBB24F6902F9261312B29F730D07E9BCCD21D918301419B4E05B181637CF8419ED4DCBF8EF2539EB2467F07","work": "000bc55b014e807d"}}',
     '{"action":"representatives_online"}',
-    '{"action":"mrai_to_raw","amount":"1"}',
+    '{"action":"mnano_to_raw","amount":"1"}',
+    '{"action":"mnano_from_raw","amount":"1000000000000000000000000000000"}',
     '{"action":"price"}',
   ],
   // For dropdown titles
@@ -51,7 +52,8 @@ export const constants = {
     "pending",
     "process",
     "representatives_online",
-    "mrai_to_raw",
+    "mnano_to_raw",
+    "mnano_from_raw",
     "Nano price"
   ]
 }
