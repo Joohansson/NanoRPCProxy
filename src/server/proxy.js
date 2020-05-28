@@ -832,6 +832,7 @@ if (use_websocket) {
     }
 
     let remote_ip = request.remoteAddress
+    logThis('Websocket Connection requested from: ' + remote_ip, log_levels.info)
 
     // Black list protection
     if (ip_blacklist.includes(remote_ip)) {
@@ -860,7 +861,6 @@ if (use_websocket) {
       return
     }
 
-    logThis('Websocket Connection accepted from: ' + remote_ip, log_levels.info)
     connection.on('message', function(message) {
       if (message.type === 'utf8') {
           //console.log('Received Message: ' + message.utf8Data + ' from ' + remote_ip)
