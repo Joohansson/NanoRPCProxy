@@ -32,6 +32,13 @@
       "pending",
       "process",
       "representatives_online",
+      "krai_from_raw",
+      "krai_to_raw",
+      "mrai_from_raw",
+      "mrai_to_raw",
+      "rai_from_raw",
+      "rai_to_raw",
+      "sign",
       "price"
   ],
   "cached_commands":        {
