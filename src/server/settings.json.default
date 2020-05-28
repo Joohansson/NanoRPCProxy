@@ -32,14 +32,10 @@
       "pending",
       "process",
       "representatives_online",
-      "krai_from_raw",
-      "krai_to_raw",
-      "mrai_from_raw",
-      "mrai_to_raw",
-      "rai_from_raw",
-      "rai_to_raw",
       "sign",
-      "price"
+      "price",
+      "mnano_to_raw",
+      "mnano_from_raw"
   ],
   "cached_commands":        {
     "block_count":            30,

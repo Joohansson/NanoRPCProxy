@@ -687,6 +687,26 @@ async function processRequest(query, req, res) {
     }
     return
   }
+  if (query.action === 'mnano_to_raw') {
+    if ('amount' in query) {
+      let amount = Tools.MnanoToRaw(query.amount)
+      res.json(appendRateLimiterStatus(res, {"amount":amount}))
+    }
+    else {
+      return res.status(500).json({ error: 'Amount not provided!'})
+    }
+    return
+  }
+  if (query.action === 'mnano_from_raw') {
+    if ('amount' in query) {
+      let amount = Tools.rawToMnano(query.amount)
+      res.json(appendRateLimiterStatus(res, {"amount":amount}))
+    }
+    else {
+      return res.status(500).json({ error: 'Amount not provided!'})
+    }
+    return
+  }
   // ---
 
   // Read cache for current request action, if there is one
