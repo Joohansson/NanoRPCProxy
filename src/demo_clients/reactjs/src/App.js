@@ -20,6 +20,7 @@ export const constants = {
   SAMPLE_COMMANDS: [
     '{"action":"account_history", "account":"nano_3cpz7oh9qr5b7obbcb5867omqf8esix4sdd5w6mh8kkknamjgbnwrimxsaaf","count":"20"}',
     '{"action":"account_info","account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"}',
+    '{"action":"account_balance","account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"}',
     '{"action":"account_representative","account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"}',
     '{"action":"active_difficulty"}',
     '{"action":"available_supply"}',
@@ -40,6 +41,7 @@ export const constants = {
   SAMPLE_COMMAND_NAMES: [
     "account_history",
     "account_info",
+    "account_balance",
     "account_representative",
     "active_difficulty",
     "available_supply",
