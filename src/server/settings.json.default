@@ -20,6 +20,7 @@
   "allowed_commands":       [
       "account_history",
       "account_info",
+      "account_balance",
       "account_representative",
       "active_difficulty",
       "available_supply",
