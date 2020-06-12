@@ -730,7 +730,7 @@ async function processRequest(query, req, res) {
   if (user_use_output_limiter) {
     for (const [key, value] of Object.entries(user_limited_commands)) {
       if (query.action === key) {
-        if (parseInt(query.count) > value) {
+        if (parseInt(query.count) > value || !("count" in query)) {
           logThis("Response count was limited to " + value.toString(), log_levels.info)
           query.count = value
         }
