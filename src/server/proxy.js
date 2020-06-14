@@ -15,6 +15,7 @@ const Schedule =              require('node-schedule')
 const WebSocketServer =       require('websocket').server
 const ReconnectingWebSocket = require('reconnecting-websocket')
 const WS =                    require('ws')
+const Helmet =                require('helmet')
 const Tokens =                require('./tokens')
 const Tools =                 require('./tools')
 const log_levels = {none:"none", warning:"warning", info:"info"}
@@ -50,6 +51,7 @@ var use_output_limiter = false      // if limiting number of response objects, l
 var use_ip_blacklist = false        // if blocking access to IPs listed in ip_blacklist
 var use_tokens = false              // if activating the token system for purchase via Nano
 var use_websocket = false           // if enable subscriptions on the node websocket (protected by the proxy)
+var use_cors = true                 // if handling cors policy here, if not taken care of in upstream proxy (cors_whitelist=[] means allow ANY ORIGIN)
 var https_cert = ""                 // file path for pub cert file
 var https_key = ""                  // file path for private key file
 var allowed_commands = []           // only allow RPC actions in this list
@@ -62,6 +64,7 @@ var log_level = log_levels.none     // the log level to use (startup info is alw
 var ip_blacklist = []               // a list of IPs to deny always
 var proxy_hops = 0                  // if the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here.
 var websocket_max_accounts = 100    // maximum number of accounts allowed to subscribe to for block confirmations
+var cors_whitelist = []             // whitelist requester ORIGIN for example https://mywallet.com or http://localhost:8080 (require use_cors) [list of hostnames]
 
 // default vars
 cache_duration_default = 60
@@ -131,6 +134,7 @@ try {
   use_ip_blacklist = settings.use_ip_blacklist
   use_tokens = settings.use_tokens
   use_websocket = settings.use_websocket
+  use_cors = settings.use_cors
   https_cert = settings.https_cert
   https_key = settings.https_key
   cached_commands = settings.cached_commands
@@ -143,6 +147,7 @@ try {
   ip_blacklist = settings.ip_blacklist
   proxy_hops = settings.proxy_hops
   websocket_max_accounts = settings.websocket_max_accounts
+  cors_whitelist = settings.cors_whitelist
 
   // Clone default settings for custom user specific vars, to be used if no auth
   if (!use_auth) {
@@ -247,6 +252,19 @@ if (proxy_hops > 0) {
   console.log("Additional proxy servers: " + proxy_hops)
 }
 
+if (use_cors) {
+  if (cors_whitelist.length == 0) {
+    console.log("Use cors. Any ORIGIN allowed")
+  }
+  else {
+    console.log("Use cors. Whitelisted ORIGIN:\n")
+    for (const [key, value] of Object.entries(cors_whitelist)) {
+      log_string = log_string + value + "\n"
+    }
+    console.log(log_string)
+  }
+}
+
 console.log("Main log level: " + log_level)
 // ---
 
@@ -283,7 +301,27 @@ async function checkOldOrders() {
 // Define the proxy app
 const app = Express()
 app.set('view engine', 'pug')
-app.use(Cors())
+app.use(Helmet())
+
+// Allow all origin in cors or a whitelist if present
+if (use_cors) {
+  if (cors_whitelist.length == 0) {
+    app.use(Cors())
+  }
+  else {
+    var corsOptions = {
+      origin: function (origin, callback) {
+        if (whitelist.indexOf(origin) !== -1) {
+          callback(null, true)
+        } else {
+          callback(new Error('Not allowed'))
+        }
+      }
+    }
+    app.use(Cors(corsOptions))
+  }
+}
+
 app.use(Express.json())
 app.use(Express.static('static'))
 
@@ -731,8 +769,10 @@ async function processRequest(query, req, res) {
     for (const [key, value] of Object.entries(user_limited_commands)) {
       if (query.action === key) {
         if (parseInt(query.count) > value || !("count" in query)) {
-          logThis("Response count was limited to " + value.toString(), log_levels.info)
           query.count = value
+          if (parseInt(query.count) > value) {
+            logThis("Response count was limited to " + value.toString(), log_levels.info)
+          }
         }
       }
     }
