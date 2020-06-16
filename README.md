@@ -171,16 +171,18 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **use_ip_blacklist:** If always blocking certain IPs set in <ip_blacklist> [true/false]
 * **use_tokens** If activating the token system for purchase via Nano [true/false] (more information further down)
 * **use_websocket** If activating the websocket system [true/false] (more information further down)
+* **use_cors** If handling cors policy here, if not taken care of in upstream proxy (cors_whitelist=[] means allow ANY ORIGIN)
 * **https_cert:** File path for pub cert file (requires <use_https>) [absolute path string]
 * **https_key:** File path for private key file (requires <use_https>) [absolute path string]
 * **allowed_commands:** A list of RPC actions to allow [list]
 * **cached_commands:** A list of commands [key] that will be cached for corresponding duration in seconds as [value]
 * **limited_commands:** A list of commands [key] to limit the output response for with max count as [value]
-* **ip_blacklist:** A list of IPs to always block. If calling from localhost you can test this with 127.0.0.1 (::ffff:127.0.0.1 for ipv6)
+* **ip_blacklist:** A list of IPs to always block. If calling from localhost you can test this with 127.0.0.1 (::ffff:127.0.0.1 for ipv6) [comma separated list of IPs]
 * **slow_down:** Contains the settings for slowing down requests. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will start slowing down requests with increments of <delay_increment> [ms] with a maximum total delay defined in <max_delay> [ms]
 * **rate_limiter:** Contains the settings for the rate limiter. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will block the IP until the time slot has passed. Then the IP can start requesting again. To permanently ban IPs they have to be manually added to <ip_blacklist> and activating <use_ip_blacklist>.
 * **proxy_hops** If the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here. Example: api.example.com is proxied through Cloudflare to IP 1.1.1.1 and then local Nginx server is proxying api.example.com to localhost:9950. Proxyhops will be 2.
 * **websocket_max_accounts** Maximum number of accounts per IP allowed for block confirmation subscription [number]
+* **cors_whitelist** Whitelist requester ORIGIN header or IP for example "https://mywallet.com", "http://localhost:8080" or "8.8.8.8" (requires use_cors) [comma separated list of hostnames]
 * **log_level:** It can be set to either "info" which will output all logs, "warning" which will only output warning messages or "none" which will only log the initial settings.
 
 ---

@@ -257,7 +257,7 @@ if (use_cors) {
     console.log("Use cors. Any ORIGIN allowed")
   }
   else {
-    log_string = "Use cors. Whitelisted ORIGIN:\n"
+    log_string = "Use cors. Whitelisted ORIGINs or IPs:\n"
     for (const [key, value] of Object.entries(cors_whitelist)) {
       log_string = log_string + value + "\n"
     }
@@ -309,13 +309,11 @@ if (use_cors) {
     app.use(Cors())
   }
   else {
-    var corsOptions = {
-      origin: function (origin, callback) {
-        if (cors_whitelist.indexOf(origin) !== -1) {
-          callback(null, true)
-        } else {
-          callback(new Error('Not allowed'))
-        }
+    var corsOptions = function (req, callback) {
+      if (cors_whitelist.indexOf(req.header('Origin')) !== -1 || cors_whitelist.indexOf(req.ip) !== -1) {
+        callback(null, {origin: true}) // reflect (enable) the requested origin in the CORS response
+      } else {
+        callback(new Error('Not allowed')) // disable CORS for this request
       }
     }
     app.use(Cors(corsOptions))
