@@ -89,17 +89,40 @@ var user_log_level = null
 // track daily requests and save to a log file (daily stat is reset if the server is restarted)
 // ---
 var rpcCount = 0
+var logdata = []
+try {
+  // read latest count from file
+  logdata = JSON.parse(Fs.readFileSync('request-stat.json', 'UTF-8'))
+  rpcCount = logdata[logdata.length - 1].count
+}
+catch(e) {
+  console.log("Could not read request-stat.json. Normal for first run.", e)
+}
+
 Schedule.scheduleJob('0 0 * * *', () => {
-    appendFile(new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '') + ": " + rpcCount + "\n")
-    rpcCount = 0
+  appendFile(rpcCount)
+  rpcCount = 0
+  // update latest logdata from file
+  try {
+    logdata = JSON.parse(Fs.readFileSync('request-stat.json', 'UTF-8'))
+  }
+  catch(e) {
+    console.log("Could not read request-stat.json.", e)
+  }
 })
-function appendFile(msg) {
-  Fs.appendFile("request-stat.log", msg, function(err) {
-    if(err) {
-        return logThis("Error saving request stat file: " + err.toString(), log_levels.info)
-    }
+function appendFile(count) {
+  try {
+    // append new count entry
+    let datestring = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
+    logdata.push({"date":datestring,"count":rpcCount})
+
+    // write updated log
+    Fs.writeFileSync('request-stat.json', JSON.stringify(logdata, null, 2))
     logThis("The request stat file was updated!", log_levels.info)
-  })
+  }
+  catch(e) {
+    console.log("Could not write request-stat.json", e)
+  }
 }
 // ---
 
