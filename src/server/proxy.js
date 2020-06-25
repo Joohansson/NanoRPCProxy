@@ -99,6 +99,17 @@ catch(e) {
   console.log("Could not read request-stat.json. Normal for first run.", e)
 }
 
+// save the stat file first time
+if (logdata.length == 0) {
+  try {
+    // write log file
+    Fs.writeFileSync('request-stat.json', JSON.stringify(logdata, null, 2))
+  }
+  catch(e) {
+    console.log("Could not write request-stat.json", e)
+  }
+}
+
 Schedule.scheduleJob('0 0 * * *', () => {
   appendFile(rpcCount)
   rpcCount = 0
