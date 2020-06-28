@@ -1,0 +1,10 @@
+{
+  "dpow": {
+    "user": "user",
+    "key": "key"
+  },
+  "bpow": {
+      "user": "user",
+      "key": "key"
+  }
+}

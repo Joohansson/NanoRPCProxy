@@ -44,6 +44,7 @@ Apart from increased security, NanoRPCProxy solves the scalability issue where a
 * Supports GET requests, ie. URL query = /proxy/?action=block_count
 * Both RPC and websocket support http and/or https with your own SSL cert (or use another proxy like Cloudflare to serve https)
 * Works with both beta and main Nano network
+* Support for both delegated PoW (dPoW) and BoomPoW (bPoW)
 * Multiple demo clients for developers
 * 100% free to use, develop or sell with open-source MIT license
 
@@ -172,6 +173,8 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **use_tokens** If activating the token system for purchase via Nano [true/false] (more information further down)
 * **use_websocket** If activating the websocket system [true/false] (more information further down)
 * **use_cors** If handling cors policy here, if not taken care of in upstream proxy (cors_whitelist=[] means allow ANY ORIGIN)
+* **use_dpow** If allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
+* **use_bpow** If allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
 * **https_cert:** File path for pub cert file (requires <use_https>) [absolute path string]
 * **https_key:** File path for private key file (requires <use_https>) [absolute path string]
 * **allowed_commands:** A list of RPC actions to allow [list]

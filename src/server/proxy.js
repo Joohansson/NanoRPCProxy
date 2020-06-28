@@ -40,7 +40,6 @@ var http_port = 9950                // port to listen on for http (enabled defau
 var https_port = 9951               // port to listen on for https (disabled default with use_https)
 var websocket_http_port = 9952      // port to listen on for http websocket connection (only used if activated with use_websocket)
 var websocket_https_port = 9953     // port to listen on for https websocket connection (only used if activated with use_websocket)
-var max_request_count = 500         // max count of various rpc responses like pending transactions
 var use_auth = false                // if require username and password when connecting to proxy
 var use_slow_down = false           // if slowing down requests for IPs doing above set limit (defined in slow_down)
 var use_rate_limiter = false        // if blocking IPs for a certain amount of time when they request above set limit (defined in rate_limiter)
@@ -52,6 +51,8 @@ var use_ip_blacklist = false        // if blocking access to IPs listed in ip_bl
 var use_tokens = false              // if activating the token system for purchase via Nano
 var use_websocket = false           // if enable subscriptions on the node websocket (protected by the proxy)
 var use_cors = true                 // if handling cors policy here, if not taken care of in upstream proxy (cors_whitelist=[] means allow ANY ORIGIN)
+var use_dpow = false                // if allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
+var use_bpow = false                // if allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
 var https_cert = ""                 // file path for pub cert file
 var https_key = ""                  // file path for private key file
 var allowed_commands = []           // only allow RPC actions in this list
@@ -69,12 +70,16 @@ var cors_whitelist = []             // whitelist requester ORIGIN for example ht
 // default vars
 cache_duration_default = 60
 var rpcCache = null
-var cacheKeys = []
 var user_settings = {}
-const PriceUrl = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
-//const PriceUrl2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
+const price_url = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
+//const price_url2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
 //const CMC_API_KEY = 'xxx'
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
+const work_threshold_default = 'ffffffc000000000'
+const work_default_timeout = 10 // x sec timeout before trying next delegated work method (only when use_dpow or use_bpow)
+const bpow_url = 'https://bpow.banano.cc/service/'
+const dpow_url = 'https://dpow.nanocenter.org/service/'
+const work_token_cost = 10 // work_generate will consume x token points
 var ws = null
 var global_tracked_accounts = [] // the accounts to track in websocket (synced with database)
 var websocket_connections = {} // active ws connections
@@ -85,6 +90,10 @@ var user_allowed_commands = null
 var user_cached_commands = null
 var user_limited_commands = null
 var user_log_level = null
+var dpow_user = null
+var dpow_key = null
+var bpow_user = null
+var bpow_key = null
 
 // track daily requests and save to a log file (daily stat is reset if the server is restarted)
 // ---
@@ -110,6 +119,7 @@ if (logdata.length == 0) {
   }
 }
 
+// Stat file scheduler
 Schedule.scheduleJob('0 0 * * *', () => {
   appendFile(rpcCount)
   rpcCount = 0
@@ -169,6 +179,8 @@ try {
   use_tokens = settings.use_tokens
   use_websocket = settings.use_websocket
   use_cors = settings.use_cors
+  use_dpow = settings.use_dpow
+  use_bpow = settings.use_bpow
   https_cert = settings.https_cert
   https_key = settings.https_key
   cached_commands = settings.cached_commands
@@ -227,6 +239,8 @@ console.log("Use output limiter: " + use_output_limiter)
 console.log("Use IP blacklist: " + use_ip_blacklist)
 console.log("Use token system: " + use_tokens)
 console.log("Use websocket system: " + use_websocket)
+console.log("Use dPoW: " + use_dpow)
+console.log("Use bPoW: " + use_bpow)
 console.log("Listen on http: " + use_http)
 console.log("Listen on https: " + use_https)
 
@@ -300,6 +314,26 @@ if (use_cors) {
 }
 
 console.log("Main log level: " + log_level)
+// ---
+
+// Read dpow and bpow credentials from file
+// ---
+if (use_dpow || use_bpow) {
+  try {
+    const powcreds = JSON.parse(Fs.readFileSync('pow_creds.json', 'UTF-8'))
+    if (use_dpow) {
+      dpow_user = powcreds.dpow.user
+      dpow_key = powcreds.dpow.key
+    }
+    if (use_bpow) {
+      bpow_user = powcreds.bpow.user
+      bpow_key = powcreds.bpow.key
+    }
+  }
+  catch(e) {
+    console.log("Could not read pow_creds.json", e)
+  }
+}
 // ---
 
 
@@ -415,7 +449,12 @@ if (use_rate_limiter) {
         return
       }
     }
-    limiter1.consume(req.ip)
+    var points_to_consume = 1
+    // work is more costly
+    if (req.body.action === 'work_generate') {
+      points_to_consume = work_token_cost
+    }
+    limiter1.consume(req.ip, points_to_consume)
       .then((response) => {
         res.set("X-RateLimit-Limit", rate_limiter.request_limit)
         res.set("X-RateLimit-Remaining", rate_limiter.request_limit-response.consumedPoints)
@@ -441,7 +480,7 @@ const limiter2 = new RateLimiterMemory({
 })
 
 const rateLimiterMiddleware2 = (req, res, next) => {
-  limiter2.consume(req.ip)
+  limiter2.consume(req.ip, 1)
     .then((response) => {
       next()
     })
@@ -545,13 +584,19 @@ function myAuthorizer(username, password) {
 }
 
 // Deduct token count for given token_key
-function useToken(token_key) {
+function useToken(query) {
+  let token_key = query.token_key
   // Find token_key in order DB
   if (order_db.get('orders').find({token_key: token_key}).value()) {
     let tokens = order_db.get('orders').find({token_key: token_key}).value().tokens
     if (tokens > 0) {
-      // Count down token by 1 and store new value in DB
-      order_db.get('orders').find({token_key: token_key}).assign({tokens:tokens-1}).write()
+      var decrease_by = 1
+      // work is more costly
+      if (query.action === 'work_generate') {
+        decrease_by = work_token_cost
+      }
+      // Count down token by x and store new value in DB
+      order_db.get('orders').find({token_key: token_key}).assign({tokens:tokens-decrease_by}).write()
       logThis("A token was used by: " + token_key, log_levels.info)
       return tokens-1
     }
@@ -712,7 +757,7 @@ async function processRequest(query, req, res) {
   var tokens_left = null
   if (use_tokens) {
     if ('token_key' in query) {
-      let status = useToken(query.token_key)
+      let status = useToken(query)
       if (status === -1) {
         return res.status(500).json({ error: 'You have no more tokens to use!'})
       }
@@ -739,7 +784,7 @@ async function processRequest(query, req, res) {
         return res.json(appendRateLimiterStatus(res, cachedValue))
       }
 
-      let data = await Tools.getData(PriceUrl, API_TIMEOUT)
+      let data = await Tools.getData(price_url, API_TIMEOUT)
 
       // Store the price in cache for 10sec
       if (!rpcCache.set('price', data, 10)) {
@@ -757,6 +802,7 @@ async function processRequest(query, req, res) {
     }
     return
   }
+
   if (query.action === 'mnano_to_raw') {
     if ('amount' in query) {
       let amount = Tools.MnanoToRaw(query.amount)
@@ -767,6 +813,7 @@ async function processRequest(query, req, res) {
     }
     return
   }
+
   if (query.action === 'mnano_from_raw') {
     if ('amount' in query) {
       let amount = Tools.rawToMnano(query.amount)
@@ -777,6 +824,101 @@ async function processRequest(query, req, res) {
     }
     return
   }
+
+  // Handle work generate via dpow and/or bpow
+  if (query.action === 'work_generate' && (use_dpow || use_bpow)) {
+    if ('hash' in query) {
+      var bpow_failed = false
+      if (!("difficulty" in query)) {
+        // Use cached value first
+        const cachedValue = rpcCache.get('difficulty')
+        if (Tools.isValidJson(cachedValue)) {
+          logThis("Cache requested: " + 'difficulty', log_levels.info)
+          query.difficulty = cachedValue
+        }
+        else {
+          // get latest difficulty from network
+          let data = await Tools.postData({"action":"active_difficulty"}, node_url, API_TIMEOUT)
+          if ('network_current' in data) {
+            // Store the difficulty in cache for 60sec
+            if (!rpcCache.set('difficulty', data.network_current, 60)) {
+              logThis("Failed saving cache for " + 'difficulty', log_levels.warning)
+            }
+            query.difficulty = data.network_current
+          }
+          else {
+            query.difficulty = work_threshold_default
+          }
+        }
+      }
+      if (!("timeout" in query)) {
+        query.timeout = work_default_timeout
+      }
+
+      // Try bpow first
+      if (use_bpow) {
+        logThis("Requesting work using bpow", log_levels.info)
+        query.user = bpow_user
+        query.api_key = bpow_key
+        
+        try {
+          let data = await Tools.postData(query, bpow_url, work_default_timeout*1000*2)
+          if (tokens_left != null) {
+            data.tokens_total = tokens_left
+          }
+          // if bpow time out
+          if ('error' in data) {
+            logThis("bPoW failed: " + data.error, log_levels.warning)
+          }
+          if (('error' in data) || !('work' in data)) {
+            bpow_failed = true
+            if (!use_dpow) {
+              res.json(appendRateLimiterStatus(res, data)) // forward error if not retrying with dpow
+              return
+            }
+          }
+          else if ('work' in data) {
+            res.json(appendRateLimiterStatus(res, data)) // sending back successful json response
+            return
+          }
+        }
+        catch(err) {
+          bpow_failed = true
+          if (!use_dpow) {
+            res.status(500).json({error: err.toString()})
+            return
+          }
+          logThis("Bpow connection error: " + err.toString(), log_levels.warning)
+        }
+      }
+      // Use dpow only if not already used bpow or bpow timed out
+      if (use_dpow && (!use_bpow || bpow_failed)) {
+        logThis("Requesting work using dpow", log_levels.info)
+        query.user = dpow_user
+        query.api_key = dpow_key
+
+        try {
+          let data = await Tools.postData(query, dpow_url, work_default_timeout*1000*2)
+          if (tokens_left != null) {
+            data.tokens_total = tokens_left
+          }
+          if ('error' in data) {
+            logThis("dPoW failed: " + data.error, log_levels.warning)
+          }
+          res.json(appendRateLimiterStatus(res, data)) // sending back json response (regardless if timeout error)
+        }
+        catch(err) {
+          res.status(500).json({error: err.toString()})
+          logThis("Dpow connection error: " + err.toString(), log_levels.warning)
+        }
+      }
+    }
+    else {
+      return res.status(500).json({ error: 'Hash not provided!'})
+    }
+    return
+  }
+
   // ---
 
   // Read cache for current request action, if there is one
@@ -832,7 +974,7 @@ async function processRequest(query, req, res) {
   }
   catch(err) {
     res.status(500).json({error: err.toString()})
-    logThis("Node conection error: " + err.toString())
+    logThis("Node conection error: " + err.toString(), log_levels.warning)
   }
 }
 

@@ -112,4 +112,5 @@ settings.json
 token_settings.json
 user_settings.json
 creds.json
+pow_creds.json
 request-stat.json
