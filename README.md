@@ -173,8 +173,8 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **use_tokens** If activating the token system for purchase via Nano [true/false] (more information further down)
 * **use_websocket** If activating the websocket system [true/false] (more information further down)
 * **use_cors** If handling cors policy here, if not taken care of in upstream proxy (cors_whitelist=[] means allow ANY ORIGIN)
-* **use_dpow** If allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
-* **use_bpow** If allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
+* **use_dpow** If allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary with fallback to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
+* **use_bpow** If allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary with fallback to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
 * **https_cert:** File path for pub cert file (requires <use_https>) [absolute path string]
 * **https_key:** File path for private key file (requires <use_https>) [absolute path string]
 * **allowed_commands:** A list of RPC actions to allow [list]
