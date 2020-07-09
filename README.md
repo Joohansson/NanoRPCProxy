@@ -46,7 +46,7 @@ Apart from increased security, NanoRPCProxy solves the scalability issue where a
 * Works with both beta and main Nano network
 * Support for both delegated PoW (dPoW) and BoomPoW (bPoW)
 * Multiple demo clients for developers
-* 100% free to use, develop or sell with open-source MIT license
+* GPL-3 license so you can't use this project in closed source projects. And if using the API, call the lawyer first.
 
 **Possible use cases**
 ![NanoRPCProxy](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCPRoxy.png)
