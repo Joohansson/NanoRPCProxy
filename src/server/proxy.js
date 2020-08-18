@@ -75,7 +75,7 @@ const price_url = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
 //const price_url2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
 //const CMC_API_KEY = 'xxx'
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
-const work_threshold_default = 'ffffffc000000000'
+const work_threshold_default = 'fffffff800000000'
 const work_default_timeout = 10 // x sec timeout before trying next delegated work method (only when use_dpow or use_bpow)
 const bpow_url = 'https://bpow.banano.cc/service/'
 const dpow_url = 'https://dpow.nanocenter.org/service/'
@@ -644,6 +644,16 @@ function logThis(str, level) {
   }
 }
 
+// Compare two hex strings, returns 0 if equal, -1 if A<B and 1 if A>B
+function compareHex(a, b) {
+  a = parseInt('0x' + a, 16)
+  b = parseInt('0x' + b, 16)
+  let result = 0
+  if (a > b) result = 1
+  else if(a < b) result = -1
+  return result
+}
+
 // Custom error class
 class APIError extends Error {
   constructor(code, ...params) {
@@ -850,6 +860,9 @@ async function processRequest(query, req, res) {
             query.difficulty = work_threshold_default
           }
         }
+        if (compareHex(work_threshold_default, query.difficulty)) {
+          query.difficulty = work_threshold_default
+        }
       }
       if (!("timeout" in query)) {
         query.timeout = work_default_timeout
@@ -857,7 +870,7 @@ async function processRequest(query, req, res) {
 
       // Try bpow first
       if (use_bpow) {
-        logThis("Requesting work using bpow", log_levels.info)
+        logThis("Requesting work using bpow with diff: " + query.difficulty, log_levels.info)
         query.user = bpow_user
         query.api_key = bpow_key
         
@@ -893,7 +906,7 @@ async function processRequest(query, req, res) {
       }
       // Use dpow only if not already used bpow or bpow timed out
       if (use_dpow && (!use_bpow || bpow_failed)) {
-        logThis("Requesting work using dpow", log_levels.info)
+        logThis("Requesting work using dpow with diff: " + query.difficulty, log_levels.info)
         query.user = dpow_user
         query.api_key = dpow_key
 
