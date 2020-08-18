@@ -40,6 +40,7 @@
     "block_count_type",
     "blocks_info",
     "chain",
+    "confirmation_quorum",
     "delegators",
     "delegators_count",
     "frontiers",
@@ -55,7 +56,8 @@
     "mnano_to_raw",
     "mnano_from_raw",
     "work_validate",
-    "validate_account_number"
+    "validate_account_number",
+    "version"
   ],
   "cached_commands":        {
     "block_count":            30,
