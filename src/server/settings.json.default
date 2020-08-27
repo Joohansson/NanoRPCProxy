@@ -20,6 +20,7 @@
   "use_cors":               true,
   "use_dpow":               false,
   "use_bpow":               false,
+  "disable_watch_work":     false,
   "allowed_commands":       [
     "account_history",
     "account_info",

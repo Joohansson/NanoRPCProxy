@@ -66,6 +66,7 @@ var ip_blacklist = []               // a list of IPs to deny always
 var proxy_hops = 0                  // if the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here.
 var websocket_max_accounts = 100    // maximum number of accounts allowed to subscribe to for block confirmations
 var cors_whitelist = []             // whitelist requester ORIGIN for example https://mywallet.com or http://localhost:8080 (require use_cors) [list of hostnames]
+var disable_watch_work = false      // forcefully set watch_work=false for process calls (to block node from doing rework)
 
 // default vars
 cache_duration_default = 60
@@ -194,6 +195,7 @@ try {
   proxy_hops = settings.proxy_hops
   websocket_max_accounts = settings.websocket_max_accounts
   cors_whitelist = settings.cors_whitelist
+  disable_watch_work = settings.disable_watch_work
 
   // Clone default settings for custom user specific vars, to be used if no auth
   if (!use_auth) {
@@ -241,6 +243,7 @@ console.log("Use token system: " + use_tokens)
 console.log("Use websocket system: " + use_websocket)
 console.log("Use dPoW: " + use_dpow)
 console.log("Use bPoW: " + use_bpow)
+console.log("Disabled watch_work for process: " + disable_watch_work)
 console.log("Listen on http: " + use_http)
 console.log("Listen on https: " + use_https)
 
@@ -833,6 +836,13 @@ async function processRequest(query, req, res) {
       return res.status(500).json({ error: 'Amount not provided!'})
     }
     return
+  }
+
+  // Force no watch_work (don't want the node to perform pow)
+  if (disable_watch_work) {
+    if (query.action === 'process') {
+      query.watch_work = 'false'
+    }
   }
 
   // Handle work generate via dpow and/or bpow
