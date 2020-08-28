@@ -87,7 +87,7 @@ https://pm2.keymetrics.io/docs/usage/quick-start/
 3. Start the server: **pm2 start proxy.js**
 
 #### Other useful pm2 commands
-* pm2 **restart proxy.js, pm2 stop proxy.js, pm2 delete proxy.js**
+* **pm2 restart proxy.js, pm2 stop proxy.js, pm2 delete proxy.js**
 * Make pm2 auto-boot at server restart: **pm2 startup**
 * Realtime online monitor: **pm2 monitor**
 * Status: **pm2 status**
