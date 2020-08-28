@@ -1112,8 +1112,7 @@ if (use_websocket) {
     }
     try {
       var connection = request.accept()
-    }
-    catch {
+    } catch (error) {
       logThis('Bad protocol from connecting client', log_levels.info)
       return
     }
