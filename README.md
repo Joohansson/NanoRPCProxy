@@ -65,7 +65,7 @@ Apart from increased security, NanoRPCProxy solves the scalability issue where a
 ## Install and run the proxy server
 ### Setup nodejs and test server
 1. Make sure you have node.js installed. [Windows Guide](https://www.liquidweb.com/kb/install-react-js-windows/) | [Ubuntu Guide](https://medium.com/@DanielSayidi/install-and-setup-react-app-on-ubuntu-18-04-3-lts-fcd2c875885a)
-2. Locate the directory srs/server
+2. Locate the directory src/server
 3. Copy the default setting files to your own editable ones:
 
 These will not be affected if later updating the server via git pull
@@ -82,12 +82,12 @@ These will not be affected if later updating the server via git pull
 ### Option1: Install as a service using PM2 (Recommended)
 https://pm2.keymetrics.io/docs/usage/quick-start/
 
-1. Locate the directory srs/server
+1. Locate the directory src/server
 2. Install pm2: **npm install pm2@latest -g**
 3. Start the server: **pm2 start proxy.js**
 
 #### Other useful pm2 commands
-* pm2 **restart proxy.js, pm2 stop proxy.js, pm2 delete proxy.js**
+* **pm2 restart proxy.js, pm2 stop proxy.js, pm2 delete proxy.js**
 * Make pm2 auto-boot at server restart: **pm2 startup**
 * Realtime online monitor: **pm2 monitor**
 * Status: **pm2 status**
@@ -141,7 +141,7 @@ https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-syst
 ---
 ### Updating the server
 1. Go to the root folder -> git pull
-2. Go to srs/server -> npm install
+2. Go to src/server -> npm install
 3. Restart the proxy.js
 
 It may happen that the settings files are expanded. In that case, you need to do this again in order for the new variables to be modified by you (or insert them manually). Save your old settings first!
