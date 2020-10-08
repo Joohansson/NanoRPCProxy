@@ -3,6 +3,7 @@
   "node_ws_url":            "ws://127.0.0.1:57000",
   "http_port":              9950,
   "https_port":             9951,
+  "request_path":           "/proxy",
   "websocket_http_port":    9952,
   "websocket_https_port":   9953,
   "use_auth":               false,
