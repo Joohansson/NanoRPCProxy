@@ -40,6 +40,7 @@ var http_port = 9950                // port to listen on for http (enabled defau
 var https_port = 9951               // port to listen on for https (disabled default with use_https)
 var websocket_http_port = 9952      // port to listen on for http websocket connection (only used if activated with use_websocket)
 var websocket_https_port = 9953     // port to listen on for https websocket connection (only used if activated with use_websocket)
+var request_path = '/proxy'         // Prefix in the request path, e.g. '/proxy' for 'https://server:port/proxy'
 var use_auth = false                // if require username and password when connecting to proxy
 var use_slow_down = false           // if slowing down requests for IPs doing above set limit (defined in slow_down)
 var use_rate_limiter = false        // if blocking IPs for a certain amount of time when they request above set limit (defined in rate_limiter)
@@ -167,6 +168,7 @@ try {
   node_ws_url = settings.node_ws_url
   http_port = settings.http_port
   https_port = settings.https_port
+  request_path = settings.request_path
   websocket_http_port = settings.websocket_http_port
   websocket_https_port = settings.websocket_https_port
   use_auth = settings.use_auth
@@ -196,6 +198,9 @@ try {
   websocket_max_accounts = settings.websocket_max_accounts
   cors_whitelist = settings.cors_whitelist
   disable_watch_work = settings.disable_watch_work
+
+  // normalize request_path, add starting /
+  request_path = request_path.startsWith('/') ? request_path : '/' + request_path
 
   // Clone default settings for custom user specific vars, to be used if no auth
   if (!use_auth) {
@@ -228,6 +233,7 @@ console.log("PROXY SETTINGS:\n-----------")
 console.log("Node url: " + node_url)
 console.log("Http port: " + String(http_port))
 console.log("Https port: " + String(https_port))
+console.log("Request path: " + request_path)
 if (use_websocket) {
   console.log("Websocket http port: " + String(websocket_http_port))
   console.log("Websocket https port: " + String(websocket_https_port))
@@ -673,17 +679,19 @@ class APIError extends Error {
 }
 
 // Default get requests
-app.get('/', async (req, res) => {
-  res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
-})
+if (request_path != '/') {
+  app.get('/', async (req, res) => {
+    res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
+  })
+}
 
 // Process any API requests
-app.get('/proxy', (req, res) => {
+app.get(request_path, (req, res) => {
   processRequest(req.query, req, res)
 })
 
 // Define the request listener
-app.post('/proxy', (req, res) => {
+app.post(request_path, (req, res) => {
   processRequest(req.body, req, res)
 })
 
