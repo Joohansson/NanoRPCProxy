@@ -1171,7 +1171,7 @@ if (use_websocket) {
                       if (tracking_updated) {
                         updateTrackedAccounts() //update the websocket subscription
                       }
-                      connection.sendUTF(JSON.stringify({'ack':'subscribe'}, null, 2))
+                      connection.sendUTF(JSON.stringify({'ack':'subscribe','id':'id' in msg ? msg.id:""}, null, 2))
                     }
                     else {
                       connection.sendUTF(JSON.stringify({'error':'Too many accounts subscribed. Max is ' + websocket_max_accounts}, null, 2))
