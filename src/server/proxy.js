@@ -30,7 +30,7 @@ const order_db = Low(Adapter)
 const tracking_db = Low(Adapter2)
 order_db.defaults({orders: []}).write()
 tracking_db.defaults({users: []}).write()
-tracking_db.update('users', n => []).write() //emty db on each new run
+tracking_db.update('users', n => []).write() //empty db on each new run
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
 var users = []                      // a list of base64 user/password credentials
@@ -70,7 +70,7 @@ var cors_whitelist = []             // whitelist requester ORIGIN for example ht
 var disable_watch_work = false      // forcefully set watch_work=false for process calls (to block node from doing rework)
 
 // default vars
-cache_duration_default = 60
+let cache_duration_default = 60
 var rpcCache = null
 var user_settings = {}
 const price_url = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
@@ -253,7 +253,7 @@ console.log("Disabled watch_work for process: " + disable_watch_work)
 console.log("Listen on http: " + use_http)
 console.log("Listen on https: " + use_https)
 
-log_string = "Allowed commands:\n-----------\n"
+let log_string = "Allowed commands:\n-----------\n"
 for (const [key, value] of Object.entries(allowed_commands)) {
   log_string = log_string + value + "\n"
 }
@@ -553,7 +553,7 @@ function myAuthorizer(username, password) {
 
   var valid_user = false
   for (const [key, value] of Object.entries(users)) {
-    if (BasicAuth.safeCompare(username, value.user) & BasicAuth.safeCompare(password, value.password)) {
+    if (BasicAuth.safeCompare(username, value.user) && BasicAuth.safeCompare(password, value.password)) {
       valid_user = true
 
       // Override default settings if exists
@@ -703,9 +703,9 @@ async function processRequest(query, req, res) {
 
   if (use_tokens) {
     // Initiate token purchase
+    var token_key = ""
     if (query.action === 'tokens_buy') {
       var token_amount = 0
-      var token_key = ""
       if ('token_amount' in query) {
         token_amount = Math.round(query.token_amount)
       }
@@ -724,7 +724,7 @@ async function processRequest(query, req, res) {
 
     // Verify order status
     if (query.action === 'tokenorder_check') {
-      var token_key = ""
+      token_key = ""
       if ('token_key' in query) {
         token_key = query.token_key
         let status = await Tokens.checkOrder(token_key, order_db)
@@ -737,7 +737,7 @@ async function processRequest(query, req, res) {
 
     // Claim back private key and replace the account
     if (query.action === 'tokenorder_cancel') {
-      var token_key = ""
+      token_key = ""
       if ('token_key' in query) {
         token_key = query.token_key
         let status = await Tokens.cancelOrder(token_key, order_db)
@@ -750,7 +750,7 @@ async function processRequest(query, req, res) {
 
     // Verify order status
     if (query.action === 'tokens_check') {
-      var token_key = ""
+      token_key = ""
       if ('token_key' in query) {
         token_key = query.token_key
         let status = await Tokens.checkTokens(token_key, order_db)
@@ -954,7 +954,7 @@ async function processRequest(query, req, res) {
 
   // Read cache for current request action, if there is one
   if (user_use_cache) {
-    for (const [key, value] of Object.entries(user_cached_commands)) {
+    for (const [key] of Object.entries(user_cached_commands)) {
       if (query.action === key) {
         const cachedValue = rpcCache.get(key)
         if (Tools.isValidJson(cachedValue)) {
@@ -1076,7 +1076,7 @@ if (use_https) {
 // WEBSOCKET SERVER
 //---------------------
 if (use_websocket) {
-  wsServer = new WebSocketServer({
+  let wsServer = new WebSocketServer({
     httpServer: websocket_servers,
     autoAcceptConnections: false
   })
@@ -1135,23 +1135,50 @@ if (use_websocket) {
               if (msg.topic === 'confirmation') {
                 if ('options' in msg && 'accounts' in msg.options) {
                   if (msg.options.accounts.length <= websocket_max_accounts) {
-                    // save connection to global dicionary to reuse when getting messages from the node websocket
-                    websocket_connections[remote_ip] = connection
+                    // check if new unique accounts + existing accounts exceed max limit
+                    // get existing tracked accounts
+                    let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
+                    var current_tracked_accounts = {} //if not in db, use empty dict
+                    if (current_user !== undefined) {
+                      current_tracked_accounts = current_user.tracked_accounts
+                    }
 
-                    // mirror the subscription to the real websocket
-                    var tracking_updated = false
+                    // count new accounts that are not already tracked
+                    let unique_new = 0
                     msg.options.accounts.forEach(function(address) {
-                      if (trackAccount(connection, address)) {
-                        tracking_updated = true
+                      var address_exists = false
+                      for (const [key] of Object.entries(current_tracked_accounts)) {
+                        if (key === address)  {
+                          address_exists = true
+                        }
+                      }
+                      if (!address_exists) {
+                        unique_new++
                       }
                     })
-                    if (tracking_updated) {
-                      updateTrackedAccounts() //update the websocket subscription
+                    if (parseInt(unique_new) + Object.keys(current_tracked_accounts).length <= websocket_max_accounts) {
+                      
+                      // save connection to global dicionary to reuse when getting messages from the node websocket
+                      websocket_connections[remote_ip] = connection
+
+                      // mirror the subscription to the real websocket
+                      var tracking_updated = false
+                      msg.options.accounts.forEach(function(address) {
+                        if (trackAccount(connection, address)) {
+                          tracking_updated = true
+                        }
+                      })
+                      if (tracking_updated) {
+                        updateTrackedAccounts() //update the websocket subscription
+                      }
+                      connection.sendUTF(JSON.stringify({'ack':'subscribe'}, null, 2))
                     }
-                    connection.sendUTF(JSON.stringify({'ack':'subscribe'}, null, 2))
+                    else {
+                      connection.sendUTF(JSON.stringify({'error':'Too many accounts subscribed. Max is ' + websocket_max_accounts}, null, 2))
+                    }
                   }
                   else {
-                    connection.sendUTF(JSON.stringify({'error':'Too many accounts subscribed'}, null, 2))
+                    connection.sendUTF(JSON.stringify({'error':'Too many accounts subscribed. Max is ' + websocket_max_accounts}, null, 2))
                   }
                 }
                 else {
@@ -1201,7 +1228,7 @@ function trackAccount(connection, address) {
 
   // check if account is not already tracked
   var address_exists = false
-  for (const [key, value] of Object.entries(current_tracked_accounts)) {
+  for (const [key] of Object.entries(current_tracked_accounts)) {
     if (key === address)  {
       address_exists = true
     }
@@ -1253,7 +1280,7 @@ if (use_websocket) {
 
   // A tracked account was detected
   ws.onmessage = msg => {
-    data_json = JSON.parse(msg.data)
+    let data_json = JSON.parse(msg.data)
 
     // Check if the tracked account belongs to a user
     if (data_json.topic === "confirmation") {
@@ -1266,7 +1293,7 @@ if (use_websocket) {
       tracked_accounts.forEach(async function(user) {
         if ("tracked_accounts" in user && "ip" in user) {
           // loop all existing accounts for that user
-          for (const [key, value] of Object.entries(user.tracked_accounts)) {
+          for (const [key] of Object.entries(user.tracked_accounts)) {
             if (key === observed_account || key === observed_link) {
               // send message to each subscribing user for this particular account
               logThis('A tracked account was pushed to client: ' + key, log_levels.info)
