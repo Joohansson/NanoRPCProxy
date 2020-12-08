@@ -171,7 +171,12 @@ Then from the same directory, specify the config files to run with the container
 
     $ docker run -it -p 9950:9950 -v $(pwd)/settings.json:/usr/src/app/settings.json nanorpcproxy:latest
 
-The same goes for rest of the settings files.
+The same goes for rest of the settings files. There's also a `docker-compose.yml` file present. To run with docker compose,
+first copy files as above. Then run image with:
+
+    $ docker-compose up
+
+All files but settings.json is disabled in the docker-compose file by default.
 
 ---
 ---
