@@ -149,6 +149,29 @@ It may happen that the settings files are expanded. In that case, you need to do
     cp settings.json.default settings.json
     cp user_settings.json.default user_settings.json
     cp token_settings.json.default token_settings.json
+---
+### Option3: With Docker
+
+Ensure that [Docker](https://docs.docker.com/get-docker/) is installed. Then step into the `src/` folder. Build image:
+
+    $ docker build . -t nanorpcproxy
+
+In order to run the image with default (no) config:
+
+    $ docker run -it nanorpcproxy:latest
+
+To run with configuration, first copy default settings:
+
+    $ cp creds.json.default creds.json
+    $ cp settings.json.default settings.json
+    $ cp user_settings.json.default user_settings.json
+    $ cp token_settings.json.default token_settings.json
+
+Then from the same directory, specify the config files to run with the container:
+
+    $ docker run -it -p 9950:9950 -v $(pwd)/settings.json:/usr/src/app/settings.json nanorpcproxy:latest
+
+The same goes for rest of the settings files.
 
 ---
 ---
