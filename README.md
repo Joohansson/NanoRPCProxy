@@ -167,7 +167,8 @@ To run with configuration, first copy default settings:
     $ cp user_settings.json.default user_settings.json
     $ cp token_settings.json.default token_settings.json
 
-Then from the same directory, specify the config files to run with the container:
+To run the docker container with configuration you have to map the configuration files inside the container to `/usr/src/app/`.
+Here's an example mounting `settings.json` from the current work directory, to `/usr/src/app/settings.json` in the container: 
 
     $ docker run -it -p 9950:9950 -v $(pwd)/settings.json:/usr/src/app/settings.json nanorpcproxy:latest
 
