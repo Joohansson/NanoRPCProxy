@@ -1,0 +1,11 @@
+version: "3.8"
+services:
+  nanorpcproxy:
+    build: .
+    ports:
+      - "9950:9950"
+    volumes:
+      - ./settings.json:/usr/src/app/settings.json
+#     - ./creds.json:/usr/src/app/creds.json
+#     - ./user_settings.json:/usr/src/app/user_settings.json
+#     - ./token_settings.json:/usr/src/app/token_settings.json
