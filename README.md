@@ -172,7 +172,12 @@ Here's an example mounting `settings.json` from the current work directory, to `
 
     $ docker run -it -p 9950:9950 -v $(pwd)/settings.json:/usr/src/app/settings.json nanorpcproxy:latest
 
-The same goes for rest of the settings files. There's also a `docker-compose.yml` file present. To run with docker compose,
+The same goes for rest of the settings files.
+Here is an example how to run it indefinitely in the background and restart on fail or machine boot (with the name rpcproxy):
+
+    $ docker run -d --restart unless-stopped --name rpcproxy -p 9950:9950 -v $(pwd)/settings.json:/usr/src/app/settings.json nanorpcproxy:latest
+
+There's also a `docker-compose.yml` file present. To run with docker compose,
 first copy files as above. Then run image with:
 
     $ docker-compose up
