@@ -231,6 +231,7 @@ catch(e) {
 // ---
 console.log("PROXY SETTINGS:\n-----------")
 console.log("Node url: " + node_url)
+console.log("Websocket url: " + node_ws_url)
 console.log("Http port: " + String(http_port))
 console.log("Https port: " + String(https_port))
 console.log("Request path: " + request_path)
