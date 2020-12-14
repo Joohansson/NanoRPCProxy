@@ -9,7 +9,7 @@ COPY ./server/package*.json ./
 RUN npm install
 
 # Copy source files
-COPY server/ .
+COPY ./server/ .
 
 EXPOSE 9950
 
