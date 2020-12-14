@@ -152,7 +152,7 @@ It may happen that the settings files are expanded. In that case, you need to do
 ---
 ### Option3: With Docker
 
-The docker image is available publicly on **[nanojson/nanorpcproxy](https://hub.docker.com/repository/docker/nanojson/nanorpcproxy)** but if you want to build it yourself:
+The docker image is available publicly on **[nanojson/nanorpcproxy](https://hub.docker.com/r/nanojson/nanorpcproxy)** but if you want to build it yourself:
 
 Ensure that [Docker](https://docs.docker.com/get-docker/) is installed. Then step into the `src/` folder. Build image:
 
