@@ -152,11 +152,17 @@ It may happen that the settings files are expanded. In that case, you need to do
 ---
 ### Option3: With Docker
 
+The docker image is available publicly on **[nanojson/nanorpcproxy](https://hub.docker.com/repository/docker/nanojson/nanorpcproxy)** but if you want to build it yourself:
+
 Ensure that [Docker](https://docs.docker.com/get-docker/) is installed. Then step into the `src/` folder. Build image:
 
     $ docker build . -t nanorpcproxy
 
 In order to run the image with default (no) config:
+
+    $ docker run -it nanojson/nanorpcproxy:latest
+
+Or to run your own build (remove nanojson/):
 
     $ docker run -it nanorpcproxy:latest
 
@@ -170,12 +176,12 @@ To run with configuration, first copy default settings:
 To run the docker container with configuration you have to map the configuration files inside the container to `/usr/src/app/`.
 Here's an example mounting `settings.json` from the current work directory, to `/usr/src/app/settings.json` in the container: 
 
-    $ docker run -it -p 9950:9950 -v $(pwd)/settings.json:/usr/src/app/settings.json nanorpcproxy:latest
+    $ docker run -it -p 9950:9950 -v $(pwd)/settings.json:/usr/src/app/settings.json nanojson/nanorpcproxy:latest
 
 The same goes for rest of the settings files.
 Here is an example how to run it indefinitely in the background and restart on fail or machine boot (with the name rpcproxy):
 
-    $ docker run -d --restart unless-stopped --name rpcproxy -p 9950:9950 -v $(pwd)/settings.json:/usr/src/app/settings.json nanorpcproxy:latest
+    $ docker run -d --restart unless-stopped --name rpcproxy -p 9950:9950 -v $(pwd)/settings.json:/usr/src/app/settings.json nanojson/nanorpcproxy:latest
 
 There's also a `docker-compose.yml` file present. To run with docker compose,
 first copy files as above. Then run image with:
