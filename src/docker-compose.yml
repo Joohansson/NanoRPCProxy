@@ -4,6 +4,7 @@ services:
     build: .
     ports:
       - "9950:9950"
+      - "9952:9952"
     volumes:
       - ./settings.json:/usr/src/app/settings.json
 #     - ./creds.json:/usr/src/app/creds.json
