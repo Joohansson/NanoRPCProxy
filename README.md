@@ -205,7 +205,7 @@ docker-compose.yml
         ports:
           - "7075:7075"
         volumes:
-        - "./nano_node:/root"
+          - "./nano_node:/root"
       nanorpcproxy:
         image: "nanojson/nanorpcproxy:latest"
         restart: "unless-stopped"
