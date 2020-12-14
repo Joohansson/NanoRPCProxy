@@ -190,6 +190,53 @@ first copy files as above. Then run image with:
 
 All files but settings.json is disabled in the docker-compose file by default.
 
+### Example docker-compose.yml for running a Nano node and the proxy
+
+1. Copy the server/settings.json.default to a new folder settings/settings.json (or other setting files mentioned above)
+2. Edit settings.json and make sure "node_url":"http://node:7076" and "node_ws_url":"ws://node:7078". That means the proxy will connect to the node service (name=node) internally.
+3. Create a docker-compose.yml and paste this (at the root of the settings folder). It will download the latest node and proxy. Then forward the node port 7075, RPC port 9950 and Websocket port 9952. Those will be the ones exposed.
+
+docker-compose.yml
+
+    services:
+      node:
+        image: "nanocurrency/nano:latest"
+        restart: "unless-stopped"
+        ports:
+          - "7075:7075"
+        volumes:
+        - "./nano_node:/root"
+      nanorpcproxy:
+        image: "nanojson/nanorpcproxy:latest"
+        restart: "unless-stopped"
+        ports:
+          - "9950:9950"
+          - "9952:9952"
+        volumes:
+          - ./settings/settings.json:/usr/src/app/settings.json
+
+4. Create a folder called nano_node (same level as the settings folder)
+5. Run this in the same folder as the docker-compose.yml
+
+Terminal
+
+    $ docker-compose up
+
+6. Now in the nano_node folder the node will start saving the ledger, logs and settings. You can alter the config-node.toml or config-rpc.toml and just restart the compose. For example, you want the RPC and websocket to be enabled. And if you are going to request node PoW (not using dpow or bpow), you also need enable_control in the config-rpc.toml (if not using work_peers) and in the settings/settings.json you will need "work_generate" as an "allowed command".
+
+Example of config-node.toml
+
+    [node.websocket]
+    address = "::ffff:0.0.0.0"
+    enable = true
+
+    [rpc]
+    enable = true
+
+7. When everything is up and running you can for example connect [Nault](https://nault.cc) to it via the app settings. Using http://127.0.0.1:9950/proxy and ws://127.0.0.1:9952
+
+To upgrade, you just run "docker-compose upgrade" and then "docker-compose up"
+
 ---
 ---
 ---
