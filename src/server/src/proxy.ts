@@ -65,9 +65,9 @@ var https_key = ""                  // file path for private key file
 var allowed_commands = []           // only allow RPC actions in this list
 var cached_commands = []            // a list of commands [key] that will be cached for corresponding duration in seconds as [value]
 var limited_commands = []           // a list of commands [key] to limit the output response for with max count as [value]
-var slow_down: SlowDownConfig | undefined = undefined
-var rate_limiter: RateLimiterConfig | undefined = undefined
-var ddos_protection: DDOSProtectionConfig | undefined = undefined
+var slow_down: SlowDownConfig | any = {}
+var rate_limiter: RateLimiterConfig | any = {}
+var ddos_protection: DDOSProtectionConfig | any = {}
 var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
 var ip_blacklist = []               // a list of IPs to deny always
 var proxy_hops = 0                  // if the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here.
