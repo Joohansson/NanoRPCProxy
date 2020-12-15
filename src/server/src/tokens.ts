@@ -1,3 +1,5 @@
+import {log_levels, TokenSettings} from "./token-settings";
+
 export {}
 
 const Nacl =       require('tweetnacl/nacl')
@@ -5,57 +7,51 @@ const Nano =       require('nanocurrency')
 const Wallet =     require('nanocurrency-web')
 const Fs =         require('fs')
 const Tools =      require('./tools')
-const log_levels = {none:"none", warning:"warning", info:"info"}
+// const log_levels = {none:"none", warning:"warning", info:"info"}
 
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
 
-var work_server = "http://127.0.0.1:7000" // the work server for doing PoW (the node can be used as well, for example http://127.0.0.1:7076, but enable_control is needed in the node config)
-var token_price = 0.0001          // Nano per token
-var payment_timeout = 120         // timeout after 120sec
-var pending_interval = 2          // time to wait for each check for pending Nano
-var pending_threshold = "1"       // only allow pending tx above this raw value
-var pending_count = 10            // max number of pending to process per account for each order (normally only 1 should be needed)
-var difficulty_multiplier = "1.0" // Multipliers used when using the node for PoW
-var payment_receive_account = "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue" // where to send the payment
-var min_token_amount = 1          // min allowed tokens to be purchased
-var max_token_amount = 10000000    // max allowed tokens to be purchased
-var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
-
-// Read settings from file
+const loadSettings: () => TokenSettings = () => {
+  const defaultSettings: TokenSettings = {
+    work_server: "http://127.0.0.1:7000",
+    token_price: 0.0001,
+    payment_timeout: 120,
+    pending_interval: 2,
+    pending_threshold: "1",
+    pending_count: 10,
+    difficulty_multiplier: "1.0",
+    payment_receive_account: "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue",
+    min_token_amount: 1,
+    max_token_amount: 10000000,
+    log_level: "none",
+  }
+  // Read settings from file
 // ---
-try {
-  const settings = JSON.parse(Fs.readFileSync('token_settings.json', 'UTF-8'))
-  work_server = settings.work_server
-  token_price = settings.token_price
-  payment_timeout = settings.payment_timeout
-  pending_interval = settings.pending_interval
-  pending_threshold = settings.pending_threshold
-  pending_count = settings.pending_count
-  difficulty_multiplier = settings.difficulty_multiplier
-  payment_receive_account = settings.payment_receive_account
-  min_token_amount = settings.min_token_amount
-  max_token_amount = settings.max_token_amount
-  log_level = settings.log_level
+  try {
+    const readSettings: TokenSettings = JSON.parse(Fs.readFileSync('token_settings.json', 'UTF-8'))
+    return {...defaultSettings, ...readSettings}
+  }
+  catch(e) {
+    console.log("Could not read token_settings.json, returns default settings", e)
+    return defaultSettings
+  }
 }
-catch(e) {
-  console.log("Could not read token_settings.json", e)
-}
-// ---
+const settings: TokenSettings = loadSettings()
 
 // Log all initial settings for convenience
 // ---
 function tokenLogSettings(logger) {
   logger("TOKEN SETTINGS:\n-----------")
-  logger("Work Server: " + work_server)
-  logger("Token Price: " + token_price + " Nano/token")
-  logger("Payment Timeout: " + payment_timeout)
-  logger("Pending Interval: " + pending_interval)
-  logger("Pending Threshold: " + pending_threshold)
-  logger("Pending Max Count: " + pending_count)
-  logger("Difficulty Multiplier: " + difficulty_multiplier)
-  logger("Min allowed tokens to purchase: " + min_token_amount)
-  logger("Max allowed tokens to purchase: " + max_token_amount)
-  logger("Token system log level: " + log_level)
+  logger("Work Server: " + settings.work_server)
+  logger("Token Price: " + settings.token_price + " Nano/token")
+  logger("Payment Timeout: " + settings.payment_timeout)
+  logger("Pending Interval: " + settings.pending_interval)
+  logger("Pending Threshold: " + settings.pending_threshold)
+  logger("Pending Max Count: " + settings.pending_count)
+  logger("Difficulty Multiplier: " + settings.difficulty_multiplier)
+  logger("Min allowed tokens to purchase: " + settings.min_token_amount)
+  logger("Max allowed tokens to purchase: " + settings.max_token_amount)
+  logger("Token system log level: " + settings.log_level)
 }
 
 tokenLogSettings(console.log)
@@ -72,23 +68,23 @@ module.exports = {
   // Generates and provides a payment address while checking for pending tx and collect them
   requestTokenPayment: async function (token_amount, token_key="", order_db, url) {
     // Block request if amount is not within interval
-    if (token_amount < min_token_amount) {
-      return res = {"error":"Token amount must be larger than " + min_token_amount}
+    if (token_amount < settings.min_token_amount) {
+      return res = {"error":"Token amount must be larger than " + settings.min_token_amount}
     }
-    if (token_amount > max_token_amount) {
-      return res = {"error":"Token amount must be smaller than " + max_token_amount}
+    if (token_amount > settings.max_token_amount) {
+      return res = {"error":"Token amount must be smaller than " + settings.max_token_amount}
     }
 
     node_url = url
     var priv_key = ""
     var address = ""
-    let nano_amount = token_amount*token_price // the Nano to be received
+    let nano_amount = token_amount*settings.token_price // the Nano to be received
 
     // If token_key was passed it means refill tokens and update db order
     // first check if key exist in DB and the order is not currently processing
     if (token_key != "" && order_db.get('orders').find({token_key: token_key}).value()) {
       if (!order_db.get('orders').find({token_key: token_key}).value().order_waiting) {
-        order_db.get('orders').find({token_key: token_key}).assign({"order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
+        order_db.get('orders').find({token_key: token_key}).assign({"order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
         address = order_db.get('orders').find({token_key: token_key}).value().address //reuse old address
       }
       else {
@@ -105,7 +101,7 @@ module.exports = {
       let pub_key = Nano.derivePublicKey(priv_key)
       address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
 
-      const order = {"address":address, "token_key":token_key, "priv_key":priv_key, "tokens":0, "order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000), "previous": null, "hashes": []}
+      const order = {"address":address, "token_key":token_key, "priv_key":priv_key, "tokens":0, "order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000), "previous": null, "hashes": []}
       order_db.get("orders").push(order).write()
     }
 
@@ -113,7 +109,7 @@ module.exports = {
     res = {"address":address, "token_key":token_key, "payment_amount":nano_amount}
 
     // Start checking for pending and cancel order if taking too long
-    logThis("Start checking pending tx every " + pending_interval + "sec for a total of " + nano_amount + " Nano...", log_levels.info)
+    logThis("Start checking pending tx every " + settings.pending_interval + "sec for a total of " + nano_amount + " Nano...", log_levels.info)
     checkPending(address, order_db)
 
     // Return payment request
@@ -153,7 +149,7 @@ module.exports = {
 
       // Replace the address and private key and reset status
       if (order.processing === false) {
-        order_db.get('orders').find({token_key: token_key}).assign({"address":address, "priv_key":priv_key, "order_waiting":false, "nano_amount":0, "order_time_left":payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
+        order_db.get('orders').find({token_key: token_key}).assign({"address":address, "priv_key":priv_key, "order_waiting":false, "nano_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
         logThis("Order was cancelled for " + token_key + ". Previous private key was " + previous_priv_key, log_levels.info)
         return {"priv_key":previous_priv_key,"status":"Order canceled and account replaced. You can use the private key to claim any leftover funds."}
       }
@@ -188,7 +184,7 @@ module.exports = {
   },
   // Client checks status of owned tokens
   checkTokenPrice: async function () {
-    return {"token_price":token_price}
+    return {"token_price":settings.token_price}
   },
   // Check pending and repair old order
   repairOrder: async function(address, order_db, url) {
@@ -214,7 +210,7 @@ async function checkPending(address, order_db, moveOn = true, total_received = 0
       // Get the right order based on address
       const order = order_db.get('orders').find({address: address}).value()
       if(total_received >= nano_amount-0.000001) { // add little margin here because of floating number precision deviation when adding many tx together
-        let tokens_purchased = Math.round(total_received / token_price)
+        let tokens_purchased = Math.round(total_received / settings.token_price)
 
         if (order) {
           // Save previous hashes to be appended with new discovered hashes
@@ -258,13 +254,13 @@ async function checkPending(address, order_db, moveOn = true, total_received = 0
     return
   }
   // pause x sec and check again
-  await sleep(pending_interval * 1000)
+  await sleep(settings.pending_interval * 1000)
 
   // Find the order and update the timeout key
   const order = order_db.get('orders').find({address: address}).value()
   if (order) {
     // Update the order time left
-    var new_time = order.order_time_left - pending_interval
+    var new_time = order.order_time_left - settings.pending_interval
     if (new_time < 0) {
       new_time = 0
     }
@@ -371,7 +367,7 @@ async function createPendingBlocks(order_db, privKey, address, balance, adjusted
   command.source = 'true'
   command.sorting = 'true' //largest amount first
   command.include_only_confirmed = 'true'
-  command.threshold = pending_threshold
+  command.threshold = settings.pending_threshold
 
   // retrive from RPC
   try {
@@ -459,7 +455,7 @@ async function processPending(order_db, blocks, keys, keyCount, privKey, previou
     var command: any = {}
     command.action = "work_generate"
     command.hash = workInputHash
-    command.multiplier = difficulty_multiplier
+    command.multiplier = settings.difficulty_multiplier
     command.use_peers = "true"
 
     // retrive from RPC
@@ -535,17 +531,17 @@ async function processSend(order_db, privKey, previous, representative, sendCall
   var command: any = {}
   command.action = 'work_generate'
   command.hash = previous
-  command.multiplier = difficulty_multiplier
+  command.multiplier = settings.difficulty_multiplier
   command.use_peers = "true"
 
   // retrive from RPC
   try {
-    let data = await Tools.postData(command, work_server, API_TIMEOUT)
+    let data = await Tools.postData(command, settings.work_server, API_TIMEOUT)
     if ('work' in data) {
       let work = data.work
       // create the block with the work found
       let block = Nano.createBlock(privKey, {balance:'0', representative:representative,
-      work:work, link:payment_receive_account, previous:previous})
+      work:work, link:settings.payment_receive_account, previous:previous})
       // replace xrb with nano (old library)
       block.block.account = block.block.account.replace('xrb', 'nano')
       block.block.link_as_account = block.block.link_as_account.replace('xrb', 'nano')
@@ -555,7 +551,7 @@ async function processSend(order_db, privKey, previous, representative, sendCall
       try {
         let data = await Tools.postData(jsonBlock, node_url, API_TIMEOUT)
         if (data.hash) {
-          logThis("Funds transferred at block: " + data.hash + " to " + payment_receive_account, log_levels.info)
+          logThis("Funds transferred at block: " + data.hash + " to " + settings.payment_receive_account, log_levels.info)
           // update the db with latest hash to be used if processing pending for the same account
           order_db.get('orders').find({priv_key: privKey}).assign({previous: data.hash}).write()
         }
@@ -580,7 +576,7 @@ async function processSend(order_db, privKey, previous, representative, sendCall
 
 // Log function
 function logThis(str, level) {
-  if (log_level == log_levels.info || level == log_level) {
+  if (settings.log_level == log_levels.info || level == settings.log_level) {
     if (level == log_levels.info) {
       console.info(str)
     }
