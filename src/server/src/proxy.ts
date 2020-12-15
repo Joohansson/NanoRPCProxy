@@ -1,3 +1,5 @@
+export {}
+
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
@@ -12,7 +14,7 @@ const Express =               require('express')
 const Cors =                  require('cors')
 const IpFilter =              require('express-ipfilter').IpFilter
 const IpDeniedError =         require('express-ipfilter').IpDeniedError
-const Promise =               require('promise')
+// const Promise =               require('promise')
 const Schedule =              require('node-schedule')
 const WebSocketServer =       require('websocket').server
 const ReconnectingWebSocket = require('reconnecting-websocket')
@@ -63,9 +65,9 @@ var https_key = ""                  // file path for private key file
 var allowed_commands = []           // only allow RPC actions in this list
 var cached_commands = []            // a list of commands [key] that will be cached for corresponding duration in seconds as [value]
 var limited_commands = []           // a list of commands [key] to limit the output response for with max count as [value]
-var slow_down = {}                  // contains the settings for the slow down filter
-var rate_limiter = {}               // contains the settings for the rate limiter
-var ddos_protection = {}            // contains the settings for the ddos protection
+var slow_down: SlowDownConfig | undefined = undefined
+var rate_limiter: RateLimiterConfig | undefined = undefined
+var ddos_protection: DDOSProtectionConfig | undefined = undefined
 var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
 var ip_blacklist = []               // a list of IPs to deny always
 var proxy_hops = 0                  // if the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here.
@@ -412,8 +414,8 @@ if (use_auth) {
 if (use_rate_limiter) {
   const limiter1 = new RateLimiterMemory({
     keyPrefix: 'limit1',
-    points: rate_limiter.request_limit, // limit each IP to x requests per duration
-    duration: Math.round(rate_limiter.time_window/1000), // rolling time window in sec
+    points: rate_limiter.request_limit,
+    duration: Math.round(rate_limiter.time_window/1000),
   })
 
   const rateLimiterMiddleware1 = (req, res, next) => {
@@ -486,10 +488,10 @@ const rateLimiterMiddleware2 = (req, res, next) => {
 // Limit by slowing down requests
 if (use_slow_down) {
   const slow_down_settings = SlowDown({
-    windowMs: slow_down.time_window, // rolling time window in ms
-    delayAfter: slow_down.request_limit, // allow x requests per time window, then start slowing down
-    delayMs: slow_down.delay_increment, // begin adding X ms of delay per request when delayAfter has been reached
-    maxDelayMs: slow_down.max_delay, // max delay in ms to slow down
+    windowMs: slow_down.time_window,
+    delayAfter: slow_down.request_limit,
+    delayMs: slow_down.delay_increment,
+    maxDelayMs: slow_down.max_delay,
     // skip limit for certain requests
     skip: function(req, res) {
       if (use_tokens) {
@@ -657,6 +659,9 @@ function multiplierFromDifficulty(difficulty, base_difficulty) {
 
 // Custom error class
 class APIError extends Error {
+
+  private code: any
+
   constructor(code, ...params) {
     super(...params)
 
@@ -1154,8 +1159,7 @@ if (use_websocket) {
                         unique_new++
                       }
                     })
-                    if (parseInt(unique_new) + Object.keys(current_tracked_accounts).length <= websocket_max_accounts) {
-
+                    if (unique_new + Object.keys(current_tracked_accounts).length <= websocket_max_accounts) {
                       // save connection to global dicionary to reuse when getting messages from the node websocket
                       websocket_connections[remote_ip] = connection
 

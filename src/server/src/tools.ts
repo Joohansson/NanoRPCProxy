@@ -1,10 +1,15 @@
+export {}
+
 const Fetch =   require('node-fetch')
-const Promise = require('promise')
+// const Promise = require('promise')
 const BigInt =  require('big-integer')
 const Nano =    require('nanocurrency')
 
 // Custom error class
 class APIError extends Error {
+
+  private code: any
+
   constructor(code, ...params) {
     super(...params)
 
@@ -22,7 +27,7 @@ class APIError extends Error {
 module.exports = {
   // Get data from URL. let data = await getData("url", TIMEOUT)
   getData: async function (server, timeout) {
-    options = {
+    let options: any = {
       method: 'get',
       timeout: timeout,
     }
@@ -39,7 +44,7 @@ module.exports = {
   },
   // Post data, for example to RPC node. let data = await postData({"action":"block_count"}, "url", TIMEOUT)
   postData: async function (data, server, timeout) {
-    options = {
+    let options: any = {
       method: 'post',
       body:    JSON.stringify(data),
       headers: { 'Content-Type': 'application/json' },
