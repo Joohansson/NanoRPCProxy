@@ -3,13 +3,13 @@ import ProxySettings from './proxy-settings';
 import {log_levels, LogData, LogLevel} from "./common-settings";
 import {UserSettings, UserSettingsConfig} from "./user-settings";
 import {PowSettings} from "./pow-settings";
+import SlowDown from "express-slow-down";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
 const NodeCache =             require("node-cache" )
-const SlowDown =              require("express-slow-down")
 const BasicAuth =             require('express-basic-auth')
 const Http =                  require('http')
 const Https =                 require('https')
@@ -18,7 +18,6 @@ const Express =               require('express')
 const Cors =                  require('cors')
 const IpFilter =              require('express-ipfilter').IpFilter
 const IpDeniedError =         require('express-ipfilter').IpDeniedError
-// const Promise =               require('promise')
 const Schedule =              require('node-schedule')
 const WebSocketServer =       require('websocket').server
 const ReconnectingWebSocket = require('reconnecting-websocket')
@@ -28,7 +27,6 @@ const Dec =                   require('bigdecimal') //https://github.com/iriscou
 const RemoveTrailingZeros =   require('remove-trailing-zeros')
 const Tokens =                require('./tokens')
 const Tools =                 require('./tools')
-// const log_levels = {none:"none", warning:"warning", info:"info"}
 const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init
