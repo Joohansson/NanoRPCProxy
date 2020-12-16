@@ -1,4 +1,4 @@
-import {LOG_LEVEL} from "./common-settings";
+import {LogLevel} from "./common-settings";
 
 export interface TokenSettings {
     // the work server for doing PoW (the node can be used as well, for example http://127.0.0.1:7076, but enable_control is needed in the node config)
@@ -22,5 +22,5 @@ export interface TokenSettings {
     // max allowed tokens to be purchased
     max_token_amount: number
     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
-    log_level: LOG_LEVEL
+    log_level: LogLevel
 }

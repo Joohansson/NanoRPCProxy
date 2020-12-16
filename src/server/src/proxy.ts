@@ -1,6 +1,6 @@
-import {CredentialSettings} from "./credential-settings";
+import {Credentials, CredentialSettings} from "./credential-settings";
 import ProxySettings from './proxy-settings';
-import {log_levels} from "./common-settings";
+import {log_levels, LogLevel} from "./common-settings";
 import {UserSettings, UserSettingsConfig} from "./user-settings";
 
 require('dotenv').config() // load variables from .env into the environment
@@ -42,7 +42,7 @@ tracking_db.defaults({users: []}).write()
 tracking_db.update('users', n => []).write() //empty db on each new run
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
-var users = []                      // a list of base64 user/password credentials
+var users: Credentials[] = []                      // a list of base64 user/password credentials
 // var log_level = log_levels.none
 
 // default vars
@@ -68,7 +68,7 @@ var user_use_output_limiter = null
 var user_allowed_commands = null
 var user_cached_commands = null
 var user_limited_commands = null
-var user_log_level = null
+var user_log_level: LogLevel | null = null
 var dpow_user = null
 var dpow_key = null
 var bpow_user = null
@@ -226,7 +226,7 @@ function logObjectEntries(logger, title, object) {
 }
 // ---
 // Log all initial settings for convenience
-function logSettings(logger) {
+function logSettings(logger: (...data: any[]) => void) {
   logger("PROXY SETTINGS:\n-----------")
   logger("Node url: " + settings.node_url)
   logger("Websocket url: " + settings.node_ws_url)
@@ -508,7 +508,7 @@ if (settings.use_cache) {
 }
 
 // To verify username and password provided via basicAuth. Support multiple users
-function myAuthorizer(username, password) {
+function myAuthorizer(username: string, password: string) {
   // Set default settings specific for authenticated users
   user_use_cache = settings.use_cache
   user_use_output_limiter = settings.use_output_limiter
@@ -517,7 +517,7 @@ function myAuthorizer(username, password) {
   user_limited_commands = settings.limited_commands
   user_log_level = settings.log_level
 
-  var valid_user = false
+  var valid_user: boolean = false
   for (const [key, value] of Object.entries(users)) {
     if (BasicAuth.safeCompare(username, value.user) && BasicAuth.safeCompare(password, value.password)) {
       valid_user = true
@@ -545,7 +545,8 @@ function myAuthorizer(username, password) {
               user_limited_commands = value2
               break
               case 'log_level':
-              user_log_level = value2
+                // @ts-ignore
+                user_log_level = value2
               break
             }
           }
@@ -608,7 +609,7 @@ function updateTrackedAccounts() {
 }
 
 // Log function
-function logThis(str, level) {
+function logThis(str: string, level: LogLevel) {
   if (user_log_level == log_levels.info || level == user_log_level) {
     if (level == log_levels.info) {
       console.info(str)

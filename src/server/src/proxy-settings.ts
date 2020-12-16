@@ -1,22 +1,34 @@
-import {CachedCommands, LimitedCommands, LOG_LEVEL} from "./common-settings";
+import {CachedCommands, LimitedCommands, LogLevel} from "./common-settings";
 
+/** Contains the settings for the slow down filter */
 export interface SlowDown {
-    time_window: number;
-    request_limit: number;
-    delay_increment: number;
-    max_delay: number;
+    // rolling time window in ms
+    time_window: number
+    // allow x requests per time window, then start slowing down
+    request_limit: number
+    // begin adding X ms of delay per request when delayAfter has been reached
+    delay_increment: number
+    // max delay in ms to slow down
+    max_delay: number
 }
 
+/** Contains the settings for the rate limiter */
 export interface RateLimiter {
-    time_window: number;
-    request_limit: number;
+    // Limit each IP to x requests per duration
+    request_limit: number
+    // Rolling time window in sec
+    time_window: number
 }
 
+/** Contains the settings for the ddos protection */
 export interface DdosProtection {
-    time_window: number;
-    request_limit: number;
+    // Limit each IP to x requests per duration
+    request_limit: number
+    // Rolling time window in sec
+    time_window: number
 }
 
+/** Base config for the Proxy */
 export default interface ProxySettings {
     // nano node RPC url (default for beta network is 'http://[::1]:55000')
     node_url: string;
@@ -80,7 +92,7 @@ export default interface ProxySettings {
     // whitelist requester ORIGIN for example https://mywallet.com or http://localhost:8080 (require use_cors) [list of hostnames]
     cors_whitelist: any[];
     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
-    log_level: LOG_LEVEL;
+    log_level: LogLevel;
     // forcefully set watch_work=false for process calls (to block node from doing rework)
     disable_watch_work: boolean;
 }

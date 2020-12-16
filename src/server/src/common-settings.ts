@@ -1,9 +1,9 @@
-export type LOG_LEVEL = 'none' | 'warning' | 'info'
+export type LogLevel = 'none' | 'warning' | 'info'
 
 interface LogLevels {
-    none: LOG_LEVEL
-    info: LOG_LEVEL
-    warning: LOG_LEVEL
+    none: LogLevel
+    info: LogLevel
+    warning: LogLevel
 }
 export const log_levels: LogLevels = {
     none: 'none',
