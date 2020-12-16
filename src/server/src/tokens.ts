@@ -1,5 +1,7 @@
 import {TokenSettings} from "./token-settings";
-import {log_levels} from "./common-settings";
+import {log_levels, LogLevel} from "./common-settings";
+import lowdb from "lowdb";
+import {Order, OrderDB} from "./lowdb-schema";
 
 export {}
 
@@ -58,7 +60,7 @@ function tokenLogSettings(logger) {
 tokenLogSettings(console.log)
 // ---
 
-const sleep = (milliseconds) => {
+const sleep = (milliseconds: number) => {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
@@ -67,7 +69,7 @@ var node_url = "" // will be set by main script
 // Functions to be required from another file
 module.exports = {
   // Generates and provides a payment address while checking for pending tx and collect them
-  requestTokenPayment: async function (token_amount, token_key="", order_db, url) {
+  requestTokenPayment: async function (token_amount: number, token_key: string="", order_db: OrderDB, url: string) {
     // Block request if amount is not within interval
     if (token_amount < settings.min_token_amount) {
       return res = {"error":"Token amount must be larger than " + settings.min_token_amount}
@@ -102,7 +104,7 @@ module.exports = {
       let pub_key = Nano.derivePublicKey(priv_key)
       address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
 
-      const order = {"address":address, "token_key":token_key, "priv_key":priv_key, "tokens":0, "order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000), "previous": null, "hashes": []}
+      const order: Order = {"address":address, "token_key":token_key, "priv_key":priv_key, "tokens":0, "order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000), "previous": null, "hashes": []}
       order_db.get("orders").push(order).write()
     }
 
@@ -117,7 +119,7 @@ module.exports = {
     return res
   },
   // Client checks if order has been processed
-  checkOrder: async function (token_key, order_db) {
+  checkOrder: async function (token_key: string, order_db: OrderDB) {
     // Get the right order based on token_key
     const order = order_db.get('orders').find({token_key: token_key}).value()
     if (order) {
@@ -136,7 +138,7 @@ module.exports = {
     }
   },
   // Cancel order by replacing the account and return the previous private key for client to claim the funds
-  cancelOrder: async function (token_key, order_db) {
+  cancelOrder: async function (token_key: string, order_db: any) {
     // Get the right order based on token_key
     const order = order_db.get('orders').find({token_key: token_key}).value()
     if (order) {
@@ -165,7 +167,7 @@ module.exports = {
     }
   },
   // Client checks status of owned tokens
-  checkTokens: async function (token_key, order_db) {
+  checkTokens: async function (token_key: string, order_db: OrderDB) {
     // Get the right order based on token_key
     const order = order_db.get('orders').find({token_key: token_key}).value()
     if (order) {
@@ -188,7 +190,7 @@ module.exports = {
     return {"token_price":settings.token_price}
   },
   // Check pending and repair old order
-  repairOrder: async function(address, order_db, url) {
+  repairOrder: async function(address: string, order_db: OrderDB, url: string) {
     node_url = url
     checkPending(address, order_db, false)
   },
@@ -196,7 +198,7 @@ module.exports = {
 }
 
 // Check if order payment has arrived as a pending block, continue check at intervals until time is up. If continue is set to false it will only check one time
-async function checkPending(address, order_db, moveOn = true, total_received = 0) {
+async function checkPending(address: string, order_db: OrderDB, moveOn: boolean = true, total_received = 0) {
   // Check pending and claim
   let priv_key = order_db.get('orders').find({address: address}).value().priv_key
   let nano_amount = order_db.get('orders').find({address: address}).value().nano_amount
@@ -284,14 +286,14 @@ async function checkPending(address, order_db, moveOn = true, total_received = 0
 // Generate secure random 64 char hex
 function genSecureKey() {
   const rand = Nacl.randomBytes(32)
-  return rand.reduce((hex, idx) => hex + (`0${idx.toString(16)}`).slice(-2), '')
+  return rand.reduce((hex: string, idx: number) => hex + (`0${idx.toString(16)}`).slice(-2), '')
 }
 
 // Process an account
-async function processAccount(privKey, order_db) {
+async function processAccount(privKey: string, order_db: OrderDB) {
   let promise = new Promise(async (resolve, reject) => {
-    let pubKey = Nano.derivePublicKey(privKey)
-    let address = Nano.deriveAddress(pubKey, {useNanoPrefix: true})
+    let pubKey: string = Nano.derivePublicKey(privKey)
+    let address: string = Nano.deriveAddress(pubKey, {useNanoPrefix: true})
 
     // get account info required to build the block
     var command: any = {}
@@ -299,9 +301,9 @@ async function processAccount(privKey, order_db) {
     command.account = address
     command.representative = true
 
-    var balance = 0 // balance will be 0 if open block
-    var adjustedBalance = balance
-    var previous = null // previous is null if we create open block
+    var balance: string = "0" // balance will be 0 if open block
+    var adjustedBalance: string = balance.toString()
+    var previous: string | null = null // previous is null if we create open block
     order_db.get('orders').find({priv_key: privKey}).assign({previous: previous}).write()
     var representative = 'nano_1iuz18n4g4wfp9gf7p1s8qkygxw7wx9qfjq6a9aq68uyrdnningdcjontgar'
     var subType = 'open'
@@ -323,11 +325,11 @@ async function processAccount(privKey, order_db) {
       }
       else if (data.error === "Account not found") {
         validResponse = true
-        adjustedBalance = 0
+        adjustedBalance = "0"
       }
       if (validResponse) {
         // create and publish all pending
-        createPendingBlocks(order_db, privKey, address, balance, adjustedBalance, previous, subType, representative, pubKey, function(previous,newAdjustedBalance) {
+        createPendingBlocks(order_db, privKey, address, balance, adjustedBalance, previous, subType, representative, pubKey, function(previous: string | null, newAdjustedBalance: string) {
           // the previous is the last received block and will be used to create the final send block
           if (parseInt(newAdjustedBalance) > 0) {
             processSend(order_db, privKey, previous, representative, () => {
@@ -358,7 +360,7 @@ async function processAccount(privKey, order_db) {
 }
 
 // Create pending blocks based on current balance and previous block (or start with an open block)
-async function createPendingBlocks(order_db, privKey, address, balance, adjustedBalance, previous, subType, representative, pubKey, callback, accountCallback) {
+async function createPendingBlocks(order_db: OrderDB, privKey: string, address: string, balance: string, adjustedBalance: string, previous: string | null, subType: string, representative: string, pubKey: string, callback: (previous: string | null, newAdjustedBalance: string) => any, accountCallback: (status: any) => any) {
   // check for pending first
   // Solving this with websocket subscription instead of checking pending x times for each order would be nice but since we must check for previous pending that was done before the order initated, it makes it very complicated without rewriting the whole thing..
   var command: any = {}
@@ -377,8 +379,8 @@ async function createPendingBlocks(order_db, privKey, address, balance, adjusted
     if (data.blocks) {
       // sum all raw amounts and create receive blocks for all pending
       var raw = '0'
-      var keys = []
-      var blocks = {}
+      var keys: any[] = []
+      var blocks: any = {}
       const order = order_db.get('orders').find({address: address}).value()
       Object.keys(data.blocks).forEach(function(key) {
         var found = false
@@ -438,12 +440,12 @@ async function createPendingBlocks(order_db, privKey, address, balance, adjusted
 }
 
 // For each pending block: Create block, generate work and process
-async function processPending(order_db, blocks, keys, keyCount, privKey, previous, subType, representative, pubKey, adjustedBalance, pendingCallback) {
+async function processPending(order_db: OrderDB, blocks: any, keys: any, keyCount: any, privKey: string, previous: string | null, subType: string, representative: string, pubKey: string, adjustedBalance: string, pendingCallback: (previous: string | null, newAdjustedBalance: string) => any) {
   let key = keys[keyCount]
 
   // generate local work
   try {
-    var newAdjustedBalance = Tools.bigAdd(adjustedBalance,blocks[key].amount)
+    var newAdjustedBalance: string = Tools.bigAdd(adjustedBalance,blocks[key].amount)
     logThis("Started generating PoW...", log_levels.info)
 
     // determine input work hash depending if open block or receive block
@@ -524,7 +526,7 @@ async function processPending(order_db, blocks, keys, keyCount, privKey, previou
 }
 
 // Process final send block to payment destination
-async function processSend(order_db, privKey, previous, representative, sendCallback) {
+async function processSend(order_db: OrderDB, privKey: string, previous: string | null, representative: string, sendCallback: () => void) {
   let pubKey = Nano.derivePublicKey(privKey)
   let address = Nano.deriveAddress(pubKey, {useNanoPrefix: true})
 
@@ -576,7 +578,7 @@ async function processSend(order_db, privKey, previous, representative, sendCall
 }
 
 // Log function
-function logThis(str, level) {
+function logThis(str: string, level: LogLevel) {
   if (settings.log_level == log_levels.info || level == settings.log_level) {
     if (level == log_levels.info) {
       console.info(str)

@@ -73,7 +73,7 @@ module.exports = {
     }
   },
   // Add two big integers
-  bigAdd: function (input: any, value: any) {
+  bigAdd: function (input: string, value: string): string {
     let insert = BigInt(input)
     let val = BigInt(value)
     return insert.add(val).toString()

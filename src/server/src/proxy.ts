@@ -4,6 +4,9 @@ import {log_levels, LogData, LogLevel} from "./common-settings";
 import {UserSettings, UserSettingsConfig} from "./user-settings";
 import {PowSettings} from "./pow-settings";
 import SlowDown from "express-slow-down";
+import FileSync from 'lowdb/adapters/FileSync.js';
+import lowdb from 'lowdb'
+import {OrderDB, OrderSchema} from "./lowdb-schema";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -30,12 +33,8 @@ const Tools =                 require('./tools')
 const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init
-const Low = require('lowdb')
-const FileSync = require('lowdb/adapters/FileSync')
-const Adapter = new FileSync('db.json')
-const Adapter2 = new FileSync('websocket.json')
-const order_db = Low(Adapter)
-const tracking_db = Low(Adapter2)
+const order_db: OrderDB =  lowdb(new FileSync<OrderSchema>('db.json'))
+const tracking_db = lowdb(new FileSync('websocket.json'))
 order_db.defaults({orders: []}).write()
 tracking_db.defaults({users: []}).write()
 tracking_db.update('users', n => []).write() //empty db on each new run
