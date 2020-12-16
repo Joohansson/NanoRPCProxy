@@ -1,4 +1,7 @@
-export {}
+import {CredentialSettings} from "./credential-settings";
+import ProxySettings from './proxy-settings';
+import {log_levels} from "./common-settings";
+import {UserSettings} from "./user-settings";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -24,7 +27,7 @@ const Dec =                   require('bigdecimal') //https://github.com/iriscou
 const RemoveTrailingZeros =   require('remove-trailing-zeros')
 const Tokens =                require('./tokens')
 const Tools =                 require('./tools')
-const log_levels = {none:"none", warning:"warning", info:"info"}
+// const log_levels = {none:"none", warning:"warning", info:"info"}
 const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init
@@ -40,40 +43,7 @@ tracking_db.update('users', n => []).write() //empty db on each new run
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
 var users = []                      // a list of base64 user/password credentials
-var node_url = 'http://[::1]:7076'  // nano node RPC url (default for beta network is 'http://[::1]:55000')
-var node_ws_url = "ws://127.0.0.1:57000" // node websocket server (only used if activated with use_websocket)
-var http_port = 9950                // port to listen on for http (enabled default with use_http)
-var https_port = 9951               // port to listen on for https (disabled default with use_https)
-var websocket_http_port = 9952      // port to listen on for http websocket connection (only used if activated with use_websocket)
-var websocket_https_port = 9953     // port to listen on for https websocket connection (only used if activated with use_websocket)
-var request_path = '/proxy'         // Prefix in the request path, e.g. '/proxy' for 'https://server:port/proxy'
-var use_auth = false                // if require username and password when connecting to proxy
-var use_slow_down = false           // if slowing down requests for IPs doing above set limit (defined in slow_down)
-var use_rate_limiter = false        // if blocking IPs for a certain amount of time when they request above set limit (defined in rate_limiter)
-var use_cache = false               // if caching certain commands set in cached_commands
-var use_http = true                 // listen on http (active by default)
-var use_https = false               // listen on https (inactive by default) (a valid cert and key file is needed via https_cert and https_key)
-var use_output_limiter = false      // if limiting number of response objects, like pending transactions, to a certain max amount set in limited_commands. Only supported for RPC actions that have a "count" key
-var use_ip_blacklist = false        // if blocking access to IPs listed in ip_blacklist
-var use_tokens = false              // if activating the token system for purchase via Nano
-var use_websocket = false           // if enable subscriptions on the node websocket (protected by the proxy)
-var use_cors = true                 // if handling cors policy here, if not taken care of in upstream proxy (cors_whitelist=[] means allow ANY ORIGIN)
-var use_dpow = false                // if allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
-var use_bpow = false                // if allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
-var https_cert = ""                 // file path for pub cert file
-var https_key = ""                  // file path for private key file
-var allowed_commands = []           // only allow RPC actions in this list
-var cached_commands = []            // a list of commands [key] that will be cached for corresponding duration in seconds as [value]
-var limited_commands = []           // a list of commands [key] to limit the output response for with max count as [value]
-var slow_down: SlowDownConfig | any = {}
-var rate_limiter: RateLimiterConfig | any = {}
-var ddos_protection: DDOSProtectionConfig | any = {}
-var log_level = log_levels.none     // the log level to use (startup info is always logged): none=zero active logging, warning=only errors/warnings, info=both errors/warnings and info
-var ip_blacklist = []               // a list of IPs to deny always
-var proxy_hops = 0                  // if the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here.
-var websocket_max_accounts = 100    // maximum number of accounts allowed to subscribe to for block confirmations
-var cors_whitelist = []             // whitelist requester ORIGIN for example https://mywallet.com or http://localhost:8080 (require use_cors) [list of hostnames]
-var disable_watch_work = false      // forcefully set watch_work=false for process calls (to block node from doing rework)
+// var log_level = log_levels.none
 
 // default vars
 let cache_duration_default = 60
@@ -92,6 +62,7 @@ var ws = null
 var global_tracked_accounts = [] // the accounts to track in websocket (synced with database)
 var websocket_connections = {} // active ws connections
 
+let defaultUserSettings: UserSettings | undefined
 var user_use_cache = null
 var user_use_output_limiter = null
 var user_allowed_commands = null
@@ -158,7 +129,7 @@ function appendFile(count) {
 // Read credentials from file
 // ---
 try {
-  const creds = JSON.parse(Fs.readFileSync('creds.json', 'UTF-8'))
+  const creds: CredentialSettings = JSON.parse(Fs.readFileSync('creds.json', 'UTF-8'))
   users = creds.users
 }
 catch(e) {
@@ -166,61 +137,71 @@ catch(e) {
 }
 // ---
 
-// Read settings from file
-// ---
-try {
-  const settings = JSON.parse(Fs.readFileSync('settings.json', 'UTF-8'))
-  node_url = settings.node_url
-  node_ws_url = settings.node_ws_url
-  http_port = settings.http_port
-  https_port = settings.https_port
-  request_path = settings.request_path
-  websocket_http_port = settings.websocket_http_port
-  websocket_https_port = settings.websocket_https_port
-  use_auth = settings.use_auth
-  use_slow_down = settings.use_slow_down
-  use_rate_limiter = settings.use_rate_limiter
-  use_cache = settings.use_cache
-  use_output_limiter = settings.use_output_limiter
-  use_http = settings.use_http
-  use_https = settings.use_https
-  use_ip_blacklist = settings.use_ip_blacklist
-  use_tokens = settings.use_tokens
-  use_websocket = settings.use_websocket
-  use_cors = settings.use_cors
-  use_dpow = settings.use_dpow
-  use_bpow = settings.use_bpow
-  https_cert = settings.https_cert
-  https_key = settings.https_key
-  cached_commands = settings.cached_commands
-  allowed_commands = settings.allowed_commands
-  limited_commands = settings.limited_commands
-  log_level = settings.log_level
-  slow_down = settings.slow_down
-  rate_limiter = settings.rate_limiter
-  ddos_protection = settings.ddos_protection
-  ip_blacklist = settings.ip_blacklist
-  proxy_hops = settings.proxy_hops
-  websocket_max_accounts = settings.websocket_max_accounts
-  cors_whitelist = settings.cors_whitelist
-  disable_watch_work = settings.disable_watch_work
+const loadSettings: () => ProxySettings = () => {
+  const defaultSettings: ProxySettings = {
+    node_url: "http://[::1]:7076'",
+    node_ws_url: "ws://127.0.0.1:57000",
+    http_port: 9950,
+    https_port: 9951,
+    websocket_http_port: 9952,
+    websocket_https_port: 9953,
+    request_path: '/proxy',
+    use_auth: false,
+    use_slow_down: false,
+    use_rate_limiter: false,
+    use_cache: false,
+    use_http: true,
+    use_https: false,
+    use_output_limiter: false,
+    use_ip_blacklist: false,
+    use_tokens: false,
+    use_websocket: false,
+    use_cors: true,
+    use_dpow: false,
+    use_bpow: false,
+    https_cert: '',
+    https_key: '',
+    allowed_commands: [],
+    cached_commands: [],
+    limited_commands: [],
+    slow_down: {},
+    rate_limiter: {},
+    ddos_protection: {},
+    ip_blacklist: [],
+    proxy_hops: 0,
+    websocket_max_accounts: 100,
+    cors_whitelist: [],
+    log_level: log_levels.none,
+    disable_watch_work: false,
+  }
+  try {
+    const settings: ProxySettings = JSON.parse(Fs.readFileSync('settings.json', 'UTF-8'))
+    const requestPath = defaultSettings.request_path || settings.request_path
+    const normalizedRequestPath = requestPath.startsWith('/') ? requestPath : '/' + requestPath
+    const mergedSettings: ProxySettings = {...defaultSettings, ...settings, request_path: normalizedRequestPath }
 
-  // normalize request_path, add starting /
-  request_path = request_path.startsWith('/') ? request_path : '/' + request_path
-
-  // Clone default settings for custom user specific vars, to be used if no auth
-  if (!use_auth) {
-    user_use_cache = use_cache
-    user_use_output_limiter = use_output_limiter
-    user_allowed_commands = allowed_commands
-    user_cached_commands = cached_commands
-    user_limited_commands = limited_commands
-    user_log_level = log_level
+    // Clone default settings for custom user specific vars, to be used if no auth
+    if (!mergedSettings.use_auth) {
+      defaultUserSettings = {
+        use_cache: mergedSettings.use_cache,
+        use_output_limiter: mergedSettings.use_output_limiter,
+        allowed_commands: mergedSettings.allowed_commands,
+        cached_commands: mergedSettings.cached_commands,
+        limited_commands: mergedSettings.limited_commands,
+        log_level: mergedSettings.log_level
+      }
+    }
+    return mergedSettings
+  }
+  catch(e) {
+    console.log("Could not read settings.json", e)
+    return defaultSettings;
   }
 }
-catch(e) {
-  console.log("Could not read settings.json", e)
-}
+
+// Read settings from file
+// ---
+const settings: ProxySettings = loadSettings()
 // ---
 
 // Read user settings from file, override default settings if they exist for specific users
@@ -247,60 +228,60 @@ function logObjectEntries(logger, title, object) {
 // Log all initial settings for convenience
 function logSettings(logger) {
   logger("PROXY SETTINGS:\n-----------")
-  logger("Node url: " + node_url)
-  logger("Websocket url: " + node_ws_url)
-  logger("Http port: " + String(http_port))
-  logger("Https port: " + String(https_port))
-  logger("Request path: " + request_path)
-  if (use_websocket) {
-    logger("Websocket http port: " + String(websocket_http_port))
-    logger("Websocket https port: " + String(websocket_https_port))
-    logger("Websocket nax accounts: " + String(websocket_max_accounts))
+  logger("Node url: " + settings.node_url)
+  logger("Websocket url: " + settings.node_ws_url)
+  logger("Http port: " + String(settings.http_port))
+  logger("Https port: " + String(settings.https_port))
+  logger("Request path: " + settings.request_path)
+  if (settings.use_websocket) {
+    logger("Websocket http port: " + String(settings.websocket_http_port))
+    logger("Websocket https port: " + String(settings.websocket_https_port))
+    logger("Websocket nax accounts: " + String(settings.websocket_max_accounts))
   }
-  logger("Use authentication: " + use_auth)
-  logger("Use slow down: " + use_slow_down)
-  logger("Use rate limiter: " + use_rate_limiter)
-  logger("Use cached requests: " + use_cache)
-  logger("Use output limiter: " + use_output_limiter)
-  logger("Use IP blacklist: " + use_ip_blacklist)
-  logger("Use token system: " + use_tokens)
-  logger("Use websocket system: " + use_websocket)
-  logger("Use dPoW: " + use_dpow)
-  logger("Use bPoW: " + use_bpow)
-  logger("Disabled watch_work for process: " + disable_watch_work)
-  logger("Listen on http: " + use_http)
-  logger("Listen on https: " + use_https)
+  logger("Use authentication: " + settings.use_auth)
+  logger("Use slow down: " + settings.use_slow_down)
+  logger("Use rate limiter: " + settings.use_rate_limiter)
+  logger("Use cached requests: " + settings.use_cache)
+  logger("Use output limiter: " + settings.use_output_limiter)
+  logger("Use IP blacklist: " + settings.use_ip_blacklist)
+  logger("Use token system: " + settings.use_tokens)
+  logger("Use websocket system: " + settings.use_websocket)
+  logger("Use dPoW: " + settings.use_dpow)
+  logger("Use bPoW: " + settings.use_bpow)
+  logger("Disabled watch_work for process: " + settings.disable_watch_work)
+  logger("Listen on http: " + settings.use_http)
+  logger("Listen on https: " + settings.use_https)
 
-  logObjectEntries(logger, "Allowed commands:\n-----------\n", allowed_commands)
-  if(use_cache)  {
-    logObjectEntries(logger, "Cached commands:\n", cached_commands)
+  logObjectEntries(logger, "Allowed commands:\n-----------\n", settings.allowed_commands)
+  if(settings.use_cache)  {
+    logObjectEntries(logger, "Cached commands:\n", settings.cached_commands)
   }
-  if (use_output_limiter) {
-    logObjectEntries(logger, "Limited commands:\n", limited_commands)
+  if (settings.use_output_limiter) {
+    logObjectEntries(logger, "Limited commands:\n", settings.limited_commands)
   }
-  if(use_slow_down) {
-    logObjectEntries(logger, "Slow down settings:\n", slow_down)
+  if(settings.use_slow_down) {
+    logObjectEntries(logger, "Slow down settings:\n", settings.slow_down)
   }
-  if (use_rate_limiter) {
-    logObjectEntries(logger, "Rate limiter settings:\n", rate_limiter)
+  if (settings.use_rate_limiter) {
+    logObjectEntries(logger, "Rate limiter settings:\n", settings.rate_limiter)
   }
-  logObjectEntries(logger, "DDOS protection settings:\n", ddos_protection)
+  logObjectEntries(logger, "DDOS protection settings:\n", settings.ddos_protection)
 
-  if (use_ip_blacklist) {
-    logObjectEntries(logger, "IPs blacklisted:\n", ip_blacklist)
+  if (settings.use_ip_blacklist) {
+    logObjectEntries(logger, "IPs blacklisted:\n", settings.ip_blacklist)
   }
-  if (proxy_hops > 0) {
-    logger("Additional proxy servers: " + proxy_hops)
+  if (settings.proxy_hops > 0) {
+    logger("Additional proxy servers: " + settings.proxy_hops)
   }
-  if (use_cors) {
-    if (cors_whitelist.length == 0) {
+  if (settings.use_cors) {
+    if (settings.cors_whitelist.length == 0) {
       logger("Use cors. Any ORIGIN allowed")
     }
     else {
-      logObjectEntries(logger, "Use cors. Whitelisted ORIGINs or IPs:\n", cors_whitelist)
+      logObjectEntries(logger, "Use cors. Whitelisted ORIGINs or IPs:\n", settings.cors_whitelist)
     }
   }
-  logger("Main log level: " + log_level)
+  logger("Main log level: " + settings.log_level)
 
 }
 logSettings(console.log)
@@ -312,14 +293,14 @@ module.exports = {
 
 // Read dpow and bpow credentials from file
 // ---
-if (use_dpow || use_bpow) {
+if (settings.use_dpow || settings.use_bpow) {
   try {
     const powcreds = JSON.parse(Fs.readFileSync('pow_creds.json', 'UTF-8'))
-    if (use_dpow) {
+    if (settings.use_dpow) {
       dpow_user = powcreds.dpow.user
       dpow_key = powcreds.dpow.key
     }
-    if (use_bpow) {
+    if (settings.use_bpow) {
       bpow_user = powcreds.bpow.user
       bpow_key = powcreds.bpow.key
     }
@@ -332,7 +313,7 @@ if (use_dpow || use_bpow) {
 
 
 // Periodically check, recover and remove old invactive olders
-if (use_tokens) {
+if (settings.use_tokens) {
   // Each hour
   Schedule.scheduleJob('0 * * * *', () => {
     checkOldOrders()
@@ -350,7 +331,7 @@ async function checkOldOrders() {
   orders.forEach(async function(order) {
     // Reset status in case the order was interrupted and set a small nano_amount to allow small pending to create tokens
     order_db.get('orders').find({priv_key: order.priv_key}).assign({order_waiting: false, processing: false, nano_amount: 0.000000001}).write()
-    await Tokens.repairOrder(order.address, order_db, node_url)
+    await Tokens.repairOrder(order.address, order_db, settings.node_url)
 
     // Remove if order has been unprocessed with a timeout for 1 month
     if (order.tokens === 0 && order.order_time_left === 0 && order.hashes.length === 0 && order.timestamp < now - 3600*24*31) {
@@ -366,13 +347,13 @@ app.set('view engine', 'pug')
 app.use(Helmet())
 
 // Allow all origin in cors or a whitelist if present
-if (use_cors) {
-  if (cors_whitelist.length == 0) {
+if (settings.use_cors) {
+  if (settings.cors_whitelist.length == 0) {
     app.use(Cors())
   }
   else {
     var corsOptions = function (req, callback) {
-      if (cors_whitelist.indexOf(req.header('Origin')) !== -1 || cors_whitelist.indexOf(req.ip) !== -1) {
+      if (settings.cors_whitelist.indexOf(req.header('Origin')) !== -1 || settings.cors_whitelist.indexOf(req.ip) !== -1) {
         callback(null, {origin: true}) // reflect (enable) the requested origin in the CORS response
       } else {
         callback(new Error('Not allowed')) // disable CORS for this request
@@ -386,13 +367,13 @@ app.use(Express.json())
 app.use(Express.static('static'))
 
 // Define the number of proxy hops on the system to detect correct source IP for the filters below
-if (proxy_hops > 0) {
-  app.set('trust proxy', proxy_hops)
+if (settings.proxy_hops > 0) {
+  app.set('trust proxy', settings.proxy_hops)
 }
 
 // Set up blacklist and use the proxy number defined in the settings. Log only IP if blocked
-if (use_ip_blacklist) {
-  app.use(IpFilter(ip_blacklist, {logLevel: 'deny', trustProxy: proxy_hops}))
+if (settings.use_ip_blacklist) {
+  app.use(IpFilter(settings.ip_blacklist, {logLevel: 'deny', trustProxy: settings.proxy_hops}))
 }
 
 // Error handling
@@ -406,20 +387,20 @@ app.use((err, req, res, _next) => {
 })
 
 // Define authentication service
-if (use_auth) {
+if (settings.use_auth) {
   app.use(BasicAuth({ authorizer: myAuthorizer }))
 }
 
 // Block IP if requesting too much but skipped if a valid token_key is provided (long interval)
-if (use_rate_limiter) {
+if (settings.use_rate_limiter) {
   const limiter1 = new RateLimiterMemory({
     keyPrefix: 'limit1',
-    points: rate_limiter.request_limit,
-    duration: Math.round(rate_limiter.time_window/1000),
+    points: settings.rate_limiter.request_limit,
+    duration: Math.round(settings.rate_limiter.time_window/1000),
   })
 
   const rateLimiterMiddleware1 = (req, res, next) => {
-    if (use_tokens) {
+    if (settings.use_tokens) {
       // Check if token key exist in DB and have enough tokens, then skip IP block by returning true
       if ('token_key' in req.body && order_db.get('orders').find({token_key: req.body.token_key}).value()) {
         if (order_db.get('orders').find({token_key: req.body.token_key}).value().tokens > 0) {
@@ -450,16 +431,16 @@ if (use_rate_limiter) {
     }
     limiter1.consume(req.ip, points_to_consume)
       .then((response) => {
-        res.set("X-RateLimit-Limit", rate_limiter.request_limit)
-        res.set("X-RateLimit-Remaining", rate_limiter.request_limit-response.consumedPoints)
+        res.set("X-RateLimit-Limit", settings.rate_limiter.request_limit)
+        res.set("X-RateLimit-Remaining", settings.rate_limiter.request_limit-response.consumedPoints)
         res.set("X-RateLimit-Reset", new Date(Date.now() + response.msBeforeNext))
         next()
       })
       .catch((rej) => {
-        res.set("X-RateLimit-Limit", rate_limiter.request_limit)
-        res.set("X-RateLimit-Remaining", Math.max(rate_limiter.request_limit-rej.consumedPoints, 0))
+        res.set("X-RateLimit-Limit", settings.rate_limiter.request_limit)
+        res.set("X-RateLimit-Remaining", Math.max(settings.rate_limiter.request_limit-rej.consumedPoints, 0))
         res.set("X-RateLimit-Reset", new Date(Date.now() + rej.msBeforeNext))
-        res.status(429).send('Max allowed requests of ' + rate_limiter.request_limit + ' reached. Time left: ' + Math.round(rej.msBeforeNext/1000) + 'sec')
+        res.status(429).send('Max allowed requests of ' + settings.rate_limiter.request_limit + ' reached. Time left: ' + Math.round(rej.msBeforeNext/1000) + 'sec')
       })
    }
 
@@ -469,8 +450,8 @@ if (use_rate_limiter) {
 // Ddos protection for all requests (short interval)
 const limiter2 = new RateLimiterMemory({
   keyPrefix: 'limit2',
-  points: ddos_protection.request_limit, // limit each IP to x requests per duration
-  duration: Math.round(ddos_protection.time_window/1000), // rolling time window in sec
+  points: settings.ddos_protection.request_limit, // limit each IP to x requests per duration
+  duration: Math.round(settings.ddos_protection.time_window/1000), // rolling time window in sec
 })
 
 const rateLimiterMiddleware2 = (req, res, next) => {
@@ -486,15 +467,15 @@ const rateLimiterMiddleware2 = (req, res, next) => {
  app.use(rateLimiterMiddleware2)
 
 // Limit by slowing down requests
-if (use_slow_down) {
+if (settings.use_slow_down) {
   const slow_down_settings = SlowDown({
-    windowMs: slow_down.time_window,
-    delayAfter: slow_down.request_limit,
-    delayMs: slow_down.delay_increment,
-    maxDelayMs: slow_down.max_delay,
+    windowMs: settings.slow_down.time_window,
+    delayAfter: settings.slow_down.request_limit,
+    delayMs: settings.slow_down.delay_increment,
+    maxDelayMs: settings.slow_down.max_delay,
     // skip limit for certain requests
     skip: function(req, res) {
-      if (use_tokens) {
+      if (settings.use_tokens) {
         // Check if token key exist in DB and have enough tokens, then skip IP block by returning true
         if ('token_key' in req.body && order_db.get('orders').find({token_key: req.body.token_key}).value()) {
           if (order_db.get('orders').find({token_key: req.body.token_key}).value().tokens > 0) {
@@ -522,19 +503,19 @@ if (use_slow_down) {
 }
 
 // Set up cache
-if (use_cache) {
+if (settings.use_cache) {
   rpcCache = new NodeCache( { stdTTL: cache_duration_default, checkperiod: 10 } )
 }
 
 // To verify username and password provided via basicAuth. Support multiple users
 function myAuthorizer(username, password) {
   // Set default settings specific for authenticated users
-  user_use_cache = use_cache
-  user_use_output_limiter = use_output_limiter
-  user_allowed_commands = allowed_commands
-  user_cached_commands = cached_commands
-  user_limited_commands = limited_commands
-  user_log_level = log_level
+  user_use_cache = settings.use_cache
+  user_use_output_limiter = settings.use_output_limiter
+  user_allowed_commands = settings.allowed_commands
+  user_cached_commands = settings.cached_commands
+  user_limited_commands = settings.limited_commands
+  user_log_level = settings.log_level
 
   var valid_user = false
   for (const [key, value] of Object.entries(users)) {
@@ -676,19 +657,19 @@ class APIError extends Error {
 }
 
 // Default get requests
-if (request_path != '/') {
+if (settings.request_path != '/') {
   app.get('/', async (req, res) => {
     res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
   })
 }
 
 // Process any API requests
-app.get(request_path, (req, res) => {
+app.get(settings.request_path, (req, res) => {
   processRequest(req.query, req, res)
 })
 
 // Define the request listener
-app.post(request_path, (req, res) => {
+app.post(settings.request_path, (req, res) => {
   processRequest(req.body, req, res)
 })
 
@@ -698,7 +679,7 @@ async function processRequest(query, req, res) {
     rpcCount++
   }
 
-  if (use_tokens) {
+  if (settings.use_tokens) {
     // Initiate token purchase
     var token_key = ""
     if (query.action === 'tokens_buy') {
@@ -713,7 +694,7 @@ async function processRequest(query, req, res) {
         token_key = query.token_key
       }
 
-      let payment_request = await Tokens.requestTokenPayment(token_amount, token_key, order_db, node_url)
+      let payment_request = await Tokens.requestTokenPayment(token_amount, token_key, order_db, settings.node_url)
 
       res.json(payment_request)
       return
@@ -773,7 +754,7 @@ async function processRequest(query, req, res) {
 
   // Decrease user tokens and block if zero left
   var tokens_left = null
-  if (use_tokens) {
+  if (settings.use_tokens) {
     if ('token_key' in query) {
       let status = useToken(query)
       if (status === -1) {
@@ -844,14 +825,14 @@ async function processRequest(query, req, res) {
   }
 
   // Force no watch_work (don't want the node to perform pow)
-  if (disable_watch_work) {
+  if (settings.disable_watch_work) {
     if (query.action === 'process') {
       query.watch_work = 'false'
     }
   }
 
   // Handle work generate via dpow and/or bpow
-  if (query.action === 'work_generate' && (use_dpow || use_bpow)) {
+  if (query.action === 'work_generate' && (settings.use_dpow || settings.use_bpow)) {
     if ('hash' in query) {
       var bpow_failed = false
       if (!("difficulty" in query)) {
@@ -863,7 +844,7 @@ async function processRequest(query, req, res) {
         }
         else {
           // get latest difficulty from network
-          let data = await Tools.postData({"action":"active_difficulty"}, node_url, API_TIMEOUT)
+          let data = await Tools.postData({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
           if ('network_current' in data) {
             // Store the difficulty in cache for 60sec
             if (!rpcCache.set('difficulty', data.network_current, 60)) {
@@ -886,7 +867,7 @@ async function processRequest(query, req, res) {
       }
 
       // Try bpow first
-      if (use_bpow) {
+      if (settings.use_bpow) {
         logThis("Requesting work using bpow with diff: " + query.difficulty, log_levels.info)
         query.user = bpow_user
         query.api_key = bpow_key
@@ -904,7 +885,7 @@ async function processRequest(query, req, res) {
           }
           if (('error' in data) || !('work' in data)) {
             bpow_failed = true
-            if (!use_dpow) {
+            if (!settings.use_dpow) {
               res.json(appendRateLimiterStatus(res, data)) // forward error if not retrying with dpow
               return
             }
@@ -916,7 +897,7 @@ async function processRequest(query, req, res) {
         }
         catch(err) {
           bpow_failed = true
-          if (!use_dpow) {
+          if (!settings.use_dpow) {
             res.status(500).json({error: err.toString()})
             return
           }
@@ -924,7 +905,7 @@ async function processRequest(query, req, res) {
         }
       }
       // Use dpow only if not already used bpow or bpow timed out
-      if (use_dpow && (!use_bpow || bpow_failed)) {
+      if (settings.use_dpow && (!settings.use_bpow || bpow_failed)) {
         logThis("Requesting work using dpow with diff: " + query.difficulty, log_levels.info)
         query.user = dpow_user
         query.api_key = dpow_key
@@ -988,9 +969,9 @@ async function processRequest(query, req, res) {
 
   // Send the request to the Nano node and return the response
   try {
-    let data = await Tools.postData(query, node_url, API_TIMEOUT)
+    let data = await Tools.postData(query, settings.node_url, API_TIMEOUT)
     // Save cache if applicable
-    if (use_cache) {
+    if (settings.use_cache) {
       for (const [key, value] of Object.entries(user_cached_commands)) {
         if (query.action === key) {
           // Store the response (proxyRes) in cache with key (action name) with a TTL=value
@@ -1014,36 +995,36 @@ async function processRequest(query, req, res) {
 
 var websocket_servers = []
 // Create an HTTP service
-if (use_http && test_override_http) {
-  Http.createServer(app).listen(http_port, function() {
-    console.log("Http server started on port: " + http_port)
+if (settings.use_http && test_override_http) {
+  Http.createServer(app).listen(settings.http_port, function() {
+    console.log("Http server started on port: " + settings.http_port)
   })
 
   // websocket
-  if (use_websocket) {
+  if (settings.use_websocket) {
     var ws_http_server = Http.createServer(function(request, response) {
       response.writeHead(404)
       response.end()
     })
-    ws_http_server.listen(websocket_http_port, function() {
-      console.log('Websocket server is listening on port ' + websocket_http_port)
+    ws_http_server.listen(settings.websocket_http_port, function() {
+      console.log('Websocket server is listening on port ' + settings.websocket_http_port)
     })
     websocket_servers.push(ws_http_server)
   }
 }
 
 // Create an HTTPS service
-if (use_https) {
+if (settings.use_https) {
   // Verify that cert files exists
   var cert_exists = false
   var key_exists = false
-  Fs.access(https_cert, Fs.F_OK, (err) => {
+  Fs.access(settings.https_cert, Fs.F_OK, (err) => {
     if (err) {
       console.log("Warning: Https cert file does not exist!")
     }
     cert_exists = true
   })
-  Fs.access(https_key, Fs.F_OK, (err) => {
+  Fs.access(settings.https_key, Fs.F_OK, (err) => {
     if (err) {
       console.log("Warning: Https key file does not exist!")
     }
@@ -1051,22 +1032,22 @@ if (use_https) {
   })
   if (cert_exists && key_exists) {
     var https_options = {
-      cert: Fs.readFileSync(https_cert),
-      key: Fs.readFileSync(https_key)
+      cert: Fs.readFileSync(settings.https_cert),
+      key: Fs.readFileSync(settings.https_key)
     }
 
-    Https.createServer(https_options, app).listen(https_port, function() {
-      console.log("Https server started on port: " + https_port)
+    Https.createServer(https_options, app).listen(settings.https_port, function() {
+      console.log("Https server started on port: " + settings.https_port)
     })
 
     // websocket
-    if (use_websocket) {
+    if (settings.use_websocket) {
       var ws_https_server = Https.createServer(https_options, function(request, response) {
         response.writeHead(404)
         response.end()
       })
-      ws_https_server.listen(websocket_https_port, function() {
-        console.log('Websocket server is listening on port ' + websocket_https_port)
+      ws_https_server.listen(settings.websocket_https_port, function() {
+        console.log('Websocket server is listening on port ' + settings.websocket_https_port)
       })
       websocket_servers.push(ws_https_server)
     }
@@ -1078,7 +1059,7 @@ if (use_https) {
 
 // WEBSOCKET SERVER
 //---------------------
-if (use_websocket) {
+if (settings.use_websocket) {
   let wsServer = new WebSocketServer({
     httpServer: websocket_servers,
     autoAcceptConnections: false
@@ -1087,8 +1068,8 @@ if (use_websocket) {
   // websocket ddos protection settings
   const websocket_limiter = new RateLimiterMemory({
     keyPrefix: 'limit_websocket',
-    points: ddos_protection.request_limit, // limit each IP to x requests per duration
-    duration: Math.round(ddos_protection.time_window/1000), // rolling time window in sec
+    points: settings.ddos_protection.request_limit, // limit each IP to x requests per duration
+    duration: Math.round(settings.ddos_protection.time_window/1000), // rolling time window in sec
   })
 
   wsServer.on('request', async function(request) {
@@ -1103,7 +1084,7 @@ if (use_websocket) {
     logThis('Websocket Connection requested from: ' + remote_ip, log_levels.info)
 
     // Black list protection
-    if (ip_blacklist.includes(remote_ip)) {
+    if (settings.ip_blacklist.includes(remote_ip)) {
       request.reject()
       return
     }
@@ -1137,7 +1118,7 @@ if (use_websocket) {
             if ('action' in msg && 'topic' in msg && msg.action === 'subscribe') {
               if (msg.topic === 'confirmation') {
                 if ('options' in msg && 'accounts' in msg.options) {
-                  if (msg.options.accounts.length <= websocket_max_accounts) {
+                  if (msg.options.accounts.length <= settings.websocket_max_accounts) {
                     // check if new unique accounts + existing accounts exceed max limit
                     // get existing tracked accounts
                     let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
@@ -1159,7 +1140,7 @@ if (use_websocket) {
                         unique_new++
                       }
                     })
-                    if (unique_new + Object.keys(current_tracked_accounts).length <= websocket_max_accounts) {
+                    if (unique_new + Object.keys(current_tracked_accounts).length <= settings.websocket_max_accounts) {
                       // save connection to global dicionary to reuse when getting messages from the node websocket
                       websocket_connections[remote_ip] = connection
 
@@ -1176,11 +1157,11 @@ if (use_websocket) {
                       connection.sendUTF(JSON.stringify({'ack':'subscribe','id':'id' in msg ? msg.id:""}, null, 2))
                     }
                     else {
-                      connection.sendUTF(JSON.stringify({'error':'Too many accounts subscribed. Max is ' + websocket_max_accounts}, null, 2))
+                      connection.sendUTF(JSON.stringify({'error':'Too many accounts subscribed. Max is ' + settings.websocket_max_accounts}, null, 2))
                     }
                   }
                   else {
-                    connection.sendUTF(JSON.stringify({'error':'Too many accounts subscribed. Max is ' + websocket_max_accounts}, null, 2))
+                    connection.sendUTF(JSON.stringify({'error':'Too many accounts subscribed. Max is ' + settings.websocket_max_accounts}, null, 2))
                   }
                 }
                 else {
@@ -1271,8 +1252,8 @@ function trackAccount(connection, address) {
 //WEBSOCKET CLIENT FOR NANO NODE
 // Create a reconnecting WebSocket.
 // we wait a maximum of 2 seconds before retrying.
-if (use_websocket) {
-  ws = new ReconnectingWebSocket(node_ws_url, [], {
+if (settings.use_websocket) {
+  ws = new ReconnectingWebSocket(settings.node_ws_url, [], {
     WebSocket: WS,
     connectionTimeout: 1000,
     maxRetries: Infinity,

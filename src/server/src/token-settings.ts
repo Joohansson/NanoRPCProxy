@@ -1,14 +1,4 @@
-type LOG_LEVEL = 'none' | 'warning' | 'info'
-interface LogLevels {
-    none: LOG_LEVEL
-    info: LOG_LEVEL
-    warning: LOG_LEVEL
-}
-export const log_levels: LogLevels = {
-    none: 'none',
-    info: 'info',
-    warning: 'warning'
-}
+import {LOG_LEVEL} from "./common-settings";
 
 export interface TokenSettings {
     // the work server for doing PoW (the node can be used as well, for example http://127.0.0.1:7076, but enable_control is needed in the node config)

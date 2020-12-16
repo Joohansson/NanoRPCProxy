@@ -1,4 +1,5 @@
-import {log_levels, TokenSettings} from "./token-settings";
+import {TokenSettings} from "./token-settings";
+import {log_levels} from "./common-settings";
 
 export {}
 
