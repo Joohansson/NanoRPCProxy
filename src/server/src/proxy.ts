@@ -7,6 +7,11 @@ import SlowDown from "express-slow-down";
 import FileSync from 'lowdb/adapters/FileSync.js';
 import lowdb from 'lowdb'
 import {OrderDB, OrderSchema} from "./lowdb-schema";
+import {Request, Response} from "express";
+import {CorsOptions} from "cors";
+import {RateLimiterRes} from "rate-limiter-flexible";
+import ErrnoException = NodeJS.ErrnoException;
+import {IncomingMessage, ServerResponse} from "http";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -57,7 +62,7 @@ const bpow_url = 'https://bpow.banano.cc/service/'
 const dpow_url = 'https://dpow.nanocenter.org/service/'
 const work_token_cost = 10 // work_generate will consume x token points
 var ws = null
-var global_tracked_accounts = [] // the accounts to track in websocket (synced with database)
+var global_tracked_accounts: string[] = [] // the accounts to track in websocket (synced with database)
 var websocket_connections = {} // active ws connections
 
 let defaultUserSettings: UserSettings | undefined
@@ -297,11 +302,11 @@ module.exports = {
 if (settings.use_dpow || settings.use_bpow) {
   try {
     const powcreds: PowSettings = JSON.parse(Fs.readFileSync('pow_creds.json', 'UTF-8'))
-    if (settings.use_dpow) {
+    if (settings.use_dpow && powcreds.dpow) {
       dpow_user = powcreds.dpow.user
       dpow_key = powcreds.dpow.key
     }
-    if (settings.use_bpow) {
+    if (settings.use_bpow && powcreds.bpow) {
       bpow_user = powcreds.bpow.user
       bpow_key = powcreds.bpow.key
     }
@@ -325,7 +330,7 @@ async function checkOldOrders() {
   let now = Math.floor(Date.now()/1000)
   // get all orders older than 60min
   let orders = order_db.get('orders')
-    .filter(order => parseInt(order.timestamp) < now - 3600)
+    .filter(order => order.timestamp < now - 3600)
     .value()
   // Process all old orders
   //logThis("Checking old orders", log_levels.info)
@@ -337,7 +342,7 @@ async function checkOldOrders() {
     // Remove if order has been unprocessed with a timeout for 1 month
     if (order.tokens === 0 && order.order_time_left === 0 && order.hashes.length === 0 && order.timestamp < now - 3600*24*31) {
       logThis("REMOVING ORDER:", log_levels.info)
-      logThis(order_db.get('orders').remove({token_key:order.token_key}).write(), log_levels.info)
+      logThis(await order_db.get('orders').remove({token_key:order.token_key}).write().toString(), log_levels.info)
     }
   })
 }
@@ -353,7 +358,7 @@ if (settings.use_cors) {
     app.use(Cors())
   }
   else {
-    var corsOptions = function (req, callback) {
+    var corsOptions = function (req: Request, callback: (err: Error | null, options?: CorsOptions) => void) {
       if (settings.cors_whitelist.indexOf(req.header('Origin')) !== -1 || settings.cors_whitelist.indexOf(req.ip) !== -1) {
         callback(null, {origin: true}) // reflect (enable) the requested origin in the CORS response
       } else {
@@ -400,7 +405,7 @@ if (settings.use_rate_limiter) {
     duration: Math.round(settings.rate_limiter.time_window/1000),
   })
 
-  const rateLimiterMiddleware1 = (req, res, next) => {
+  const rateLimiterMiddleware1 = (req: Request, res: Response, next: (err?: any) => any) => {
     if (settings.use_tokens) {
       // Check if token key exist in DB and have enough tokens, then skip IP block by returning true
       if ('token_key' in req.body && order_db.get('orders').find({token_key: req.body.token_key}).value()) {
@@ -409,8 +414,10 @@ if (settings.use_rate_limiter) {
           return
         }
       }
+      // @ts-ignore
       if ('token_key' in req.query && order_db.get('orders').find({token_key: req.query.token_key}).value()) {
-        if (order_db.get('orders').find({token_key: req.query.token_key}).value().tokens > 0) {
+        // @ts-ignore
+        if (order_db.get('orders').find({token_key: req.query.token_key[0]}).value().tokens > 0) {
           next()
           return
         }
@@ -431,15 +438,19 @@ if (settings.use_rate_limiter) {
       points_to_consume = work_token_cost
     }
     limiter1.consume(req.ip, points_to_consume)
-      .then((response) => {
+      .then((response: RateLimiterRes) => {
         res.set("X-RateLimit-Limit", settings.rate_limiter.request_limit)
+        // @ts-ignore
         res.set("X-RateLimit-Remaining", settings.rate_limiter.request_limit-response.consumedPoints)
+        // @ts-ignore
         res.set("X-RateLimit-Reset", new Date(Date.now() + response.msBeforeNext))
         next()
       })
-      .catch((rej) => {
+      .catch((rej: any) => {
         res.set("X-RateLimit-Limit", settings.rate_limiter.request_limit)
+        // @ts-ignore
         res.set("X-RateLimit-Remaining", Math.max(settings.rate_limiter.request_limit-rej.consumedPoints, 0))
+        // @ts-ignore
         res.set("X-RateLimit-Reset", new Date(Date.now() + rej.msBeforeNext))
         res.status(429).send('Max allowed requests of ' + settings.rate_limiter.request_limit + ' reached. Time left: ' + Math.round(rej.msBeforeNext/1000) + 'sec')
       })
@@ -455,12 +466,12 @@ const limiter2 = new RateLimiterMemory({
   duration: Math.round(settings.ddos_protection.time_window/1000), // rolling time window in sec
 })
 
-const rateLimiterMiddleware2 = (req, res, next) => {
+const rateLimiterMiddleware2 = (req: Request, res: Response, next: (err?: any) => any) => {
   limiter2.consume(req.ip, 1)
-    .then((response) => {
+    .then((response: RateLimiterRes) => {
       next()
     })
-    .catch((rej) => {
+    .catch((error?: Error) => {
       res.status(429).send('You are making requests too fast, please slow down!')
     })
  }
@@ -483,7 +494,9 @@ if (settings.use_slow_down) {
             return true
           }
         }
+        // @ts-ignore
         if ('token_key' in req.query && order_db.get('orders').find({token_key: req.query.token_key}).value()) {
+          // @ts-ignore
           if (order_db.get('orders').find({token_key: req.query.token_key}).value().tokens > 0) {
             return true
           }
@@ -561,7 +574,7 @@ function myAuthorizer(username: string, password: string) {
 }
 
 // Deduct token count for given token_key
-function useToken(query) {
+function useToken(query: any) {
   let token_key = query.token_key
   // Find token_key in order DB
   if (order_db.get('orders').find({token_key: token_key}).value()) {
@@ -585,7 +598,7 @@ function useToken(query) {
 }
 
 // Read headers and append result
-function appendRateLimiterStatus(res, data) {
+function appendRateLimiterStatus(res: Response, data: any) {
   let requestsLimit = res.get("X-RateLimit-Limit")
   let requestsRemaining = res.get("X-RateLimit-Remaining")
   let requestLimitReset = res.get("X-RateLimit-Reset")
@@ -660,22 +673,22 @@ class APIError extends Error {
 
 // Default get requests
 if (settings.request_path != '/') {
-  app.get('/', async (req, res) => {
+  app.get('/', async (req: Request, res: Response) => {
     res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
   })
 }
 
 // Process any API requests
-app.get(settings.request_path, (req, res) => {
+app.get(settings.request_path, (req: Request, res: Response) => {
   processRequest(req.query, req, res)
 })
 
 // Define the request listener
-app.post(settings.request_path, (req, res) => {
+app.post(settings.request_path, (req: Request, res: Response) => {
   processRequest(req.body, req, res)
 })
 
-async function processRequest(query, req, res) {
+async function processRequest(query: any, req: Request, res: Response) {
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++
@@ -1020,13 +1033,13 @@ if (settings.use_https) {
   // Verify that cert files exists
   var cert_exists = false
   var key_exists = false
-  Fs.access(settings.https_cert, Fs.F_OK, (err) => {
+  Fs.access(settings.https_cert, Fs.F_OK, (err: ErrnoException) => {
     if (err) {
       console.log("Warning: Https cert file does not exist!")
     }
     cert_exists = true
   })
-  Fs.access(settings.https_key, Fs.F_OK, (err) => {
+  Fs.access(settings.https_key, Fs.F_OK, (err: ErrnoException) => {
     if (err) {
       console.log("Warning: Https key file does not exist!")
     }
@@ -1044,7 +1057,7 @@ if (settings.use_https) {
 
     // websocket
     if (settings.use_websocket) {
-      var ws_https_server = Https.createServer(https_options, function(request, response) {
+      var ws_https_server = Https.createServer(https_options, function(request: IncomingMessage, response: ServerResponse) {
         response.writeHead(404)
         response.end()
       })
