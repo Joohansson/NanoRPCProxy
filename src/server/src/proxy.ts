@@ -139,7 +139,7 @@ catch(e) {
 
 const loadSettings: () => ProxySettings = () => {
   const defaultSettings: ProxySettings = {
-    node_url: "http://[::1]:7076'",
+    node_url: "http://[::1]:7076",
     node_ws_url: "ws://127.0.0.1:57000",
     http_port: 9950,
     https_port: 9951,
