@@ -1,7 +1,7 @@
 import {CredentialSettings} from "./credential-settings";
 import ProxySettings from './proxy-settings';
 import {log_levels} from "./common-settings";
-import {UserSettings} from "./user-settings";
+import {UserSettings, UserSettingsConfig} from "./user-settings";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -48,7 +48,7 @@ var users = []                      // a list of base64 user/password credential
 // default vars
 let cache_duration_default = 60
 var rpcCache = null
-var user_settings = {}
+var user_settings: UserSettingsConfig = new Map<string, UserSettings>()
 const price_url = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
 //const price_url2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
 //const CMC_API_KEY = 'xxx'
