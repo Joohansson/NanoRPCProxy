@@ -1,6 +1,6 @@
 import {Credentials, CredentialSettings} from "./credential-settings";
 import ProxySettings from './proxy-settings';
-import {log_levels, LogLevel} from "./common-settings";
+import {log_levels, LogData, LogLevel} from "./common-settings";
 import {UserSettings, UserSettingsConfig} from "./user-settings";
 
 require('dotenv').config() // load variables from .env into the environment
@@ -77,7 +77,7 @@ var bpow_key = null
 // track daily requests and save to a log file (daily stat is reset if the server is restarted)
 // ---
 var rpcCount = 0
-var logdata = []
+var logdata: LogData[] = []
 try {
   // read latest count from file
   logdata = JSON.parse(Fs.readFileSync('request-stat.json', 'UTF-8'))
@@ -110,11 +110,14 @@ Schedule.scheduleJob('0 0 * * *', () => {
     console.log("Could not read request-stat.json.", e)
   }
 })
-function appendFile(count) {
+function appendFile(count: number) {
   try {
     // append new count entry
-    let datestring = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
-    logdata.push({"date":datestring,"count":rpcCount})
+    let datestring: string = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
+    logdata.push({
+      date: datestring,
+      count: count
+    })
 
     // write updated log
     Fs.writeFileSync('request-stat.json', JSON.stringify(logdata, null, 2))
@@ -129,8 +132,8 @@ function appendFile(count) {
 // Read credentials from file
 // ---
 try {
-  const creds: CredentialSettings = JSON.parse(Fs.readFileSync('creds.json', 'UTF-8'))
-  users = creds.users
+  const credentials: CredentialSettings = JSON.parse(Fs.readFileSync('creds.json', 'UTF-8'))
+  users = credentials.users
 }
 catch(e) {
   console.log("Could not read creds.json", e)
@@ -213,7 +216,7 @@ catch(e) {
   console.log("Could not read user_settings.json", e)
 }
 
-function logObjectEntries(logger, title, object) {
+function logObjectEntries(logger: (...data: any[]) => void, title: string, object: any) {
   let log_string = title + "\n"
   for (const [key, value] of Object.entries(object)) {
     if(key) {

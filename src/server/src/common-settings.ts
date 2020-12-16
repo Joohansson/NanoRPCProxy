@@ -11,7 +11,6 @@ export const log_levels: LogLevels = {
     warning: 'warning'
 }
 
-
 export interface LimitedCommands {
     account_history: number;
     chain: number;
@@ -24,4 +23,9 @@ export interface CachedCommands {
     available_supply: number;
     active_difficulty: number;
     representatives_online: number;
+}
+
+export interface LogData {
+    date: string;
+    count: number;
 }
