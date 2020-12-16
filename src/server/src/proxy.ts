@@ -2,6 +2,7 @@ import {Credentials, CredentialSettings} from "./credential-settings";
 import ProxySettings from './proxy-settings';
 import {log_levels, LogData, LogLevel} from "./common-settings";
 import {UserSettings, UserSettingsConfig} from "./user-settings";
+import {PowSettings} from "./pow-settings";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -298,7 +299,7 @@ module.exports = {
 // ---
 if (settings.use_dpow || settings.use_bpow) {
   try {
-    const powcreds = JSON.parse(Fs.readFileSync('pow_creds.json', 'UTF-8'))
+    const powcreds: PowSettings = JSON.parse(Fs.readFileSync('pow_creds.json', 'UTF-8'))
     if (settings.use_dpow) {
       dpow_user = powcreds.dpow.user
       dpow_key = powcreds.dpow.key
