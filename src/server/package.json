@@ -39,5 +39,8 @@
     "tweetnacl": "^1.0.1",
     "websocket": "^1.0.31",
     "ws": "^7.3.0"
+  },
+  "devDependencies": {
+    "jest": "^26.6.3"
   }
 }
