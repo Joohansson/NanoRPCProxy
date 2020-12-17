@@ -389,7 +389,7 @@ app.use((err: Error, req: Request, res: Response, _next: any) => {
     return res.status(401).json({error: 'IP has been blocked'})
   }
   else {
-    // @ts-ignore only return err here?
+    // @ts-ignore status field does not exist, only return err here?
     return res.status(500).json({error: err.status})
   }
 })
@@ -491,10 +491,8 @@ if (settings.use_slow_down) {
             return true
           }
         }
-        // @ts-ignore
-        if ('token_key' in req.query && order_db.get('orders').find({token_key: req.query.token_key}).value()) {
-          // @ts-ignore
-          if (order_db.get('orders').find({token_key: req.query.token_key}).value().tokens > 0) {
+        if ('token_key' in req.query && order_db.get('orders').find((order) => order.token_key === req.query.token_key).value()) {
+          if (order_db.get('orders').find((order) => order.token_key === req.query.token_key).value().tokens > 0) {
             return true
           }
         }
@@ -625,8 +623,7 @@ function compareHex(a: string | number, b: string | number) {
 }
 
 // Determine new multiplier from base difficulty (hexadecimal string) and target difficulty (hexadecimal string). Returns float
-// @ts-ignore no sure what params to put here
-function multiplierFromDifficulty(difficulty, base_difficulty) {
+function multiplierFromDifficulty(difficulty: string, base_difficulty: string) {
   let big64 = Dec.BigDecimal(2).pow(64)
   let big_diff = Dec.BigDecimal(Dec.BigInteger(difficulty,16))
   let big_base = Dec.BigDecimal(Dec.BigInteger(base_difficulty,16))
