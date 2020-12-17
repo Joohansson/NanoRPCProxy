@@ -14,12 +14,12 @@ import ErrnoException = NodeJS.ErrnoException;
 import {IncomingMessage, ServerResponse} from "http";
 import {connection, IMessage, request as WSRequest, server as WSServer} from "websocket";
 import ReconnectingWebSocket, { ErrorEvent } from "reconnecting-websocket";
+import NodeCache from "node-cache";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
-const NodeCache =             require("node-cache" )
 const BasicAuth =             require('express-basic-auth')
 const Http =                  require('http')
 const Https =                 require('https')
@@ -51,7 +51,7 @@ var users: Credentials[] = []                      // a list of base64 user/pass
 
 // default vars
 let cache_duration_default = 60
-var rpcCache = null
+var rpcCache: NodeCache | null = null
 var user_settings: UserSettingsConfig = new Map<string, UserSettings>()
 const price_url = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
 //const price_url2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
@@ -793,10 +793,11 @@ async function processRequest(query: any, req: Request, res: Response) {
   if (query.action === 'price') {
     try {
       // Use cached value first
-      const cachedValue = rpcCache.get('price')
+      const cachedValue = rpcCache?.get('price')
       if (Tools.isValidJson(cachedValue)) {
         logThis("Cache requested: " + 'price', log_levels.info)
         if (tokens_left != null) {
+          // @ts-ignore dont know what the value is here
           cachedValue.tokens_total = tokens_left
         }
         return res.json(appendRateLimiterStatus(res, cachedValue))
@@ -805,7 +806,7 @@ async function processRequest(query: any, req: Request, res: Response) {
       let data = await Tools.getData(price_url, API_TIMEOUT)
 
       // Store the price in cache for 10sec
-      if (!rpcCache.set('price', data, 10)) {
+      if (!rpcCache?.set('price', data, 10)) {
         logThis("Failed saving cache for " + 'price', log_levels.warning)
       }
       //res.json({"Price USD":data.data["1567"].quote.USD.price}) // sending back json price response (CMC)
@@ -856,7 +857,7 @@ async function processRequest(query: any, req: Request, res: Response) {
       var bpow_failed = false
       if (!("difficulty" in query)) {
         // Use cached value first
-        const cachedValue = rpcCache.get('difficulty')
+        const cachedValue = rpcCache?.get('difficulty')
         if (Tools.isValidJson(cachedValue)) {
           logThis("Cache requested: " + 'difficulty', log_levels.info)
           query.difficulty = cachedValue
@@ -866,7 +867,7 @@ async function processRequest(query: any, req: Request, res: Response) {
           let data = await Tools.postData({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
           if ('network_current' in data) {
             // Store the difficulty in cache for 60sec
-            if (!rpcCache.set('difficulty', data.network_current, 60)) {
+            if (!rpcCache?.set('difficulty', data.network_current, 60)) {
               logThis("Failed saving cache for " + 'difficulty', log_levels.warning)
             }
             query.difficulty = data.network_current
@@ -994,7 +995,8 @@ async function processRequest(query: any, req: Request, res: Response) {
       for (const [key, value] of Object.entries(user_cached_commands)) {
         if (query.action === key) {
           // Store the response (proxyRes) in cache with key (action name) with a TTL=value
-          if (!rpcCache.set(key, data, value)) {
+          // @ts-ignore dont know what 'value' is here
+          if (!rpcCache?.set(key, data, value)) {
             logThis("Failed saving cache for " + key, log_levels.warning)
           }
           break
