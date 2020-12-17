@@ -92,7 +92,7 @@ beforeAll(() => {
 })
 
 test('log proxy settings with default config from file', () => {
-    let settings = []
+    let settings: string[] = []
     process.env.OVERRIDE_USE_HTTP = 'false'
     require('../proxy').logSettings((setting) => settings.push(setting))
     expect(settings.length).toBe(28);

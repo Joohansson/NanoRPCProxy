@@ -21,7 +21,7 @@ beforeAll(() => {
 })
 
 test('log tokens settings with default config from file', () => {
-    let settings = []
+    let settings: string[] = []
     require('../tokens').tokenLogSettings((setting) => settings.push(setting))
     console.log(settings)
     expect(settings.length).toBe(11);
