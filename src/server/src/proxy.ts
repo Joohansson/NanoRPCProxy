@@ -12,6 +12,8 @@ import {CorsOptions} from "cors";
 import {RateLimiterRes} from "rate-limiter-flexible";
 import ErrnoException = NodeJS.ErrnoException;
 import {IncomingMessage, ServerResponse} from "http";
+import {IMessage, request as WSRequest, server as WSServer} from "websocket";
+import ReconnectingWebSocket, { ErrorEvent } from "reconnecting-websocket";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -28,7 +30,6 @@ const IpFilter =              require('express-ipfilter').IpFilter
 const IpDeniedError =         require('express-ipfilter').IpDeniedError
 const Schedule =              require('node-schedule')
 const WebSocketServer =       require('websocket').server
-const ReconnectingWebSocket = require('reconnecting-websocket')
 const WS =                    require('ws')
 const Helmet =                require('helmet')
 const Dec =                   require('bigdecimal') //https://github.com/iriscouch/bigdecimal.js
@@ -61,7 +62,7 @@ const work_default_timeout = 10 // x sec timeout before trying next delegated wo
 const bpow_url = 'https://bpow.banano.cc/service/'
 const dpow_url = 'https://dpow.nanocenter.org/service/'
 const work_token_cost = 10 // work_generate will consume x token points
-var ws = null
+var ws: ReconnectingWebSocket | null = null
 var global_tracked_accounts: string[] = [] // the accounts to track in websocket (synced with database)
 var websocket_connections = {} // active ws connections
 
@@ -619,7 +620,9 @@ function updateTrackedAccounts() {
     "options": { "all_local_accounts": false,
       "accounts": global_tracked_accounts
     }}
-  ws.send(JSON.stringify(confirmation_subscription))
+    if(ws != null) {
+      ws.send(JSON.stringify(confirmation_subscription))
+    }
 }
 
 // Log function
@@ -1017,7 +1020,7 @@ if (settings.use_http && test_override_http) {
 
   // websocket
   if (settings.use_websocket) {
-    var ws_http_server = Http.createServer(function(request, response) {
+    var ws_http_server = Http.createServer(function(request: IncomingMessage, response: ServerResponse) {
       response.writeHead(404)
       response.end()
     })
@@ -1075,7 +1078,7 @@ if (settings.use_https) {
 // WEBSOCKET SERVER
 //---------------------
 if (settings.use_websocket) {
-  let wsServer = new WebSocketServer({
+  let wsServer: WSServer = new WebSocketServer({
     httpServer: websocket_servers,
     autoAcceptConnections: false
   })
@@ -1087,7 +1090,7 @@ if (settings.use_websocket) {
     duration: Math.round(settings.ddos_protection.time_window/1000), // rolling time window in sec
   })
 
-  wsServer.on('request', async function(request) {
+  wsServer.on('request', async function(request: WSRequest) {
     if (!originIsAllowed(request.origin)) {
       // Make sure we only accept requests from an allowed origin
       request.reject()
@@ -1124,11 +1127,11 @@ if (settings.use_websocket) {
       return
     }
 
-    connection.on('message', function(message) {
+    connection.on('message', function(message: IMessage) {
       if (message.type === 'utf8') {
           //console.log('Received Message: ' + message.utf8Data + ' from ' + remote_ip)
           try {
-            let msg = JSON.parse(message.utf8Data)
+            let msg: any = message.utf8Data ? JSON.parse(message.utf8Data) : {}
             // new subscription
             if ('action' in msg && 'topic' in msg && msg.action === 'subscribe') {
               if (msg.topic === 'confirmation') {
@@ -1268,7 +1271,7 @@ function trackAccount(connection, address) {
 // Create a reconnecting WebSocket.
 // we wait a maximum of 2 seconds before retrying.
 if (settings.use_websocket) {
-  ws = new ReconnectingWebSocket(settings.node_ws_url, [], {
+  let newWebSocket: ReconnectingWebSocket = new ReconnectingWebSocket(settings.node_ws_url, [], {
     WebSocket: WS,
     connectionTimeout: 1000,
     maxRetries: Infinity,
@@ -1277,7 +1280,7 @@ if (settings.use_websocket) {
   })
 
   // A tracked account was detected
-  ws.onmessage = msg => {
+  newWebSocket.onmessage = (msg: MessageEvent) => {
     let data_json = JSON.parse(msg.data)
 
     // Check if the tracked account belongs to a user
@@ -1309,14 +1312,15 @@ if (settings.use_websocket) {
   }
 
   // As soon as we connect, subscribe to confirmations (as of now there are none while we start up the server)
-  ws.onopen = () => {
+  newWebSocket.onopen = () => {
     logThis("Node websocket is open", log_levels.info)
     updateTrackedAccounts()
   }
-  ws.onclose = () => {
+  newWebSocket.onclose = () => {
     logThis("Node websocket is closed", log_levels.info)
   }
-  ws.onerror = (e) => {
+  newWebSocket.onerror = (e: ErrorEvent) => {
     logThis("Main websocket: " + e.error, log_levels.warning)
   }
+  ws = newWebSocket
 }
