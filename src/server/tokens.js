@@ -42,17 +42,21 @@ catch(e) {
 
 // Log all initial settings for convenience
 // ---
-console.log("TOKEN SETTINGS:\n-----------")
-console.log("Work Server: " + work_server)
-console.log("Token Price: " + token_price + " Nano/token")
-console.log("Payment Timeout: " + payment_timeout)
-console.log("Pending Interval: " + pending_interval)
-console.log("Pending Threshold: " + pending_threshold)
-console.log("Pending Max Count: " + pending_count)
-console.log("Difficulty Multiplier: " + difficulty_multiplier)
-console.log("Min allowed tokens to purchase: " + min_token_amount)
-console.log("Max allowed tokens to purchase: " + max_token_amount)
-console.log("Token system log level: " + log_level)
+function tokenLogSettings(logger) {
+  logger("TOKEN SETTINGS:\n-----------")
+  logger("Work Server: " + work_server)
+  logger("Token Price: " + token_price + " Nano/token")
+  logger("Payment Timeout: " + payment_timeout)
+  logger("Pending Interval: " + pending_interval)
+  logger("Pending Threshold: " + pending_threshold)
+  logger("Pending Max Count: " + pending_count)
+  logger("Difficulty Multiplier: " + difficulty_multiplier)
+  logger("Min allowed tokens to purchase: " + min_token_amount)
+  logger("Max allowed tokens to purchase: " + max_token_amount)
+  logger("Token system log level: " + log_level)
+}
+
+tokenLogSettings(console.log)
 // ---
 
 const sleep = (milliseconds) => {
@@ -188,7 +192,8 @@ module.exports = {
   repairOrder: async function(address, order_db, url) {
     node_url = url
     checkPending(address, order_db, false)
-  }
+  },
+  tokenLogSettings: tokenLogSettings,
 }
 
 // Check if order payment has arrived as a pending block, continue check at intervals until time is up. If continue is set to false it will only check one time

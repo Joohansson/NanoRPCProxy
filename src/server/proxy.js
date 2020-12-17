@@ -243,7 +243,6 @@ function logObjectEntries(logger, title, object) {
 }
 // ---
 // Log all initial settings for convenience
-// ---
 function logSettings(logger) {
   logger("PROXY SETTINGS:\n-----------")
   logger("Node url: " + node_url)
@@ -307,6 +306,7 @@ logSettings(console.log)
 module.exports = {
   logSettings: logSettings
 }
+// ---
 
 // Read dpow and bpow credentials from file
 // ---

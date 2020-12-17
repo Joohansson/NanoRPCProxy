@@ -85,14 +85,20 @@ const expectedSettingsWithFile = [
     'Main log level: info'
 ]
 
-const settingsPath = 'settings.json';
+const filePath = 'settings.json';
+
+beforeAll(() => {
+    fs.copyFileSync(`${filePath}.default`, filePath, )
+})
 
 test('log proxy settings with default config from file', () => {
     let settings = []
-    fs.copyFileSync('settings.json.default', settingsPath, )
     process.env.OVERRIDE_USE_HTTP = 'false'
     require('../proxy').logSettings((setting) => settings.push(setting))
     expect(settings.length).toBe(28);
     expect(settings).toStrictEqual(expectedSettingsWithFile)
-    fs.unlinkSync(settingsPath)
+})
+
+afterAll(() => {
+    fs.unlinkSync(filePath)
 })
