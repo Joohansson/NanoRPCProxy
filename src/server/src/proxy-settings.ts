@@ -77,9 +77,9 @@ export default interface ProxySettings {
     // only allow RPC actions in this list
     allowed_commands: string[];
     // a list of commands [key] that will be cached for corresponding duration in seconds as [value]
-    cached_commands: CachedCommands[];
+    cached_commands: CachedCommands;
     // a list of commands [key] to limit the output response for with max count as [value]
-    limited_commands: LimitedCommands[];
+    limited_commands: LimitedCommands;
     slow_down: SlowDown | any;
     rate_limiter: RateLimiter | any;
     ddos_protection: DdosProtection | any;

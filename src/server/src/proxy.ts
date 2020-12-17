@@ -1,13 +1,13 @@
 import {Credentials, CredentialSettings} from "./credential-settings";
 import ProxySettings from './proxy-settings';
-import {log_levels, LogData, LogLevel} from "./common-settings";
+import {CachedCommands, Command, LimitedCommands, log_levels, LogData, LogLevel} from "./common-settings";
 import {UserSettings, UserSettingsConfig} from "./user-settings";
 import {PowSettings} from "./pow-settings";
 import SlowDown from "express-slow-down";
 import FileSync from 'lowdb/adapters/FileSync.js';
 import lowdb from 'lowdb'
 import {OrderDB, OrderSchema, TrackedAccount, User, UserDB} from "./lowdb-schema";
-import {Request, Response} from "express";
+import {ErrorRequestHandler, NextFunction, Request, Response} from "express";
 import {CorsOptions} from "cors";
 import {RateLimiterRes} from "rate-limiter-flexible";
 import ErrnoException = NodeJS.ErrnoException;
@@ -67,11 +67,11 @@ var global_tracked_accounts: string[] = [] // the accounts to track in websocket
 var websocket_connections: Map<string, connection> = new Map<string, connection>() // active ws connections
 
 let defaultUserSettings: UserSettings | undefined
-var user_use_cache = null
-var user_use_output_limiter = null
-var user_allowed_commands = null
-var user_cached_commands = null
-var user_limited_commands = null
+var user_use_cache: boolean | null = null
+var user_use_output_limiter: boolean | null = null
+var user_allowed_commands: string[] | null = null
+var user_cached_commands: CachedCommands | null = null
+var user_limited_commands: LimitedCommands | null = null
 var user_log_level: LogLevel | null = null
 var dpow_user: string | null = null
 var dpow_key: string | null = null
@@ -169,8 +169,8 @@ const loadSettings: () => ProxySettings = () => {
     https_cert: '',
     https_key: '',
     allowed_commands: [],
-    cached_commands: [],
-    limited_commands: [],
+    cached_commands: new Map<Command, number>(),
+    limited_commands: new Map<Command, number>(),
     slow_down: {},
     rate_limiter: {},
     ddos_protection: {},
@@ -384,11 +384,12 @@ if (settings.use_ip_blacklist) {
 }
 
 // Error handling
-app.use((err, req, res, _next) => {
+app.use((err: Error, req: Request, res: Response, _next: any) => {
   if (err instanceof IpDeniedError) {
     return res.status(401).json({error: 'IP has been blocked'})
   }
   else {
+    // @ts-ignore only return err here?
     return res.status(500).json({error: err.status})
   }
 })
@@ -538,36 +539,17 @@ function myAuthorizer(username: string, password: string) {
       valid_user = true
 
       // Override default settings if exists
-      for (const [key, value] of Object.entries(user_settings)) {
-        // Username found in user_settings
-        if (key == username) {
-          // Loop all defined user settings for the requesting user
-          for (const [key2, value2] of Object.entries(value)) {
-            switch (key2) {
-              case 'use_cache':
-              user_use_cache = value2
-              break
-              case 'use_output_limiter':
-              user_use_output_limiter = value2
-              break
-              case 'allowed_commands':
-              user_allowed_commands = value2
-              break
-              case 'cached_commands':
-              user_cached_commands = value2
-              break
-              case 'limited_commands':
-              user_limited_commands = value2
-              break
-              case 'log_level':
-                // @ts-ignore
-                user_log_level = value2
-              break
-            }
-          }
-          break
+      user_settings.forEach((value: UserSettings, key: string, map: UserSettingsConfig) => {
+        if(key === username) {
+          user_use_cache = value.use_cache
+          user_use_output_limiter = value.use_output_limiter
+          user_allowed_commands = value.allowed_commands
+          user_cached_commands = value.cached_commands
+          user_limited_commands = value.limited_commands
+          user_log_level = value.log_level
+          return;
         }
-      }
+      })
       break
     }
   }
@@ -766,13 +748,13 @@ async function processRequest(query: any, req: Request, res: Response) {
   }
 
   // Block non-allowed RPC commands
-  if (!query.action || user_allowed_commands.indexOf(query.action) === -1) {
+  if (!query.action || user_allowed_commands?.indexOf(query.action) === -1) {
     logThis('RPC request is not allowed: ' + query.action, log_levels.info)
     return res.status(500).json({ error: `Action ${query.action} not allowed`})
   }
 
   // Decrease user tokens and block if zero left
-  var tokens_left = null
+  var tokens_left: number | null = null
   if (settings.use_tokens) {
     if ('token_key' in query) {
       let status = useToken(query)
@@ -958,30 +940,28 @@ async function processRequest(query: any, req: Request, res: Response) {
 
   // Read cache for current request action, if there is one
   if (user_use_cache) {
-    for (const [key] of Object.entries(user_cached_commands)) {
-      if (query.action === key) {
-        const cachedValue = rpcCache.get(key)
-        if (Tools.isValidJson(cachedValue)) {
-          logThis("Cache requested: " + key, log_levels.info)
-          if (tokens_left != null) {
-            cachedValue.tokens_total = tokens_left
-          }
-          return res.json(appendRateLimiterStatus(res, cachedValue))
+    const value: number | undefined = user_cached_commands?.get(query.action)
+    if(value !== undefined) {
+      const cachedValue = rpcCache?.get(query.action)
+      if (Tools.isValidJson(cachedValue)) {
+        logThis("Cache requested: " + query.action, log_levels.info)
+        if (tokens_left != null) {
+          // @ts-ignore what is type of cachedValue?
+          cachedValue.tokens_total = tokens_left
         }
-        break
+        return res.json(appendRateLimiterStatus(res, cachedValue))
       }
     }
   }
 
   // Limit response count (if count parameter is provided)
   if (user_use_output_limiter) {
-    for (const [key, value] of Object.entries(user_limited_commands)) {
-      if (query.action === key) {
-        if (parseInt(query.count) > value || !("count" in query)) {
-          query.count = value
-          if (parseInt(query.count) > value) {
-            logThis("Response count was limited to " + value.toString(), log_levels.info)
-          }
+    const value: number | undefined = user_limited_commands?.get(query.action)
+    if(value !== undefined) {
+      if (parseInt(query.count) > value || !("count" in query)) {
+        query.count = value
+        if (parseInt(query.count) > value) {
+          logThis("Response count was limited to " + value.toString(), log_levels.info)
         }
       }
     }
@@ -992,14 +972,10 @@ async function processRequest(query: any, req: Request, res: Response) {
     let data = await Tools.postData(query, settings.node_url, API_TIMEOUT)
     // Save cache if applicable
     if (settings.use_cache) {
-      for (const [key, value] of Object.entries(user_cached_commands)) {
-        if (query.action === key) {
-          // Store the response (proxyRes) in cache with key (action name) with a TTL=value
-          // @ts-ignore dont know what 'value' is here
-          if (!rpcCache?.set(key, data, value)) {
-            logThis("Failed saving cache for " + key, log_levels.warning)
-          }
-          break
+      const value: number | undefined = user_cached_commands?.get(query.action)
+      if(value !== undefined) {
+        if (!rpcCache?.set(query.action, data, value)) {
+          logThis("Failed saving cache for " + query.action, log_levels.warning)
         }
       }
     }
