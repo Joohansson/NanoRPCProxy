@@ -16,6 +16,8 @@ const WebSocketServer =       require('websocket').server
 const ReconnectingWebSocket = require('reconnecting-websocket')
 const WS =                    require('ws')
 const Helmet =                require('helmet')
+const Dec =                   require('bigdecimal') //https://github.com/iriscouch/bigdecimal.js
+const RemoveTrailingZeros =   require('remove-trailing-zeros')
 const Tokens =                require('./tokens')
 const Tools =                 require('./tools')
 const log_levels = {none:"none", warning:"warning", info:"info"}
@@ -664,6 +666,15 @@ function compareHex(a, b) {
   return result
 }
 
+// Determine new multiplier from base difficulty (hexadecimal string) and target difficulty (hexadecimal string). Returns float
+function multiplierFromDifficulty(difficulty, base_difficulty) {
+  let big64 = Dec.BigDecimal(2).pow(64)
+  let big_diff = Dec.BigDecimal(Dec.BigInteger(difficulty,16))
+  let big_base = Dec.BigDecimal(Dec.BigInteger(base_difficulty,16))
+  let mode = Dec.RoundingMode.HALF_DOWN()
+  return big64.subtract(big_base).divide(big64.subtract(big_diff),32,mode).toPlainString()
+}
+
 // Custom error class
 class APIError extends Error {
   constructor(code, ...params) {
@@ -874,9 +885,11 @@ async function processRequest(query, req, res) {
               logThis("Failed saving cache for " + 'difficulty', log_levels.warning)
             }
             query.difficulty = data.network_current
+            logThis("New difficulty: " + query.difficulty, log_levels.info)
           }
           else {
             query.difficulty = work_threshold_default
+            logThis("Using default difficulty: " + query.difficulty, log_levels.info)
           }
         }
         if (compareHex(work_threshold_default, query.difficulty)) {
@@ -895,6 +908,8 @@ async function processRequest(query, req, res) {
         
         try {
           let data = await Tools.postData(query, bpow_url, work_default_timeout*1000*2)
+          data.difficulty = query.difficulty
+          data.multiplier = RemoveTrailingZeros(multiplierFromDifficulty(data.difficulty, work_threshold_default).toString())
           if (tokens_left != null) {
             data.tokens_total = tokens_left
           }
@@ -931,6 +946,8 @@ async function processRequest(query, req, res) {
 
         try {
           let data = await Tools.postData(query, dpow_url, work_default_timeout*1000*2)
+          data.difficulty = query.difficulty
+          data.multiplier = RemoveTrailingZeros(multiplierFromDifficulty(data.difficulty, work_threshold_default).toString())
           if (tokens_left != null) {
             data.tokens_total = tokens_left
           }
