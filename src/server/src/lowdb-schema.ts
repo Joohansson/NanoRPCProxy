@@ -19,3 +19,17 @@ export interface OrderSchema {
 }
 
 export type OrderDB = lowdb.LowdbSync<OrderSchema>
+
+export interface TrackedAccount {
+    timestamp: number
+}
+
+export interface User {
+    ip: string
+    tracked_accounts: Map<string, TrackedAccount>
+}
+
+export interface UserSchema {
+    users: User[]
+}
+export type UserDB = lowdb.LowdbSync<UserSchema>

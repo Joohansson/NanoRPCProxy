@@ -6,13 +6,13 @@ import {PowSettings} from "./pow-settings";
 import SlowDown from "express-slow-down";
 import FileSync from 'lowdb/adapters/FileSync.js';
 import lowdb from 'lowdb'
-import {OrderDB, OrderSchema} from "./lowdb-schema";
+import {OrderDB, OrderSchema, TrackedAccount, User, UserDB} from "./lowdb-schema";
 import {Request, Response} from "express";
 import {CorsOptions} from "cors";
 import {RateLimiterRes} from "rate-limiter-flexible";
 import ErrnoException = NodeJS.ErrnoException;
 import {IncomingMessage, ServerResponse} from "http";
-import {IMessage, request as WSRequest, server as WSServer} from "websocket";
+import {connection, IMessage, request as WSRequest, server as WSServer} from "websocket";
 import ReconnectingWebSocket, { ErrorEvent } from "reconnecting-websocket";
 
 require('dotenv').config() // load variables from .env into the environment
@@ -40,7 +40,7 @@ const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init
 const order_db: OrderDB =  lowdb(new FileSync<OrderSchema>('db.json'))
-const tracking_db = lowdb(new FileSync('websocket.json'))
+const tracking_db: UserDB = lowdb(new FileSync('websocket.json'))
 order_db.defaults({orders: []}).write()
 tracking_db.defaults({users: []}).write()
 tracking_db.update('users', n => []).write() //empty db on each new run
@@ -64,7 +64,7 @@ const dpow_url = 'https://dpow.nanocenter.org/service/'
 const work_token_cost = 10 // work_generate will consume x token points
 var ws: ReconnectingWebSocket | null = null
 var global_tracked_accounts: string[] = [] // the accounts to track in websocket (synced with database)
-var websocket_connections = {} // active ws connections
+var websocket_connections: Map<string, connection> = new Map<string, connection>() // active ws connections
 
 let defaultUserSettings: UserSettings | undefined
 var user_use_cache = null
@@ -73,10 +73,10 @@ var user_allowed_commands = null
 var user_cached_commands = null
 var user_limited_commands = null
 var user_log_level: LogLevel | null = null
-var dpow_user = null
-var dpow_key = null
-var bpow_user = null
-var bpow_key = null
+var dpow_user: string | null = null
+var dpow_key: string | null = null
+var bpow_user: string | null = null
+var bpow_key: string | null = null
 
 // track daily requests and save to a log file (daily stat is reset if the server is restarted)
 // ---
@@ -638,7 +638,7 @@ function logThis(str: string, level: LogLevel) {
 }
 
 // Compare two hex strings, returns 0 if equal, -1 if A<B and 1 if A>B
-function compareHex(a, b) {
+function compareHex(a: string | number, b: string | number) {
   a = parseInt('0x' + a, 16)
   b = parseInt('0x' + b, 16)
   let result = 0
@@ -648,6 +648,7 @@ function compareHex(a, b) {
 }
 
 // Determine new multiplier from base difficulty (hexadecimal string) and target difficulty (hexadecimal string). Returns float
+// @ts-ignore no sure what params to put here
 function multiplierFromDifficulty(difficulty, base_difficulty) {
   let big64 = Dec.BigDecimal(2).pow(64)
   let big_diff = Dec.BigDecimal(Dec.BigInteger(difficulty,16))
@@ -661,7 +662,7 @@ class APIError extends Error {
 
   private code: any
 
-  constructor(code, ...params) {
+  constructor(code: string, ...params: any[]) {
     super(...params)
 
     // Maintains proper stack trace for where our error was thrown (only available on V8)
@@ -1147,7 +1148,7 @@ if (settings.use_websocket) {
 
                     // count new accounts that are not already tracked
                     let unique_new = 0
-                    msg.options.accounts.forEach(function(address) {
+                    msg.options.accounts.forEach(function(address: string) {
                       var address_exists = false
                       for (const [key] of Object.entries(current_tracked_accounts)) {
                         if (key === address)  {
@@ -1160,11 +1161,11 @@ if (settings.use_websocket) {
                     })
                     if (unique_new + Object.keys(current_tracked_accounts).length <= settings.websocket_max_accounts) {
                       // save connection to global dicionary to reuse when getting messages from the node websocket
-                      websocket_connections[remote_ip] = connection
+                      websocket_connections.set(remote_ip, connection)
 
                       // mirror the subscription to the real websocket
                       var tracking_updated = false
-                      msg.options.accounts.forEach(function(address) {
+                      msg.options.accounts.forEach(function(address: string) {
                         if (trackAccount(connection, address)) {
                           tracking_updated = true
                         }
@@ -1203,26 +1204,26 @@ if (settings.use_websocket) {
       logThis('Websocket disconnected for: ' + remote_ip, log_levels.info)
       // clean up db and dictionary
       tracking_db.get('users').remove({ip: remote_ip}).write()
-      delete websocket_connections[remote_ip]
+      websocket_connections.delete(remote_ip)
     })
   })
 }
 
-function originIsAllowed(origin) {
+function originIsAllowed(origin: string) {
   // put logic here to detect whether the specified origin is allowed.
   // TODO
   return true
 }
 
 // Start websocket subscription for an address
-function trackAccount(connection, address) {
+function trackAccount(connection: connection, address: string) {
   if (!Tools.validateAddress(address)) {
     return false
   }
   let remote_ip = connection.remoteAddress
   // get existing tracked accounts
   let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
-  var current_tracked_accounts = {} //if not in db, use empty dict
+  var current_tracked_accounts: Map<string, TrackedAccount> = new Map<string, TrackedAccount>() //if not in db, use empty dict
   if (current_user !== undefined) {
     current_tracked_accounts = current_user.tracked_accounts
   }
@@ -1237,11 +1238,11 @@ function trackAccount(connection, address) {
 
   // start tracking new address
   if (!address_exists) {
-    current_tracked_accounts[address] = {timestamp: Math.floor(Date.now()/1000)} // append new tracking
+    current_tracked_accounts.set(address, {timestamp: Math.floor(Date.now()/1000)}) // append new tracking
 
     // add user and tracked account to db
     if (current_user === undefined) {
-      const userinfo = {
+      const userinfo: User = {
         ip : remote_ip,
         tracked_accounts : current_tracked_accounts
       }
@@ -1298,7 +1299,7 @@ if (settings.use_websocket) {
             if (key === observed_account || key === observed_link) {
               // send message to each subscribing user for this particular account
               logThis('A tracked account was pushed to client: ' + key, log_levels.info)
-              websocket_connections[user.ip].sendUTF(msg.data)
+              websocket_connections.get(user.ip)?.sendUTF(msg.data)
             }
           }
         }
