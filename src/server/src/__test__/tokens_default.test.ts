@@ -1,3 +1,5 @@
+export {}
+
 const expectedDefaultSettings = [
     'TOKEN SETTINGS:\n-----------',
     'Work Server: http://127.0.0.1:7000',

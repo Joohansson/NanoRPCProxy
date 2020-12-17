@@ -1,3 +1,5 @@
+export {}
+
 const expectedDefaultSettings = [
     'PROXY SETTINGS:\n-----------',
     'Node url: http://[::1]:7076',
@@ -27,7 +29,7 @@ const expectedDefaultSettings = [
 test('log proxy settings with no config', () => {
     let settings = []
     process.env.OVERRIDE_USE_HTTP = 'false'
-    require('./proxy').logSettings((setting) => settings.push(setting))
+    require('../proxy').logSettings((setting) => settings.push(setting))
     expect(settings.length).toBe(23);
     expect(settings).toStrictEqual(expectedDefaultSettings)
 });
