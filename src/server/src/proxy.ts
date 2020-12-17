@@ -416,9 +416,8 @@ if (settings.use_rate_limiter) {
           return
         }
       }
-      // @ts-ignore
-      if ('token_key' in req.query && order_db.get('orders').find({token_key: req.query.token_key}).value()) {
-        // @ts-ignore
+      if ('token_key' in req.query && order_db.get('orders').find((a) => a.token_key === req.query.token_key).value()) {
+        // @ts-ignore query params can be an array is it okay to pick first element?
         if (order_db.get('orders').find({token_key: req.query.token_key[0]}).value().tokens > 0) {
           next()
           return
@@ -442,18 +441,14 @@ if (settings.use_rate_limiter) {
     limiter1.consume(req.ip, points_to_consume)
       .then((response: RateLimiterRes) => {
         res.set("X-RateLimit-Limit", settings.rate_limiter.request_limit)
-        // @ts-ignore
-        res.set("X-RateLimit-Remaining", settings.rate_limiter.request_limit-response.consumedPoints)
-        // @ts-ignore
-        res.set("X-RateLimit-Reset", new Date(Date.now() + response.msBeforeNext))
+        res.set("X-RateLimit-Remaining", `${settings.rate_limiter.request_limit-response.consumedPoints}`)
+        res.set("X-RateLimit-Reset", `${new Date(Date.now() + response.msBeforeNext)}`)
         next()
       })
       .catch((rej: any) => {
         res.set("X-RateLimit-Limit", settings.rate_limiter.request_limit)
-        // @ts-ignore
-        res.set("X-RateLimit-Remaining", Math.max(settings.rate_limiter.request_limit-rej.consumedPoints, 0))
-        // @ts-ignore
-        res.set("X-RateLimit-Reset", new Date(Date.now() + rej.msBeforeNext))
+        res.set("X-RateLimit-Remaining", `${Math.max(settings.rate_limiter.request_limit-rej.consumedPoints, 0)}`)
+        res.set("X-RateLimit-Reset", `${new Date(Date.now() + rej.msBeforeNext)}`)
         res.status(429).send('Max allowed requests of ' + settings.rate_limiter.request_limit + ' reached. Time left: ' + Math.round(rej.msBeforeNext/1000) + 'sec')
       })
    }
