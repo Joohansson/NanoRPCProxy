@@ -43,7 +43,7 @@ const settings: TokenSettings = loadSettings()
 
 // Log all initial settings for convenience
 // ---
-function tokenLogSettings(logger) {
+function tokenLogSettings(logger: (...data: any[]) => void) {
   logger("TOKEN SETTINGS:\n-----------")
   logger("Work Server: " + settings.work_server)
   logger("Token Price: " + settings.token_price + " Nano/token")
