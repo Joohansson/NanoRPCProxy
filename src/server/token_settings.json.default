@@ -7,7 +7,7 @@
   "pending_count":              10,
   "difficulty_multiplier":      "1.0",
   "payment_receive_account":    "nano_1gur37mt5cawjg5844bmpg8upo4hbgnbbuwcerdobqoeny4ewoqshowfakfo",
-  "min_token_amount":           1,
-  "max_token_amount":           10000000,
+  "min_token_amount":           "1",
+  "max_token_amount":           "10000000",
   "log_level":                  "info"
 }
