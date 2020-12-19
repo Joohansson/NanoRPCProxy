@@ -1,5 +1,7 @@
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
+const test_override_http = !process.env.OVERRIDE_USE_HTTP
+
 const NodeCache =             require("node-cache" )
 const SlowDown =              require("express-slow-down")
 const BasicAuth =             require('express-basic-auth')
@@ -227,105 +229,83 @@ try {
 catch(e) {
   console.log("Could not read user_settings.json", e)
 }
-// ---
 
-// Log all initial settings for convenience
-// ---
-console.log("PROXY SETTINGS:\n-----------")
-console.log("Node url: " + node_url)
-console.log("Websocket url: " + node_ws_url)
-console.log("Http port: " + String(http_port))
-console.log("Https port: " + String(https_port))
-console.log("Request path: " + request_path)
-if (use_websocket) {
-  console.log("Websocket http port: " + String(websocket_http_port))
-  console.log("Websocket https port: " + String(websocket_https_port))
-  console.log("Websocket nax accounts: " + String(websocket_max_accounts))
-}
-console.log("Use authentication: " + use_auth)
-console.log("Use slow down: " + use_slow_down)
-console.log("Use rate limiter: " + use_rate_limiter)
-console.log("Use cached requests: " + use_cache)
-console.log("Use output limiter: " + use_output_limiter)
-console.log("Use IP blacklist: " + use_ip_blacklist)
-console.log("Use token system: " + use_tokens)
-console.log("Use websocket system: " + use_websocket)
-console.log("Use dPoW: " + use_dpow)
-console.log("Use bPoW: " + use_bpow)
-console.log("Disabled watch_work for process: " + disable_watch_work)
-console.log("Listen on http: " + use_http)
-console.log("Listen on https: " + use_https)
-
-let log_string = "Allowed commands:\n-----------\n"
-for (const [key, value] of Object.entries(allowed_commands)) {
-  log_string = log_string + value + "\n"
-}
-console.log(log_string)
-
-if (use_cache) {
-  log_string = "Cached commands:\n"
-  for (const [key, value] of Object.entries(cached_commands)) {
-    log_string = log_string + key + " : " + value + "\n"
-  }
-  console.log(log_string)
-}
-
-if (use_output_limiter) {
-  log_string = "Limited commands:\n"
-  for (const [key, value] of Object.entries(limited_commands)) {
-    log_string = log_string + key + " : " + value + "\n"
-  }
-  console.log(log_string)
-}
-
-if (use_slow_down) {
-  log_string = "Slow down settings:\n"
-  for (const [key, value] of Object.entries(slow_down)) {
-    log_string = log_string + key + " : " + value + "\n"
-  }
-  console.log(log_string)
-}
-
-if (use_rate_limiter) {
-  log_string = "Rate limiter settings:\n"
-  for (const [key, value] of Object.entries(rate_limiter)) {
-    log_string = log_string + key + " : " + value + "\n"
-  }
-  console.log(log_string)
-}
-
-log_string = "DDOS protection settings:\n"
-for (const [key, value] of Object.entries(ddos_protection)) {
-  log_string = log_string + key + " : " + value + "\n"
-}
-console.log(log_string)
-
-if (use_ip_blacklist) {
-  log_string = "IPs blacklisted:\n"
-  for (const [key, value] of Object.entries(ip_blacklist)) {
-    log_string = log_string + value + "\n"
-  }
-  console.log(log_string)
-}
-
-if (proxy_hops > 0) {
-  console.log("Additional proxy servers: " + proxy_hops)
-}
-
-if (use_cors) {
-  if (cors_whitelist.length == 0) {
-    console.log("Use cors. Any ORIGIN allowed")
-  }
-  else {
-    log_string = "Use cors. Whitelisted ORIGINs or IPs:\n"
-    for (const [key, value] of Object.entries(cors_whitelist)) {
-      log_string = log_string + value + "\n"
+function logObjectEntries(logger, title, object) {
+  let log_string = title + "\n"
+  for (const [key, value] of Object.entries(object)) {
+    if(key) {
+      log_string = log_string + key + " : " + value + "\n"
+    } else {
+      log_string = log_string + " " + value + "\n"
     }
-    console.log(log_string)
   }
+  logger(log_string)
 }
+// ---
+// Log all initial settings for convenience
+function logSettings(logger) {
+  logger("PROXY SETTINGS:\n-----------")
+  logger("Node url: " + node_url)
+  logger("Websocket url: " + node_ws_url)
+  logger("Http port: " + String(http_port))
+  logger("Https port: " + String(https_port))
+  logger("Request path: " + request_path)
+  if (use_websocket) {
+    logger("Websocket http port: " + String(websocket_http_port))
+    logger("Websocket https port: " + String(websocket_https_port))
+    logger("Websocket nax accounts: " + String(websocket_max_accounts))
+  }
+  logger("Use authentication: " + use_auth)
+  logger("Use slow down: " + use_slow_down)
+  logger("Use rate limiter: " + use_rate_limiter)
+  logger("Use cached requests: " + use_cache)
+  logger("Use output limiter: " + use_output_limiter)
+  logger("Use IP blacklist: " + use_ip_blacklist)
+  logger("Use token system: " + use_tokens)
+  logger("Use websocket system: " + use_websocket)
+  logger("Use dPoW: " + use_dpow)
+  logger("Use bPoW: " + use_bpow)
+  logger("Disabled watch_work for process: " + disable_watch_work)
+  logger("Listen on http: " + use_http)
+  logger("Listen on https: " + use_https)
 
-console.log("Main log level: " + log_level)
+  logObjectEntries(logger, "Allowed commands:\n-----------\n", allowed_commands)
+  if(use_cache)  {
+    logObjectEntries(logger, "Cached commands:\n", cached_commands)
+  }
+  if (use_output_limiter) {
+    logObjectEntries(logger, "Limited commands:\n", limited_commands)
+  }
+  if(use_slow_down) {
+    logObjectEntries(logger, "Slow down settings:\n", slow_down)
+  }
+  if (use_rate_limiter) {
+    logObjectEntries(logger, "Rate limiter settings:\n", rate_limiter)
+  }
+  logObjectEntries(logger, "DDOS protection settings:\n", ddos_protection)
+
+  if (use_ip_blacklist) {
+    logObjectEntries(logger, "IPs blacklisted:\n", ip_blacklist)
+  }
+  if (proxy_hops > 0) {
+    logger("Additional proxy servers: " + proxy_hops)
+  }
+  if (use_cors) {
+    if (cors_whitelist.length == 0) {
+      logger("Use cors. Any ORIGIN allowed")
+    }
+    else {
+      logObjectEntries(logger, "Use cors. Whitelisted ORIGINs or IPs:\n", cors_whitelist)
+    }
+  }
+  logger("Main log level: " + log_level)
+
+}
+logSettings(console.log)
+
+module.exports = {
+  logSettings: logSettings
+}
 // ---
 
 // Read dpow and bpow credentials from file
@@ -905,7 +885,7 @@ async function processRequest(query, req, res) {
         logThis("Requesting work using bpow with diff: " + query.difficulty, log_levels.info)
         query.user = bpow_user
         query.api_key = bpow_key
-        
+
         try {
           let data = await Tools.postData(query, bpow_url, work_default_timeout*1000*2)
           data.difficulty = query.difficulty
@@ -1029,7 +1009,7 @@ async function processRequest(query, req, res) {
 
 var websocket_servers = []
 // Create an HTTP service
-if (use_http) {
+if (use_http && test_override_http) {
   Http.createServer(app).listen(http_port, function() {
     console.log("Http server started on port: " + http_port)
   })
@@ -1175,7 +1155,7 @@ if (use_websocket) {
                       }
                     })
                     if (parseInt(unique_new) + Object.keys(current_tracked_accounts).length <= websocket_max_accounts) {
-                      
+
                       // save connection to global dicionary to reuse when getting messages from the node websocket
                       websocket_connections[remote_ip] = connection
 
