@@ -1,8 +1,7 @@
 FROM node:14
 
 WORKDIR /usr/src/app
-RUN mkdir dist
-RUN chown -R node:node .
+RUN chown node:node .
 USER node
 
 # Prepare environment
