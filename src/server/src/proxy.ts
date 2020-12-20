@@ -1104,7 +1104,8 @@ if (settings.use_websocket) {
       if (message.type === 'utf8') {
           //console.log('Received Message: ' + message.utf8Data + ' from ' + remote_ip)
           try {
-            let msg: any = message.utf8Data ? JSON.parse(message.utf8Data) : {}
+            // @ts-ignore utf8Data might be undefined AND don't know what type to expect here
+            let msg = JSON.parse(message.utf8Data)
             // new subscription
             if ('action' in msg && 'topic' in msg && msg.action === 'subscribe') {
               if (msg.topic === 'confirmation') {
