@@ -415,8 +415,9 @@ if (settings.use_rate_limiter) {
           return
         }
       }
-      if ('token_key' in req.query && order_db.get('orders').find((a) => a.token_key === req.query.token_key).value()) {
-        // @ts-ignore query params can be an array is it okay to pick first element?
+      // @ts-ignore overloaded method not found
+      if ('token_key' in req.query && order_db.get('orders').find({token_key: req.query.token_key}).value()) {
+        // @ts-ignore overloaded method not found
         if (order_db.get('orders').find({token_key: req.query.token_key}).value().tokens > 0) {
           next()
           return
@@ -490,8 +491,10 @@ if (settings.use_slow_down) {
             return true
           }
         }
-        if ('token_key' in req.query && order_db.get('orders').find((order) => order.token_key === req.query.token_key).value()) {
-          if (order_db.get('orders').find((order) => order.token_key === req.query.token_key).value().tokens > 0) {
+        // @ts-ignore overloaded method not found
+        if ('token_key' in req.query && order_db.get('orders').find({token_key: req.query.token_key}).value()) {
+          // @ts-ignore overloaded method not found
+          if (order_db.get('orders').find({token_key: req.query.token_key}).value().tokens > 0) {
             return true
           }
         }
