@@ -32,7 +32,7 @@ module.exports = {
     let promise = new Promise(async (resolve, reject) => {
         // https://www.npmjs.com/package/node-fetch
         Fetch(server, options)
-          .then(foo => checkStatus(foo))
+          .then(checkStatus)
           .then(res => res.json())
           .then(json => resolve(json))
           .catch(err => reject(new Error('Connection error: ' + err)))
