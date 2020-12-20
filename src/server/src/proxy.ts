@@ -418,7 +418,7 @@ if (settings.use_rate_limiter) {
       }
       if ('token_key' in req.query && order_db.get('orders').find((a) => a.token_key === req.query.token_key).value()) {
         // @ts-ignore query params can be an array is it okay to pick first element?
-        if (order_db.get('orders').find({token_key: req.query.token_key[0]}).value().tokens > 0) {
+        if (order_db.get('orders').find({token_key: req.query.token_key}).value().tokens > 0) {
           next()
           return
         }
