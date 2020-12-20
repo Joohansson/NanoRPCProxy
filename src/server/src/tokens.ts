@@ -2,6 +2,7 @@ import {TokenSettings} from "./token-settings";
 import {log_levels, LogLevel} from "./common-settings";
 import lowdb from "lowdb";
 import {Order, OrderDB} from "./lowdb-schema";
+import {Account, Wallet} from "nanocurrency-web/dist/lib/address-importer";
 
 export {}
 
@@ -138,7 +139,7 @@ module.exports = {
     }
   },
   // Cancel order by replacing the account and return the previous private key for client to claim the funds
-  cancelOrder: async function (token_key: string, order_db: any) {
+  cancelOrder: async function (token_key: string, order_db: OrderDB) {
     // Get the right order based on token_key
     const order = order_db.get('orders').find({token_key: token_key}).value()
     if (order) {
