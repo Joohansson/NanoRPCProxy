@@ -6,7 +6,7 @@ import {PowSettings} from "./pow-settings";
 import SlowDown from "express-slow-down";
 import FileSync from 'lowdb/adapters/FileSync.js';
 import lowdb from 'lowdb'
-import {OrderDB, OrderSchema, TrackedAccount, User, UserDB} from "./lowdb-schema";
+import {OrderDB, OrderSchema, TrackedAccount, User, UserDB, UserSchema} from "./lowdb-schema";
 import {ErrorRequestHandler, NextFunction, Request, Response} from "express";
 import {CorsOptions} from "cors";
 import {RateLimiterRes} from "rate-limiter-flexible";
@@ -40,27 +40,26 @@ const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init
 const order_db: OrderDB =  lowdb(new FileSync<OrderSchema>('db.json'))
-const tracking_db: UserDB = lowdb(new FileSync('websocket.json'))
+const tracking_db: UserDB = lowdb(new FileSync<UserSchema>('websocket.json'))
 order_db.defaults({orders: []}).write()
 tracking_db.defaults({users: []}).write()
 tracking_db.update('users', n => []).write() //empty db on each new run
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
 var users: Credentials[] = []                      // a list of base64 user/password credentials
-// var log_level = log_levels.none
 
 // default vars
-let cache_duration_default = 60
+let cache_duration_default: number = 60
 var rpcCache: NodeCache | null = null
 var user_settings: UserSettingsConfig = new Map<string, UserSettings>()
 const price_url = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
 //const price_url2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
 //const CMC_API_KEY = 'xxx'
 const API_TIMEOUT: number = 10000 // 10sec timeout for calling http APIs
-const work_threshold_default = 'fffffff800000000'
-const work_default_timeout = 10 // x sec timeout before trying next delegated work method (only when use_dpow or use_bpow)
-const bpow_url = 'https://bpow.banano.cc/service/'
-const dpow_url = 'https://dpow.nanocenter.org/service/'
+const work_threshold_default: string = 'fffffff800000000'
+const work_default_timeout: number = 10 // x sec timeout before trying next delegated work method (only when use_dpow or use_bpow)
+const bpow_url: string = 'https://bpow.banano.cc/service/'
+const dpow_url: string = 'https://dpow.nanocenter.org/service/'
 const work_token_cost = 10 // work_generate will consume x token points
 var ws: ReconnectingWebSocket | null = null
 var global_tracked_accounts: string[] = [] // the accounts to track in websocket (synced with database)
@@ -80,7 +79,7 @@ var bpow_key: string | null = null
 
 // track daily requests and save to a log file (daily stat is reset if the server is restarted)
 // ---
-var rpcCount = 0
+var rpcCount: number = 0
 var logdata: LogData[] = []
 try {
   // read latest count from file
