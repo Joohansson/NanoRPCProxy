@@ -1059,8 +1059,8 @@ if (settings.use_websocket) {
   // websocket ddos protection settings
   const websocket_limiter = new RateLimiterMemory({
     keyPrefix: 'limit_websocket',
-    points: settings.ddos_protection.request_limit, // limit each IP to x requests per duration
-    duration: Math.round(settings.ddos_protection.time_window/1000), // rolling time window in sec
+    points: settings.ddos_protection.request_limit,
+    duration: Math.round(settings.ddos_protection.time_window/1000),
   })
 
   wsServer.on('request', async function(request: WSRequest) {
