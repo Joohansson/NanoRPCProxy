@@ -1,3 +1,5 @@
+export {}
+
 const expectedDefaultSettings = [
     'TOKEN SETTINGS:\n-----------',
     'Work Server: http://127.0.0.1:7000',
@@ -13,8 +15,8 @@ const expectedDefaultSettings = [
 ]
 
 test('log token settings with no config', () => {
-    let settings = []
-    require('../tokens').tokenLogSettings((setting) => settings.push(setting))
+    let settings: string[] = []
+    require('../tokens').tokenLogSettings((setting: string) => settings.push(setting))
     console.log(settings)
     expect(settings.length).toBe(11);
     expect(settings).toStrictEqual(expectedDefaultSettings)

@@ -1,4 +1,4 @@
-const fs = require('fs');
+import * as fs from 'fs';
 
 const expectedDefaultSettings = [
     'TOKEN SETTINGS:\n-----------',
@@ -21,8 +21,8 @@ beforeAll(() => {
 })
 
 test('log tokens settings with default config from file', () => {
-    let settings = []
-    require('../tokens').tokenLogSettings((setting) => settings.push(setting))
+    let settings: string[] = []
+    require('../tokens').tokenLogSettings((setting: string) => settings.push(setting))
     console.log(settings)
     expect(settings.length).toBe(11);
     expect(settings).toStrictEqual(expectedDefaultSettings)
