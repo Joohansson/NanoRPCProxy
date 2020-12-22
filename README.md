@@ -76,27 +76,30 @@ These will not be affected if later updating the server via git pull
     cp token_settings.json.default token_settings.json
 
 4. Install required libraries: **npm install**
-5. Start and test the server: **node proxy.js**
+5. Build Typescript sources: **npm run build**
+6. Start and test the server: **node dist/proxy.js**
 ---
 
 ### Option1: Install as a service using PM2 (Recommended)
 https://pm2.keymetrics.io/docs/usage/quick-start/
 
+_Make sure you have build the project (npm run build) first as specified in the `Setup nodejs and test server` section._
+
 1. Locate the directory src/server
 2. Install pm2: **npm install pm2@latest -g**
-3. Start the server: **pm2 start proxy.js**
+3. Start the server: **pm2 start dist/proxy.js**
 
 #### Other useful pm2 commands
-* **pm2 restart proxy.js, pm2 stop proxy.js, pm2 delete proxy.js**
+* **pm2 restart dist/proxy.js, pm2 stop dist/proxy.js, pm2 delete dist/proxy.js**
 * Make pm2 auto-boot at server restart: **pm2 startup**
 * Realtime online monitor: **pm2 monitor**
 * Status: **pm2 status**
-* Realtime logs: **pm2 logs** (or specifically for this app: **pm2 logs proxy.js**)
+* Realtime logs: **pm2 logs** (or specifically for this app: **pm2 logs dist/proxy.js**)
 * Terminal dashboard: **pm2 monit**
 
-Before making changes, stop any running servers with "pm2 stop proxy.js" and delete the process with "pm delete proxy.js"
-* Specify log location: **pm2 start proxy.js --log ~/NanoRPCProxy.log**
-* Restart app when file changes: **pm2 start proxy.js --watch**
+Before making changes, stop any running servers with "pm2 stop dist/proxy.js" and delete the process with "pm delete dist/proxy.js"
+* Specify log location: **pm2 start dist/proxy.js --log ~/NanoRPCProxy.log**
+* Restart app when file changes: **pm2 start dist/proxy.js --watch**
 
 #### Update pm2:
 1. npm install pm2@latest -g
@@ -109,6 +112,8 @@ Example of PM2 web monitor. Can track all your apps and with realtime logs.
 ### Option2: Install as a service using systemd on Linux
 https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-systemd
 
+_Make sure you have build the project (npm run build) first as specified in the `Setup nodejs and test server` section._
+
 1. Create a file /etc/systemd/system/nanorpcproxy.service
 2. Paste this
 
@@ -119,7 +124,7 @@ https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-syst
     After=network.target
 
     [Service]
-    ExecStart=/usr/local/bin/node /home/NanoRPCProxy/src/server/proxy.js
+    ExecStart=/usr/local/bin/node /home/NanoRPCProxy/src/server/dist/proxy.js
     Restart=always
     RestartSec=10 #wait 10sec before restart
     #User=nobody
@@ -131,7 +136,7 @@ https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-syst
     [Install]
     WantedBy=multi-user.target
 
-3. Make the file executable: **sudo chmod +x /home/NanoRPCProxy/src/server/proxy.js**
+3. Make the file executable: **sudo chmod +x /home/NanoRPCProxy/src/server/dist/proxy.js**
 4. Make systemd aware: **sudo systemctl daemon-reload**
 5. Test the service: **sudo systemctl start nanorpcproxy**
 6. Check status: **sudo systemctl status nanorpcproxy**
@@ -142,7 +147,8 @@ https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-syst
 ### Updating the server
 1. Go to the root folder -> git pull
 2. Go to src/server -> npm install
-3. Restart the proxy.js
+3. Build sources -> npm run build
+4. Restart the proxy.js
 
 It may happen that the settings files are expanded. In that case, you need to do this again in order for the new variables to be modified by you (or insert them manually). Save your old settings first!
 
