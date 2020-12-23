@@ -1,0 +1,40 @@
+name: Release Dist Folder
+on:
+  push:
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check Out Repo
+      uses: actions/checkout@v2
+        
+    - name: Install modules
+      run: npm install --prefix "./src/server/"
+
+    - name: Runs test
+      run: npm test --prefix "./src/server/"
+
+    - name: Build typescript
+      run: npm run build --prefix "./src/server/"
+        
+    - name: Zip Folder
+      run: cd src/server/dist/ && zip -r ../../../proxy.zip . -x ./__test__\* && cd -
+
+    - name: Release Drafter
+      id: release_drafter
+    - uses: release-drafter/release-drafter@v5
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Upload Release Asset
+      id: upload_release_asset 
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.release_drafter.outputs.upload_url }} # This pulls ID from the Release Drafter step
+        asset_path: ./proxy.zip
+        asset_name: proxy.zip
+        asset_content_type: application/zip
