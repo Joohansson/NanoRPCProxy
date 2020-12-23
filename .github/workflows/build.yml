@@ -1,4 +1,4 @@
-name: Release Dist Folder
+name: Production Build
 on:
   push:
     branches:

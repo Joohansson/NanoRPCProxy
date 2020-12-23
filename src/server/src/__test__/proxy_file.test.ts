@@ -75,11 +75,11 @@ const expectedSettingsWithFile = [
     'Slow down settings:\n' +
     '\n' +
     'time_window : 600000\n' +
-    'request_limit : 100\n' +
-    'delay_increment : 200\n' +
-    'max_delay : 5000\n',
-    'Rate limiter settings:\n\ntime_window : 86400000\nrequest_limit : 1000\n',
-    'DDOS protection settings:\n\ntime_window : 1000\nrequest_limit : 2\n',
+    'request_limit : 400\n' +
+    'delay_increment : 100\n' +
+    'max_delay : 2000\n',
+    'Rate limiter settings:\n\ntime_window : 86400000\nrequest_limit : 5000\n',
+    'DDOS protection settings:\n\ntime_window : 10000\nrequest_limit : 100\n',
     'IPs blacklisted:\n\n0 : 8.8.8.8\n',
     'Use cors. Any ORIGIN allowed',
     'Main log level: info'
