@@ -17,10 +17,18 @@ jobs:
       run: npm test --prefix "./src/server/"
 
     - name: Build typescript
-      run: npm run build --prefix "./src/server/"
+      run: npm run build:prod --prefix "./src/server/"
+
+    - name: Copy settings
+      run: |
+        cp ./src/server/creds.json.default ./src/server/dist/creds.json
+        cp ./src/server/pow_creds.json.default ./src/server/dist/pow_creds.json
+        cp ./src/server/settings.json.default ./src/server/dist/settings.json
+        cp ./src/server/token_settings.json.default ./src/server/dist/token_settings.json
+        cp ./src/server/user_settings.json.default ./src/server/dist/user_settings.json
         
     - name: Zip Folder
-      run: cd src/server/dist/ && zip -r ../../../proxy.zip . -x ./__test__\* && cd -
+      run: cd ./src/server/dist/ && zip -r ../../../proxy.zip . -x ./__test__\* && cd -
 
     - name: Release Drafter
       id: release_drafter

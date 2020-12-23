@@ -8,7 +8,8 @@
   "scripts": {
     "test": "jest --runInBand",
     "start": "npm run-script build && node -r esm dist/proxy.js",
-    "build": "npx tsc"
+    "build": "npx tsc",
+    "build:prod": "npx tsc --sourceMap false"
   },
   "homepage": "https://github.com/joohansson/NanoRPCProxy",
   "dependencies": {
