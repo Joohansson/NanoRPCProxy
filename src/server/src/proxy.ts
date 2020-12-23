@@ -186,19 +186,23 @@ const loadSettings: () => ProxySettings = () => {
     const requestPath = defaultSettings.request_path || settings.request_path
     const normalizedRequestPath = requestPath.startsWith('/') ? requestPath : '/' + requestPath
     const mergedSettings: ProxySettings = {...defaultSettings, ...settings, request_path: normalizedRequestPath }
-
+    const fixedSettings: ProxySettings = {
+      ...mergedSettings,
+      cached_commands: new Map(Object.entries(mergedSettings.cached_commands)),
+      limited_commands: new Map(Object.entries(mergedSettings.cached_commands)),
+    }
     // Clone default settings for custom user specific vars, to be used if no auth
-    if (!mergedSettings.use_auth) {
+    if (!fixedSettings.use_auth) {
       userSettings = {
-        use_cache: mergedSettings.use_cache,
-        use_output_limiter: mergedSettings.use_output_limiter,
-        allowed_commands: mergedSettings.allowed_commands,
-        cached_commands: mergedSettings.cached_commands,
-        limited_commands: mergedSettings.limited_commands,
-        log_level: mergedSettings.log_level
+        use_cache: fixedSettings.use_cache,
+        use_output_limiter: fixedSettings.use_output_limiter,
+        allowed_commands: fixedSettings.allowed_commands,
+        cached_commands: fixedSettings.cached_commands,
+        limited_commands: fixedSettings.limited_commands,
+        log_level: fixedSettings.log_level
       }
     }
-    return mergedSettings
+    return fixedSettings
   }
   catch(e) {
     console.log("Could not read settings.json", e)
@@ -293,9 +297,7 @@ function logSettings(logger: (...data: any[]) => void) {
 }
 logSettings(console.log)
 
-module.exports = {
-  logSettings: logSettings
-}
+
 // ---
 
 // Read dpow and bpow credentials from file
@@ -983,6 +985,11 @@ async function processRequest(query: any, req: Request, res: Response) {
     res.status(500).json({error: err.toString()})
     logThis("Node conection error: " + err.toString(), log_levels.warning)
   }
+}
+
+module.exports = {
+  logSettings: logSettings,
+  processRequest: processRequest
 }
 
 var websocket_servers = []
