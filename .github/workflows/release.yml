@@ -1,0 +1,20 @@
+name: MasterRelease
+on:
+  push:
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check Out Repo
+      uses: actions/checkout@v2
+        
+    - name: Install modules
+      run: npm install --prefix "./src/server/"
+        
+    - name: Build typescript
+      run: npm run build --prefix "./src/server/"
+        
+    - name: Zip Folder
+      run: cd src/server/dist/ && zip -r ../../../release.zip . -x ./__test__\* && cd -
