@@ -65,13 +65,14 @@ var ws: ReconnectingWebSocket | null = null
 var global_tracked_accounts: string[] = [] // the accounts to track in websocket (synced with database)
 var websocket_connections: Map<string, connection> = new Map<string, connection>() // active ws connections
 
-let defaultUserSettings: UserSettings | undefined
-var user_use_cache: boolean | null = null
-var user_use_output_limiter: boolean | null = null
-var user_allowed_commands: string[] | null = null
-var user_cached_commands: CachedCommands | null = null
-var user_limited_commands: LimitedCommands | null = null
-var user_log_level: LogLevel | null = null
+let userSettings: UserSettings = {
+  allowed_commands: null,
+  cached_commands: null,
+  limited_commands: null,
+  log_level: 'info',
+  use_cache: false,
+  use_output_limiter: false
+}
 var dpow_user: string | null = null
 var dpow_key: string | null = null
 var bpow_user: string | null = null
@@ -188,7 +189,7 @@ const loadSettings: () => ProxySettings = () => {
 
     // Clone default settings for custom user specific vars, to be used if no auth
     if (!mergedSettings.use_auth) {
-      defaultUserSettings = {
+      userSettings = {
         use_cache: mergedSettings.use_cache,
         use_output_limiter: mergedSettings.use_output_limiter,
         allowed_commands: mergedSettings.allowed_commands,
@@ -521,12 +522,12 @@ if (settings.use_cache) {
 // To verify username and password provided via basicAuth. Support multiple users
 function myAuthorizer(username: string, password: string) {
   // Set default settings specific for authenticated users
-  user_use_cache = settings.use_cache
-  user_use_output_limiter = settings.use_output_limiter
-  user_allowed_commands = settings.allowed_commands
-  user_cached_commands = settings.cached_commands
-  user_limited_commands = settings.limited_commands
-  user_log_level = settings.log_level
+  userSettings.use_cache = settings.use_cache
+  userSettings.use_output_limiter = settings.use_output_limiter
+  userSettings.allowed_commands = settings.allowed_commands
+  userSettings.cached_commands = settings.cached_commands
+  userSettings.limited_commands = settings.limited_commands
+  userSettings.log_level = settings.log_level
 
   var valid_user: boolean = false
   for (const [key, value] of Object.entries(users)) {
@@ -536,12 +537,12 @@ function myAuthorizer(username: string, password: string) {
       // Override default settings if exists
       user_settings.forEach((value: UserSettings, key: string, map: UserSettingsConfig) => {
         if(key === username) {
-          user_use_cache = value.use_cache
-          user_use_output_limiter = value.use_output_limiter
-          user_allowed_commands = value.allowed_commands
-          user_cached_commands = value.cached_commands
-          user_limited_commands = value.limited_commands
-          user_log_level = value.log_level
+          userSettings.use_cache = value.use_cache
+          userSettings.use_output_limiter = value.use_output_limiter
+          userSettings.allowed_commands = value.allowed_commands
+          userSettings.cached_commands = value.cached_commands
+          userSettings.limited_commands = value.limited_commands
+          userSettings.log_level = value.log_level
           return;
         }
       })
@@ -604,7 +605,7 @@ function updateTrackedAccounts() {
 
 // Log function
 function logThis(str: string, level: LogLevel) {
-  if (user_log_level == log_levels.info || level == user_log_level) {
+  if (userSettings.log_level === log_levels.info || level == userSettings.log_level) {
     if (level == log_levels.info) {
       console.info(str)
     }
@@ -742,7 +743,7 @@ async function processRequest(query: any, req: Request, res: Response) {
   }
 
   // Block non-allowed RPC commands
-  if (!query.action || user_allowed_commands?.indexOf(query.action) === -1) {
+  if (!query.action || userSettings.allowed_commands?.indexOf(query.action) === -1) {
     logThis('RPC request is not allowed: ' + query.action, log_levels.info)
     return res.status(500).json({ error: `Action ${query.action} not allowed`})
   }
@@ -933,8 +934,8 @@ async function processRequest(query: any, req: Request, res: Response) {
   // ---
 
   // Read cache for current request action, if there is one
-  if (user_use_cache) {
-    const value: number | undefined = user_cached_commands?.get(query.action)
+  if (userSettings.use_cache) {
+    const value: number | undefined = userSettings.cached_commands?.get(query.action)
     if(value !== undefined) {
       const cachedValue = rpcCache?.get(query.action)
       if (Tools.isValidJson(cachedValue)) {
@@ -949,8 +950,8 @@ async function processRequest(query: any, req: Request, res: Response) {
   }
 
   // Limit response count (if count parameter is provided)
-  if (user_use_output_limiter) {
-    const value: number | undefined = user_limited_commands?.get(query.action)
+  if (userSettings.use_output_limiter) {
+    const value: number | undefined = userSettings.limited_commands?.get(query.action)
     if(value !== undefined) {
       if (parseInt(query.count) > value || !("count" in query)) {
         query.count = value
@@ -966,7 +967,7 @@ async function processRequest(query: any, req: Request, res: Response) {
     let data = await Tools.postData(query, settings.node_url, API_TIMEOUT)
     // Save cache if applicable
     if (settings.use_cache) {
-      const value: number | undefined = user_cached_commands?.get(query.action)
+      const value: number | undefined = userSettings.cached_commands?.get(query.action)
       if(value !== undefined) {
         if (!rpcCache?.set(query.action, data, value)) {
           logThis("Failed saving cache for " + query.action, log_levels.warning)
