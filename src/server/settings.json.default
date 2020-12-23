@@ -78,17 +78,17 @@
   ],
   "slow_down":              {
     "time_window":            600000,
-    "request_limit":          100,
-    "delay_increment":        200,
-    "max_delay":              5000
+    "request_limit":          400,
+    "delay_increment":        100,
+    "max_delay":              2000
   },
   "rate_limiter":           {
     "time_window":            86400000,
-    "request_limit":          1000
+    "request_limit":          5000
   },
   "ddos_protection":        {
-    "time_window":            1000,
-    "request_limit":          2
+    "time_window":            10000,
+    "request_limit":          100
   },
   "proxy_hops":               0,
   "websocket_max_accounts":   100,
