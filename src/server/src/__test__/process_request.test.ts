@@ -37,6 +37,23 @@ test('processRequest should fail at unreachable node', async () => {
     })
 })
 
+test('processRequest should fail on invalid command', async () => {
+    process.env.OVERRIDE_USE_HTTP = 'false'
+    const proxy = require('../proxy')
+
+    let body = {
+        action: 'not_supported_command'
+    }
+    let request: any = {}
+    let mockResponse: MockResponse = new MockResponse()
+
+    await proxy.processRequest(body, request, mockResponse)
+    expect(mockResponse.statusCode).toBe(500)
+    expect(mockResponse.jsonResponse).toStrictEqual({
+        error: 'Action not_supported_command not allowed'
+    })
+})
+
 afterAll(() => {
     fs.unlinkSync(filePath)
 })
