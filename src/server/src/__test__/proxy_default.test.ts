@@ -3,7 +3,7 @@ export {}
 const expectedDefaultSettings = [
     'PROXY SETTINGS:\n-----------',
     'Node url: http://[::1]:7076',
-    'Websocket url: ws://127.0.0.1:57000',
+    'Websocket url: ws://127.0.0.1:7078',
     'Http port: 9950',
     'Https port: 9951',
     'Request path: /proxy',
