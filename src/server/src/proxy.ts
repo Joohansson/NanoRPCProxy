@@ -1,7 +1,7 @@
 import {Credentials, CredentialSettings} from "./credential-settings";
 import ProxySettings from './proxy-settings';
 import {CachedCommands, Command, LimitedCommands, log_levels, LogData, LogLevel} from "./common-settings";
-import {readUserSettings, UserSettings, UserSettingsConfig} from "./user-settings";
+import {loadDefaultUserSettings, readUserSettings, UserSettings, UserSettingsConfig} from "./user-settings";
 import {PowSettings} from "./pow-settings";
 import SlowDown from "express-slow-down";
 import FileSync from 'lowdb/adapters/FileSync.js';
@@ -64,14 +64,6 @@ var ws: ReconnectingWebSocket | null = null
 var global_tracked_accounts: string[] = [] // the accounts to track in websocket (synced with database)
 var websocket_connections: Map<string, connection> = new Map<string, connection>() // active ws connections
 
-let userSettings: UserSettings = {
-  allowed_commands: [],
-  cached_commands: new Map<Command, number>(),
-  limited_commands: new Map<Command, number>(),
-  log_level: 'info',
-  use_cache: false,
-  use_output_limiter: false
-}
 var dpow_user: string | null = null
 var dpow_key: string | null = null
 var bpow_user: string | null = null
@@ -185,25 +177,12 @@ const loadSettings: () => ProxySettings = () => {
     const requestPath = defaultSettings.request_path || settings.request_path
     const normalizedRequestPath = requestPath.startsWith('/') ? requestPath : '/' + requestPath
     const mergedSettings: ProxySettings = {...defaultSettings, ...settings, request_path: normalizedRequestPath }
-    const fixedSettings: ProxySettings = {
+    return {
       ...mergedSettings,
       cached_commands: new Map(Object.entries(mergedSettings.cached_commands)),
       limited_commands: new Map(Object.entries(mergedSettings.limited_commands)),
     }
-    // Clone default settings for custom user specific vars, to be used if no auth
-    if (!fixedSettings.use_auth) {
-      userSettings = {
-        use_cache: fixedSettings.use_cache,
-        use_output_limiter: fixedSettings.use_output_limiter,
-        allowed_commands: fixedSettings.allowed_commands,
-        cached_commands: fixedSettings.cached_commands,
-        limited_commands: fixedSettings.limited_commands,
-        log_level: fixedSettings.log_level
-      }
-    }
-    return fixedSettings
-  }
-  catch(e) {
+  } catch(e) {
     console.log("Could not read settings.json", e)
     return defaultSettings;
   }
@@ -212,11 +191,8 @@ const loadSettings: () => ProxySettings = () => {
 // Read settings from file
 // ---
 const settings: ProxySettings = loadSettings()
-// ---
-
-// Read user settings from file, override default settings if they exist for specific users
-// ---
-let user_settings = readUserSettings('user_settings.json')
+const user_settings: UserSettingsConfig = readUserSettings('user_settings.json')
+let userSettings: UserSettings = loadDefaultUserSettings(settings)
 
 function logObjectEntries(logger: (...data: any[]) => void, title: string, object: any) {
   let log_string = title + "\n"
