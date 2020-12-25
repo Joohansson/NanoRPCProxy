@@ -65,9 +65,9 @@ var global_tracked_accounts: string[] = [] // the accounts to track in websocket
 var websocket_connections: Map<string, connection> = new Map<string, connection>() // active ws connections
 
 let userSettings: UserSettings = {
-  allowed_commands: null,
-  cached_commands: null,
-  limited_commands: null,
+  allowed_commands: [],
+  cached_commands: new Map<Command, number>(),
+  limited_commands: new Map<Command, number>(),
   log_level: 'info',
   use_cache: false,
   use_output_limiter: false
@@ -601,7 +601,7 @@ function updateTrackedAccounts() {
 
 // Log function
 function logThis(str: string, level: LogLevel) {
-  if (userSettings.log_level === log_levels.info || level == userSettings.log_level) {
+  if (userSettings.log_level == log_levels.info || level == userSettings.log_level) {
     if (level == log_levels.info) {
       console.info(str)
     }
@@ -739,7 +739,7 @@ async function processRequest(query: any, req: Request, res: Response) {
   }
 
   // Block non-allowed RPC commands
-  if (!query.action || userSettings.allowed_commands?.indexOf(query.action) === -1) {
+  if (!query.action || userSettings.allowed_commands.indexOf(query.action) === -1) {
     logThis('RPC request is not allowed: ' + query.action, log_levels.info)
     return res.status(500).json({ error: `Action ${query.action} not allowed`})
   }
@@ -931,7 +931,7 @@ async function processRequest(query: any, req: Request, res: Response) {
 
   // Read cache for current request action, if there is one
   if (userSettings.use_cache) {
-    const value: number | undefined = userSettings.cached_commands?.get(query.action)
+    const value: number | undefined = userSettings.cached_commands.get(query.action)
     if(value !== undefined) {
       const cachedValue = rpcCache?.get(query.action)
       if (Tools.isValidJson(cachedValue)) {
@@ -947,7 +947,7 @@ async function processRequest(query: any, req: Request, res: Response) {
 
   // Limit response count (if count parameter is provided)
   if (userSettings.use_output_limiter) {
-    const value: number | undefined = userSettings.limited_commands?.get(query.action)
+    const value: number | undefined = userSettings.limited_commands.get(query.action)
     if(value !== undefined) {
       if (parseInt(query.count) > value || !("count" in query)) {
         query.count = value
@@ -963,7 +963,7 @@ async function processRequest(query: any, req: Request, res: Response) {
     let data = await Tools.postData(query, settings.node_url, API_TIMEOUT)
     // Save cache if applicable
     if (settings.use_cache) {
-      const value: number | undefined = userSettings.cached_commands?.get(query.action)
+      const value: number | undefined = userSettings.cached_commands.get(query.action)
       if(value !== undefined) {
         if (!rpcCache?.set(query.action, data, value)) {
           logThis("Failed saving cache for " + query.action, log_levels.warning)

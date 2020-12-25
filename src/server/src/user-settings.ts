@@ -4,9 +4,9 @@ import * as Fs from "fs";
 export interface UserSettings {
     use_cache: boolean;
     use_output_limiter: boolean;
-    allowed_commands: string[] | null;
-    cached_commands: CachedCommands | null;
-    limited_commands: LimitedCommands | null;
+    allowed_commands: string[];
+    cached_commands: CachedCommands;
+    limited_commands: LimitedCommands;
     log_level: LogLevel;
 }
 
