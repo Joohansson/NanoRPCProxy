@@ -1,3 +1,5 @@
+import fs from "fs";
+
 class MockResponse {
     statusCode: number | null = null
     jsonResponse: any | null = null
@@ -11,6 +13,12 @@ class MockResponse {
         return this;
     }
 }
+
+const filePath = 'settings.json';
+
+beforeAll(() => {
+    fs.copyFileSync(`${filePath}.default`, filePath, )
+})
 
 test('processRequest should fail at unreachable node', async () => {
     process.env.OVERRIDE_USE_HTTP = 'false'
@@ -27,4 +35,8 @@ test('processRequest should fail at unreachable node', async () => {
     expect(mockResponse.jsonResponse).toStrictEqual({
         error: 'Error: Connection error: FetchError: request to http://[::1]:7076/ failed, reason: connect ECONNREFUSED ::1:7076'
     })
+})
+
+afterAll(() => {
+    fs.unlinkSync(filePath)
 })

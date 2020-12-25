@@ -542,8 +542,8 @@ function myAuthorizer(username: string, password: string) {
           userSettings.use_cache = value.use_cache
           userSettings.use_output_limiter = value.use_output_limiter
           userSettings.allowed_commands = value.allowed_commands
-          userSettings.cached_commands = value.cached_commands
-          userSettings.limited_commands = value.limited_commands
+          userSettings.cached_commands = value.cached_commands ? new Map(Object.entries(value.cached_commands)) : new Map<Command, number>()
+          userSettings.limited_commands = value.limited_commands ? new Map(Object.entries(value.limited_commands)) : new Map<Command, number>()
           userSettings.log_level = value.log_level
           return;
         }
