@@ -1,7 +1,7 @@
 import {Credentials, CredentialSettings} from "./credential-settings";
 import ProxySettings from './proxy-settings';
 import {CachedCommands, Command, LimitedCommands, log_levels, LogData, LogLevel} from "./common-settings";
-import {UserSettings, UserSettingsConfig} from "./user-settings";
+import {readUserSettings, UserSettings, UserSettingsConfig} from "./user-settings";
 import {PowSettings} from "./pow-settings";
 import SlowDown from "express-slow-down";
 import FileSync from 'lowdb/adapters/FileSync.js';
@@ -51,7 +51,6 @@ var users: Credentials[] = []                      // a list of base64 user/pass
 // default vars
 let cache_duration_default: number = 60
 var rpcCache: NodeCache | null = null
-var user_settings: UserSettingsConfig = new Map<string, UserSettings>()
 const price_url = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
 //const price_url2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
 //const CMC_API_KEY = 'xxx'
@@ -189,7 +188,7 @@ const loadSettings: () => ProxySettings = () => {
     const fixedSettings: ProxySettings = {
       ...mergedSettings,
       cached_commands: new Map(Object.entries(mergedSettings.cached_commands)),
-      limited_commands: new Map(Object.entries(mergedSettings.cached_commands)),
+      limited_commands: new Map(Object.entries(mergedSettings.limited_commands)),
     }
     // Clone default settings for custom user specific vars, to be used if no auth
     if (!fixedSettings.use_auth) {
@@ -217,12 +216,7 @@ const settings: ProxySettings = loadSettings()
 
 // Read user settings from file, override default settings if they exist for specific users
 // ---
-try {
-  user_settings = JSON.parse(Fs.readFileSync('user_settings.json', 'UTF-8'))
-}
-catch(e) {
-  console.log("Could not read user_settings.json", e)
-}
+let user_settings = readUserSettings('user_settings.json')
 
 function logObjectEntries(logger: (...data: any[]) => void, title: string, object: any) {
   let log_string = title + "\n"
@@ -265,10 +259,10 @@ function logSettings(logger: (...data: any[]) => void) {
 
   logObjectEntries(logger, "Allowed commands:\n-----------\n", settings.allowed_commands)
   if(settings.use_cache)  {
-    logObjectEntries(logger, "Cached commands:\n", settings.cached_commands)
+    logObjectEntries(logger, "Cached commands:\n", Object.fromEntries(settings.cached_commands))
   }
   if (settings.use_output_limiter) {
-    logObjectEntries(logger, "Limited commands:\n", settings.limited_commands)
+    logObjectEntries(logger, "Limited commands:\n", Object.fromEntries(settings.limited_commands))
   }
   if(settings.use_slow_down) {
     logObjectEntries(logger, "Slow down settings:\n", settings.slow_down)
@@ -542,8 +536,8 @@ function myAuthorizer(username: string, password: string) {
           userSettings.use_cache = value.use_cache
           userSettings.use_output_limiter = value.use_output_limiter
           userSettings.allowed_commands = value.allowed_commands
-          userSettings.cached_commands = value.cached_commands ? new Map(Object.entries(value.cached_commands)) : new Map<Command, number>()
-          userSettings.limited_commands = value.limited_commands ? new Map(Object.entries(value.limited_commands)) : new Map<Command, number>()
+          userSettings.cached_commands = value.cached_commands
+          userSettings.limited_commands = value.limited_commands
           userSettings.log_level = value.log_level
           return;
         }
