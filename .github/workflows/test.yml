@@ -24,9 +24,10 @@ jobs:
         cp ./src/server/settings.json.default ./src/server/dist/settings.json
         cp ./src/server/token_settings.json.default ./src/server/dist/token_settings.json
         cp ./src/server/user_settings.json.default ./src/server/dist/user_settings.json
+        cp ./src/server/package.json ./src/server/dist/package.json
         
     - name: Zip Folder
-      run: cd ./src/server/dist/ && zip -r ../../../proxy.zip . -x ./__test__\* && cd -
+      run: cd ./src/server/ && zip -r ../../proxy.zip ./dist -x ./dist/__test__\* && cd -
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
