@@ -909,11 +909,10 @@ async function processRequest(query: any, req: Request, res: Response) {
   if (userSettings.use_cache) {
     const value: number | undefined = userSettings.cached_commands.get(query.action)
     if(value !== undefined) {
-      const cachedValue = rpcCache?.get(query.action)
+      const cachedValue: any = rpcCache?.get(query.action)
       if (Tools.isValidJson(cachedValue)) {
         logThis("Cache requested: " + query.action, log_levels.info)
         if (tokens_left != null) {
-          // @ts-ignore what is type of cachedValue?
           cachedValue.tokens_total = tokens_left
         }
         return res.json(appendRateLimiterStatus(res, cachedValue))
