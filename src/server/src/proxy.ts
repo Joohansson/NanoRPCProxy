@@ -488,7 +488,7 @@ if (settings.use_cache) {
 }
 
 // To verify username and password provided via basicAuth. Support multiple users
-function myAuthorizer(username: string, password: string) {
+function myAuthorizer(username: string, password: string): boolean {
   // Set default settings specific for authenticated users
   userSettings.use_cache = settings.use_cache
   userSettings.use_output_limiter = settings.use_output_limiter
@@ -952,9 +952,15 @@ async function processRequest(query: any, req: Request, res: Response) {
   }
 }
 
+function getUserSettings(): UserSettings {
+  return userSettings
+}
+
 module.exports = {
   logSettings: logSettings,
-  processRequest: processRequest
+  processRequest: processRequest,
+  myAuthorizer: myAuthorizer,
+  getUserSettings: getUserSettings
 }
 
 var websocket_servers = []
