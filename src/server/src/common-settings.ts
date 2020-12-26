@@ -12,8 +12,8 @@ export const log_levels: LogLevels = {
 }
 
 export type Command = string
-export type LimitedCommands = Map<Command, number>
-export type CachedCommands = Map<Command, number>
+export type LimitedCommands = Record<Command, number>
+export type CachedCommands = Record<Command, number>
 
 export interface LogData {
     date: string;
