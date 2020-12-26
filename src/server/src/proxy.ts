@@ -15,6 +15,8 @@ import {IncomingMessage, ServerResponse} from "http";
 import {connection, IMessage, request as WSRequest, server as WSServer} from "websocket";
 import ReconnectingWebSocket, { ErrorEvent } from "reconnecting-websocket";
 import NodeCache from "node-cache";
+import {PriceResponse} from "./price-api/price-api";
+import * as Tools from './tools'
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -35,7 +37,6 @@ const Helmet =                require('helmet')
 const Dec =                   require('bigdecimal') //https://github.com/iriscouch/bigdecimal.js
 const RemoveTrailingZeros =   require('remove-trailing-zeros')
 const Tokens =                require('./tokens')
-const Tools =                 require('./tools')
 const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init
@@ -742,17 +743,16 @@ async function processRequest(query: any, req: Request, res: Response) {
   if (query.action === 'price') {
     try {
       // Use cached value first
-      const cachedValue = rpcCache?.get('price')
-      if (Tools.isValidJson(cachedValue)) {
+      const cachedValue: PriceResponse | undefined = rpcCache?.get('price')
+      if (cachedValue && Tools.isValidJson(cachedValue)) {
         logThis("Cache requested: " + 'price', log_levels.info)
         if (tokens_left != null) {
-          // @ts-ignore dont know what the value is here
           cachedValue.tokens_total = tokens_left
         }
         return res.json(appendRateLimiterStatus(res, cachedValue))
       }
 
-      let data = await Tools.getData(price_url, API_TIMEOUT)
+      let data: PriceResponse = await Tools.getData(price_url, API_TIMEOUT)
 
       // Store the price in cache for 10sec
       if (!rpcCache?.set('price', data, 10)) {
@@ -813,7 +813,7 @@ async function processRequest(query: any, req: Request, res: Response) {
         }
         else {
           // get latest difficulty from network
-          let data = await Tools.postData({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
+          let data: ActiveDifficultyResponse = await Tools.postData({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
           if ('network_current' in data) {
             // Store the difficulty in cache for 60sec
             if (!rpcCache?.set('difficulty', data.network_current, 60)) {
@@ -842,7 +842,7 @@ async function processRequest(query: any, req: Request, res: Response) {
         query.api_key = bpow_key
 
         try {
-          let data = await Tools.postData(query, bpow_url, work_default_timeout*1000*2)
+          let data: ProcessDataResponse = await Tools.postData(query, bpow_url, work_default_timeout*1000*2)
           data.difficulty = query.difficulty
           data.multiplier = RemoveTrailingZeros(multiplierFromDifficulty(data.difficulty, work_threshold_default).toString())
           if (tokens_left != null) {
@@ -880,7 +880,7 @@ async function processRequest(query: any, req: Request, res: Response) {
         query.api_key = dpow_key
 
         try {
-          let data = await Tools.postData(query, dpow_url, work_default_timeout*1000*2)
+          let data: ProcessDataResponse = await Tools.postData(query, dpow_url, work_default_timeout*1000*2)
           data.difficulty = query.difficulty
           data.multiplier = RemoveTrailingZeros(multiplierFromDifficulty(data.difficulty, work_threshold_default).toString())
           if (tokens_left != null) {
@@ -936,7 +936,7 @@ async function processRequest(query: any, req: Request, res: Response) {
 
   // Send the request to the Nano node and return the response
   try {
-    let data = await Tools.postData(query, settings.node_url, API_TIMEOUT)
+    let data: ProcessDataResponse = await Tools.postData(query, settings.node_url, API_TIMEOUT)
     // Save cache if applicable
     if (settings.use_cache) {
       const value: number | undefined = userSettings.cached_commands.get(query.action)
