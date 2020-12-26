@@ -13,11 +13,8 @@ test('parseUserSettings should parse to Map', async () => {
     expect(Object.entries(settings).length).toBe(2)
     const userSettings = settings['user2']
     expect(userSettings).toBeDefined()
-    // @ts-ignore
     expect(userSettings.allowed_commands.length).toBe(4)
-    // @ts-ignore
     expect(Object.entries(userSettings.cached_commands).length).toBe(1)
-    // @ts-ignore
     expect(Object.entries(userSettings.limited_commands).length).toBe(4)
 })
 
