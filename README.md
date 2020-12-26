@@ -34,7 +34,7 @@ Apart from increased security, NanoRPCProxy solves the scalability issue where a
 * Limits the number of response objects, like the number of pending transactions
 * Slows down IPs that doing requests above limit (Overridden by purchased tokens)
 * IP filter for max allowed requests per time window (Overridden by purchased tokens)
-* Extra DDOS protection layer (defaults to max 2 requests/sec, also for purchased tokens)
+* Extra DDOS protection layer (defaults to max 100 requests/ 10sec, also for purchased tokens)
 * IP black list (also for purchased tokens)
 * Supports basic authentication (username / password) (also for purchased tokens)
 * Supports multiple users via authentication
@@ -46,7 +46,7 @@ Apart from increased security, NanoRPCProxy solves the scalability issue where a
 * Works with both beta and main Nano network
 * Support for both delegated PoW (dPoW) and BoomPoW (bPoW)
 * Multiple demo clients for developers
-* 100% free to use, develop or sell with open-source MIT license
+* Available as docker container [https://hub.docker.com/r/nanojson/nanorpcproxy](https://hub.docker.com/r/nanojson/nanorpcproxy)
 
 **Possible use cases**
 ![NanoRPCProxy](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCPRoxy.png)
@@ -161,15 +161,19 @@ It may happen that the settings files are expanded. In that case, you need to do
 
 The docker image is available publicly on **[nanojson/nanorpcproxy](https://hub.docker.com/r/nanojson/nanorpcproxy)** but if you want to build it yourself:
 
-Ensure that [Docker](https://docs.docker.com/get-docker/) is installed. Then step into the `src/` folder. Build image:
+Ensure that [Docker](https://docs.docker.com/get-docker/) is installed.
 
-    $ docker build . -t nanorpcproxy
-
-In order to run the image with default (no) config:
+In order to run the public image with default (no) config:
 
     $ docker run -it nanojson/nanorpcproxy:latest
 
-Or to run your own build (remove nanojson/):
+Or to build and run from source:
+
+Step into the `src/` folder. Build image:
+
+    $ docker build . -t nanorpcproxy
+
+Then run it without the public "nanojson" registry
 
     $ docker run -it nanorpcproxy:latest
 
@@ -197,7 +201,7 @@ first copy files as above. Then run image with:
 
 All files but settings.json is disabled in the docker-compose file by default.
 
-### Example docker-compose.yml for running a Nano node and the proxy
+#### Example docker-compose.yml for running a Nano node and the proxy
 
 1. Copy the server/settings.json.default to a new folder settings/settings.json (or other setting files mentioned above)
 2. Edit settings.json and make sure "node_url":"http://node:7076" and "node_ws_url":"ws://node:7078". That means the proxy will connect to the node service (name=node) internally.
@@ -242,7 +246,11 @@ Example of config-node.toml
 
 7. When everything is up and running you can for example connect [Nault](https://nault.cc) to it via the app settings. Using http://127.0.0.1:9950/proxy and ws://127.0.0.1:9952
 
-To upgrade, you just run "docker-compose upgrade" and then "docker-compose up"
+#### Upgrading docker
+To upgrade you need to first turn off running container ("docker stop xxx", or "docker-compose down"). Also remove the container if you want to keep the same name (label)
+
+* Normal container: docker pull nanojson/nanorpcproxy:latest
+* Composer: docker-compose upgrade
 
 ---
 ---
