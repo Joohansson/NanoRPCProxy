@@ -3,10 +3,10 @@ import {log_levels, LogLevel, readConfigPathsFromENV} from "./common-settings";
 import {Order, OrderDB} from "./lowdb-schema";
 import {Wallet} from "nanocurrency-web/dist/lib/address-importer";
 import * as Tools from './tools'
+import Nacl from 'tweetnacl/nacl'
 
 export {}
 
-const Nacl =       require('tweetnacl/nacl')
 const Nano =       require('nanocurrency')
 const Wallet =     require('nanocurrency-web')
 const Fs =         require('fs')
@@ -85,6 +85,14 @@ interface WaitingTokenOrder {
 interface CancelOrder {
   priv_key: string
   status: string
+}
+
+interface TokenStatusResponse {
+  tokens_total: number
+  status: string
+}
+interface TokenPriceResponse {
+  token_price: number
 }
 
 const sleep = (milliseconds: number) => {
@@ -191,7 +199,7 @@ module.exports = {
     }
   },
   // Client checks status of owned tokens
-  checkTokens: async function (token_key: string, order_db: OrderDB) {
+  checkTokens: async function (token_key: string, order_db: OrderDB): Promise<Error | TokenStatusResponse> {
     // Get the right order based on token_key
     const order = order_db.get('orders').find({token_key: token_key}).value()
     if (order) {
@@ -210,11 +218,11 @@ module.exports = {
     }
   },
   // Client checks status of owned tokens
-  checkTokenPrice: async function () {
-    return {"token_price":settings.token_price}
+  checkTokenPrice: async function (): Promise<TokenPriceResponse> {
+    return {token_price: settings.token_price}
   },
   // Check pending and repair old order
-  repairOrder: async function(address: string, order_db: OrderDB, url: string) {
+  repairOrder: async function(address: string, order_db: OrderDB, url: string): Promise<void> {
     node_url = url
     checkPending(address, order_db, false)
   },
@@ -222,7 +230,7 @@ module.exports = {
 }
 
 // Check if order payment has arrived as a pending block, continue check at intervals until time is up. If continue is set to false it will only check one time
-async function checkPending(address: string, order_db: OrderDB, moveOn: boolean = true, total_received = 0) {
+async function checkPending(address: string, order_db: OrderDB, moveOn: boolean = true, total_received = 0): Promise<void> {
   // Check pending and claim
   let priv_key = order_db.get('orders').find({address: address}).value().priv_key
   let nano_amount = order_db.get('orders').find({address: address}).value().nano_amount
@@ -308,7 +316,7 @@ async function checkPending(address: string, order_db: OrderDB, moveOn: boolean 
 }
 
 // Generate secure random 64 char hex
-function genSecureKey() {
+function genSecureKey(): string {
   const rand = Nacl.randomBytes(32)
   return rand.reduce((hex: string, idx: number) => hex + (`0${idx.toString(16)}`).slice(-2), '')
 }
