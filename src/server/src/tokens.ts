@@ -1,7 +1,9 @@
+import * as Fs from 'fs'
 import {TokenSettings} from "./token-settings";
 import {log_levels, LogLevel, readConfigPathsFromENV} from "./common-settings";
 import {Order, OrderDB} from "./lowdb-schema";
-import {Wallet} from "nanocurrency-web/dist/lib/address-importer";
+import { wallet } from "nanocurrency-web";
+import * as Nano from 'nanocurrency'
 import * as Tools from './tools'
 import Nacl from 'tweetnacl/nacl'
 import {
@@ -12,10 +14,6 @@ import {
   TokenStatusResponse,
   WaitingTokenOrder
 } from "./node-api/token-api";
-
-const Nano =       require('nanocurrency')
-const Wallet =     require('nanocurrency-web')
-const Fs =         require('fs')
 
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
 const tokenSettings = readConfigPathsFromENV().token_settings
@@ -37,7 +35,7 @@ const loadSettings: () => TokenSettings = () => {
   // Read settings from file
 // ---
   try {
-    const readSettings: TokenSettings = JSON.parse(Fs.readFileSync(tokenSettings, 'UTF-8'))
+    const readSettings: TokenSettings = JSON.parse(Fs.readFileSync(tokenSettings, 'utf-8'))
     return {...defaultSettings, ...readSettings}
   }
   catch(e) {
@@ -76,10 +74,10 @@ var node_url = "" // will be set by main script
 export async function requestTokenPayment(token_amount: number, token_key: string, order_db: OrderDB, url: string): Promise<Error | TokenInfo> {
   // Block request if amount is not within interval
   if (token_amount < settings.min_token_amount) {
-    return {"error":"Token amount must be larger than " + settings.min_token_amount}
+    return {error: "Token amount must be larger than " + settings.min_token_amount}
   }
   if (token_amount > settings.max_token_amount) {
-    return {"error":"Token amount must be smaller than " + settings.max_token_amount}
+    return {error: "Token amount must be smaller than " + settings.max_token_amount}
   }
 
   node_url = url
@@ -95,17 +93,17 @@ export async function requestTokenPayment(token_amount: number, token_key: strin
       address = order_db.get('orders').find({token_key: token_key}).value().address //reuse old address
     }
     else {
-      return {"error":"This order is already processing or was interrupted. Please try again later or request a new key."}
+      return {error:"This order is already processing or was interrupted. Please try again later or request a new key."}
     }
   }
   // Store new order in db
   else {
     token_key = genSecureKey()
     let seed = genSecureKey().toUpperCase()
-    let nanowallet = Wallet.wallet.generate(seed)
-    let accounts = Wallet.wallet.accounts(nanowallet.seed, 0, 0)
+    let nanowallet = wallet.generate(seed)
+    let accounts = wallet.accounts(nanowallet.seed, 0, 0)
     priv_key = accounts[0].privateKey
-    let pub_key = Nano.derivePublicKey(priv_key)
+    let pub_key: string = Nano.derivePublicKey(priv_key)
     address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
 
     const order: Order = {"address":address, "token_key":token_key, "priv_key":priv_key, "tokens":0, "order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000), "previous": null, "hashes": []}
@@ -144,11 +142,11 @@ export async function cancelOrder(token_key: string, order_db: OrderDB): Promise
   if (order) {
     let previous_priv_key = order.priv_key
     let seed = genSecureKey().toUpperCase()
-    let nanowallet = Wallet.wallet.generate(seed)
-    let accounts = Wallet.wallet.accounts(nanowallet.seed, 0, 0)
+    let nanowallet = wallet.generate(seed)
+    let accounts = wallet.accounts(nanowallet.seed, 0, 0)
     var priv_key = accounts[0].privateKey
-    let pub_key = Nano.derivePublicKey(priv_key)
-    var address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
+    let pub_key: string = Nano.derivePublicKey(priv_key)
+    var address: string = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
 
     // Replace the address and private key and reset status
     if (!order.processing) {
@@ -163,7 +161,7 @@ export async function cancelOrder(token_key: string, order_db: OrderDB): Promise
 
   }
   else {
-    return {"error":"Order not found"}
+    return {error: "Order not found"}
   }
 }
 export async function checkTokens(token_key: string, order_db: OrderDB): Promise<Error | TokenStatusResponse> {
@@ -171,17 +169,17 @@ export async function checkTokens(token_key: string, order_db: OrderDB): Promise
   const order = order_db.get('orders').find({token_key: token_key}).value()
   if (order) {
     if (order.order_waiting === false && order.order_time_left > 0) {
-      return {"tokens_total":order.tokens,"status":"OK"}
+      return {tokens_total:order.tokens, status:"OK"}
     }
     else if (order.order_time_left > 0){
-      return {"tokens_total":order.tokens,"status":'Something went wrong with the last order. You can try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
+      return {tokens_total:order.tokens, status:'Something went wrong with the last order. You can try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
     }
     else {
-      return {"tokens_total":order.tokens,"status":'The last order timed out. If you sent Nano you can try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
+      return {tokens_total:order.tokens, status:'The last order timed out. If you sent Nano you can try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
     }
   }
   else {
-    return {"error":"Tokens not found for that key"}
+    return {error: "Tokens not found for that key"}
   }
 }
 
@@ -462,7 +460,7 @@ async function processPending(order_db: OrderDB, blocks: any, keys: any, keyCoun
       if (data.work) {
         let work = data.work
         // create the block with the work found
-        let block = Nano.createBlock(privKey,{balance:newAdjustedBalance, representative:representative,
+        let block: Nano.Block = Nano.createBlock(privKey,{balance:newAdjustedBalance, representative:representative,
         work:work, link:key, previous:previous})
         // replace xrb with nano (old library)
         block.block.account = block.block.account.replace('xrb', 'nano')
