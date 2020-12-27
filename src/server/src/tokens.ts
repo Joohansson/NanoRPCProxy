@@ -60,6 +60,21 @@ function tokenLogSettings(logger: (...data: any[]) => void) {
 
 tokenLogSettings(console.log)
 // ---
+// Types
+interface Error {
+  error: string
+}
+
+interface TokenResponse {
+  token_key: string
+  tokens_ordered: number
+  tokens_total: number
+}
+
+interface WaitingTokenOrder {
+  token_key: string
+  order_time_left: number
+}
 
 const sleep = (milliseconds: number) => {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
@@ -120,28 +135,28 @@ module.exports = {
     return res
   },
   // Client checks if order has been processed
-  checkOrder: async function (token_key: string, order_db: OrderDB) {
+  checkOrder: async function (token_key: string, order_db: OrderDB): Promise<Error | TokenResponse | WaitingTokenOrder> {
     // Get the right order based on token_key
-    const order = order_db.get('orders').find({token_key: token_key}).value()
+    const order: Order | undefined = order_db.get('orders').find({token_key: token_key}).value()
     if (order) {
-      if (order.order_waiting === false && order.order_time_left > 0) {
-        return {"token_key":token_key, "tokens_ordered": order.token_amount, "tokens_total":order.tokens}
+      if (!order.order_waiting && order.order_time_left > 0) {
+        return { token_key: token_key, tokens_ordered: order.token_amount, tokens_total:order.tokens }
       }
       else if (order.order_time_left > 0){
-        return {"token_key":token_key, "order_time_left":order.order_time_left}
+        return {token_key:token_key, order_time_left: order.order_time_left}
       }
       else {
-        return {"error":"Order timed out for key: " + token_key}
+        return {error: "Order timed out for key: " + token_key}
       }
     }
     else {
-      return {"error":"Order not found for key: " + token_key}
+      return {error: "Order not found for key: " + token_key}
     }
   },
   // Cancel order by replacing the account and return the previous private key for client to claim the funds
   cancelOrder: async function (token_key: string, order_db: OrderDB) {
     // Get the right order based on token_key
-    const order = order_db.get('orders').find({token_key: token_key}).value()
+    const order: Order | undefined = order_db.get('orders').find({token_key: token_key}).value()
     if (order) {
       let previous_priv_key = order.priv_key
       let seed = genSecureKey().toUpperCase()
@@ -152,7 +167,7 @@ module.exports = {
       var address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
 
       // Replace the address and private key and reset status
-      if (order.processing === false) {
+      if (!order.processing) {
         order_db.get('orders').find({token_key: token_key}).assign({"address":address, "priv_key":priv_key, "order_waiting":false, "nano_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
         logThis("Order was cancelled for " + token_key + ". Previous private key was " + previous_priv_key, log_levels.info)
         return {"priv_key":previous_priv_key,"status":"Order canceled and account replaced. You can use the private key to claim any leftover funds."}
