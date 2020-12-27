@@ -49,7 +49,7 @@ const settings: TokenSettings = loadSettings()
 
 // Log all initial settings for convenience
 // ---
-function tokenLogSettings(logger: (...data: any[]) => void) {
+export function tokenLogSettings(logger: (...data: any[]) => void) {
   logger("TOKEN SETTINGS:\n-----------")
   logger("Work Server: " + settings.work_server)
   logger("Token Price: " + settings.token_price + " Nano/token")
@@ -72,131 +72,126 @@ const sleep = (milliseconds: number) => {
 var node_url = "" // will be set by main script
 
 // Functions to be required from another file
-module.exports = {
-  // Generates and provides a payment address while checking for pending tx and collect them
-  requestTokenPayment: async function (token_amount: number, token_key: string, order_db: OrderDB, url: string): Promise<Error | TokenInfo> {
-    // Block request if amount is not within interval
-    if (token_amount < settings.min_token_amount) {
-      return {"error":"Token amount must be larger than " + settings.min_token_amount}
-    }
-    if (token_amount > settings.max_token_amount) {
-      return {"error":"Token amount must be smaller than " + settings.max_token_amount}
-    }
+// Generates and provides a payment address while checking for pending tx and collect them
+export async function requestTokenPayment(token_amount: number, token_key: string, order_db: OrderDB, url: string): Promise<Error | TokenInfo> {
+  // Block request if amount is not within interval
+  if (token_amount < settings.min_token_amount) {
+    return {"error":"Token amount must be larger than " + settings.min_token_amount}
+  }
+  if (token_amount > settings.max_token_amount) {
+    return {"error":"Token amount must be smaller than " + settings.max_token_amount}
+  }
 
-    node_url = url
-    var priv_key = ""
-    var address = ""
-    let nano_amount = token_amount*settings.token_price // the Nano to be received
+  node_url = url
+  var priv_key = ""
+  var address = ""
+  let nano_amount = token_amount*settings.token_price // the Nano to be received
 
-    // If token_key was passed it means refill tokens and update db order
-    // first check if key exist in DB and the order is not currently processing
-    if (token_key != "" && order_db.get('orders').find({token_key: token_key}).value()) {
-      if (!order_db.get('orders').find({token_key: token_key}).value().order_waiting) {
-        order_db.get('orders').find({token_key: token_key}).assign({"order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
-        address = order_db.get('orders').find({token_key: token_key}).value().address //reuse old address
-      }
-      else {
-        return {"error":"This order is already processing or was interrupted. Please try again later or request a new key."}
-      }
-    }
-    // Store new order in db
-    else {
-      token_key = genSecureKey()
-      let seed = genSecureKey().toUpperCase()
-      let nanowallet = Wallet.wallet.generate(seed)
-      let accounts = Wallet.wallet.accounts(nanowallet.seed, 0, 0)
-      priv_key = accounts[0].privateKey
-      let pub_key = Nano.derivePublicKey(priv_key)
-      address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
-
-      const order: Order = {"address":address, "token_key":token_key, "priv_key":priv_key, "tokens":0, "order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000), "previous": null, "hashes": []}
-      order_db.get("orders").push(order).write()
-    }
-
-    // Start checking for pending and cancel order if taking too long
-    logThis("Start checking pending tx every " + settings.pending_interval + "sec for a total of " + nano_amount + " Nano...", log_levels.info)
-    checkPending(address, order_db)
-
-    // Return payment request
-    return { address: address, token_key:token_key, payment_amount:nano_amount }
-  },
-  // Client checks if order has been processed
-  checkOrder: async function (token_key: string, order_db: OrderDB): Promise<Error | TokenResponse | WaitingTokenOrder> {
-    // Get the right order based on token_key
-    const order: Order | undefined = order_db.get('orders').find({token_key: token_key}).value()
-    if (order) {
-      if (!order.order_waiting && order.order_time_left > 0) {
-        return { token_key: token_key, tokens_ordered: order.token_amount, tokens_total:order.tokens }
-      }
-      else if (order.order_time_left > 0){
-        return {token_key:token_key, order_time_left: order.order_time_left}
-      }
-      else {
-        return {error: "Order timed out for key: " + token_key}
-      }
+  // If token_key was passed it means refill tokens and update db order
+  // first check if key exist in DB and the order is not currently processing
+  if (token_key != "" && order_db.get('orders').find({token_key: token_key}).value()) {
+    if (!order_db.get('orders').find({token_key: token_key}).value().order_waiting) {
+      order_db.get('orders').find({token_key: token_key}).assign({"order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
+      address = order_db.get('orders').find({token_key: token_key}).value().address //reuse old address
     }
     else {
-      return {error: "Order not found for key: " + token_key}
+      return {"error":"This order is already processing or was interrupted. Please try again later or request a new key."}
     }
-  },
-  // Cancel order by replacing the account and return the previous private key for client to claim the funds
-  cancelOrder: async function (token_key: string, order_db: OrderDB): Promise<Error | CancelOrder> {
-    // Get the right order based on token_key
-    const order: Order | undefined = order_db.get('orders').find({token_key: token_key}).value()
-    if (order) {
-      let previous_priv_key = order.priv_key
-      let seed = genSecureKey().toUpperCase()
-      let nanowallet = Wallet.wallet.generate(seed)
-      let accounts = Wallet.wallet.accounts(nanowallet.seed, 0, 0)
-      var priv_key = accounts[0].privateKey
-      let pub_key = Nano.derivePublicKey(priv_key)
-      var address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
+  }
+  // Store new order in db
+  else {
+    token_key = genSecureKey()
+    let seed = genSecureKey().toUpperCase()
+    let nanowallet = Wallet.wallet.generate(seed)
+    let accounts = Wallet.wallet.accounts(nanowallet.seed, 0, 0)
+    priv_key = accounts[0].privateKey
+    let pub_key = Nano.derivePublicKey(priv_key)
+    address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
 
-      // Replace the address and private key and reset status
-      if (!order.processing) {
-        order_db.get('orders').find({token_key: token_key}).assign({"address":address, "priv_key":priv_key, "order_waiting":false, "nano_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
-        logThis("Order was cancelled for " + token_key + ". Previous private key was " + previous_priv_key, log_levels.info)
-        return {priv_key: previous_priv_key, status: "Order canceled and account replaced. You can use the private key to claim any leftover funds."}
-      }
-      else {
-        logThis("Order tried to cancel but still in process: " + token_key, log_levels.info)
-        return {priv_key: "",status: "Order is currently processing, please try again later."}
-      }
+    const order: Order = {"address":address, "token_key":token_key, "priv_key":priv_key, "tokens":0, "order_waiting":true, "nano_amount":nano_amount, "token_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000), "previous": null, "hashes": []}
+    order_db.get("orders").push(order).write()
+  }
 
+  // Start checking for pending and cancel order if taking too long
+  logThis("Start checking pending tx every " + settings.pending_interval + "sec for a total of " + nano_amount + " Nano...", log_levels.info)
+  checkPending(address, order_db)
+
+  // Return payment request
+  return { address: address, token_key:token_key, payment_amount:nano_amount }
+}
+
+export async function checkOrder(token_key: string, order_db: OrderDB): Promise<Error | TokenResponse | WaitingTokenOrder> {
+  // Get the right order based on token_key
+  const order: Order | undefined = order_db.get('orders').find({token_key: token_key}).value()
+  if (order) {
+    if (!order.order_waiting && order.order_time_left > 0) {
+      return { token_key: token_key, tokens_ordered: order.token_amount, tokens_total:order.tokens }
+    }
+    else if (order.order_time_left > 0){
+      return {token_key:token_key, order_time_left: order.order_time_left}
     }
     else {
-      return {"error":"Order not found"}
+      return {error: "Order timed out for key: " + token_key}
     }
-  },
-  // Client checks status of owned tokens
-  checkTokens: async function (token_key: string, order_db: OrderDB): Promise<Error | TokenStatusResponse> {
-    // Get the right order based on token_key
-    const order = order_db.get('orders').find({token_key: token_key}).value()
-    if (order) {
-      if (order.order_waiting === false && order.order_time_left > 0) {
-        return {"tokens_total":order.tokens,"status":"OK"}
-      }
-      else if (order.order_time_left > 0){
-        return {"tokens_total":order.tokens,"status":'Something went wrong with the last order. You can try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
-      }
-      else {
-        return {"tokens_total":order.tokens,"status":'The last order timed out. If you sent Nano you can try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
-      }
+  }
+  else {
+    return {error: "Order not found for key: " + token_key}
+  }
+}
+export async function cancelOrder(token_key: string, order_db: OrderDB): Promise<Error | CancelOrder> {
+  // Get the right order based on token_key
+  const order: Order | undefined = order_db.get('orders').find({token_key: token_key}).value()
+  if (order) {
+    let previous_priv_key = order.priv_key
+    let seed = genSecureKey().toUpperCase()
+    let nanowallet = Wallet.wallet.generate(seed)
+    let accounts = Wallet.wallet.accounts(nanowallet.seed, 0, 0)
+    var priv_key = accounts[0].privateKey
+    let pub_key = Nano.derivePublicKey(priv_key)
+    var address = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
+
+    // Replace the address and private key and reset status
+    if (!order.processing) {
+      order_db.get('orders').find({token_key: token_key}).assign({"address":address, "priv_key":priv_key, "order_waiting":false, "nano_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
+      logThis("Order was cancelled for " + token_key + ". Previous private key was " + previous_priv_key, log_levels.info)
+      return {priv_key: previous_priv_key, status: "Order canceled and account replaced. You can use the private key to claim any leftover funds."}
     }
     else {
-      return {"error":"Tokens not found for that key"}
+      logThis("Order tried to cancel but still in process: " + token_key, log_levels.info)
+      return {priv_key: "",status: "Order is currently processing, please try again later."}
     }
-  },
-  // Client checks status of owned tokens
-  checkTokenPrice: async function (): Promise<TokenPriceResponse> {
-    return {token_price: settings.token_price}
-  },
-  // Check pending and repair old order
-  repairOrder: async function(address: string, order_db: OrderDB, url: string): Promise<void> {
-    node_url = url
-    checkPending(address, order_db, false)
-  },
-  tokenLogSettings: tokenLogSettings,
+
+  }
+  else {
+    return {"error":"Order not found"}
+  }
+}
+export async function checkTokens(token_key: string, order_db: OrderDB): Promise<Error | TokenStatusResponse> {
+  // Get the right order based on token_key
+  const order = order_db.get('orders').find({token_key: token_key}).value()
+  if (order) {
+    if (order.order_waiting === false && order.order_time_left > 0) {
+      return {"tokens_total":order.tokens,"status":"OK"}
+    }
+    else if (order.order_time_left > 0){
+      return {"tokens_total":order.tokens,"status":'Something went wrong with the last order. You can try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
+    }
+    else {
+      return {"tokens_total":order.tokens,"status":'The last order timed out. If you sent Nano you can try the buy command again with the same key to see if it register the pending or you can cancel it and claim private key with "action":"tokenorder_cancel"'}
+    }
+  }
+  else {
+    return {"error":"Tokens not found for that key"}
+  }
+}
+
+export async function checkTokenPrice(): Promise<TokenPriceResponse> {
+  return {token_price: settings.token_price}
+}
+
+export async function repairOrder(address: string, order_db: OrderDB, url: string): Promise<void> {
+  node_url = url
+  checkPending(address, order_db, false)
 }
 
 // Check if order payment has arrived as a pending block, continue check at intervals until time is up. If continue is set to false it will only check one time
