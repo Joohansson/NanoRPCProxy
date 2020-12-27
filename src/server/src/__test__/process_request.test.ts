@@ -1,4 +1,4 @@
-import fs from "fs";
+import {copyConfigFiles, deleteConfigFiles} from "./test-commons";
 
 class MockResponse {
     statusCode: number | null = null
@@ -14,11 +14,12 @@ class MockResponse {
     }
 }
 
-const filePath = 'settings.json';
+const filePaths = ['settings.json'];
 
 beforeAll(() => {
     process.env.OVERRIDE_USE_HTTP = 'false'
-    fs.copyFileSync(`${filePath}.default`, filePath, )
+    process.env.CONFIG_SETTINGS = 'src/__test__/settings.json'
+    copyConfigFiles(filePaths)
 })
 
 test('processRequest should fail at unreachable node', async () => {
@@ -53,6 +54,4 @@ test('processRequest should fail on invalid command', async () => {
     })
 })
 
-afterAll(() => {
-    fs.unlinkSync(filePath)
-})
+afterAll(() => deleteConfigFiles(filePaths))
