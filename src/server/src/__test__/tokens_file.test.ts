@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import {copyConfigFiles, deleteConfigFiles} from "./test-commons";
 
 const expectedDefaultSettings = [
     'TOKEN SETTINGS:\n-----------',
@@ -14,20 +14,18 @@ const expectedDefaultSettings = [
     'Token system log level: info'
 ]
 
-const filePath = 'token_settings.json';
+const filePaths = ['token_settings.json'];
 
 beforeAll(() => {
-    fs.copyFileSync(`${filePath}.default`, filePath, )
+    process.env.CONFIG_TOKEN_SETTINGS = 'src/__test__/token_settings.json'
+    copyConfigFiles(filePaths)
 })
 
 test('log tokens settings with default config from file', () => {
     let settings: string[] = []
     require('../tokens').tokenLogSettings((setting: string) => settings.push(setting))
-    console.log(settings)
     expect(settings.length).toBe(11);
     expect(settings).toStrictEqual(expectedDefaultSettings)
 });
 
-afterAll(() => {
-    fs.unlinkSync(filePath)
-})
+afterAll(() => deleteConfigFiles(filePaths))
