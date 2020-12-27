@@ -3,6 +3,7 @@ import {log_levels, LogLevel} from "./common-settings";
 import lowdb from "lowdb";
 import {Order, OrderDB} from "./lowdb-schema";
 import {Account, Wallet} from "nanocurrency-web/dist/lib/address-importer";
+import * as Tools from './tools'
 
 export {}
 
@@ -10,7 +11,6 @@ const Nacl =       require('tweetnacl/nacl')
 const Nano =       require('nanocurrency')
 const Wallet =     require('nanocurrency-web')
 const Fs =         require('fs')
-const Tools =      require('./tools')
 // const log_levels = {none:"none", warning:"warning", info:"info"}
 
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
@@ -311,7 +311,7 @@ async function processAccount(privKey: string, order_db: OrderDB) {
 
     // retrive from RPC
     try {
-      let data = await Tools.postData(command, node_url, API_TIMEOUT)
+      let data: AccountInfoResponse = await Tools.postData(command, node_url, API_TIMEOUT)
       var validResponse = false
       // if frontier is returned it means the account has been opened and we create a receive block
       if (data.frontier) {
@@ -375,7 +375,7 @@ async function createPendingBlocks(order_db: OrderDB, privKey: string, address: 
 
   // retrive from RPC
   try {
-    let data = await Tools.postData(command, node_url, API_TIMEOUT)
+    let data: PendingResponse = await Tools.postData(command, node_url, API_TIMEOUT)
     // if there are any pending, process them
     if (data.blocks) {
       // sum all raw amounts and create receive blocks for all pending
@@ -464,8 +464,8 @@ async function processPending(order_db: OrderDB, blocks: any, keys: any, keyCoun
 
     // retrive from RPC
     try {
-      let data = await Tools.postData(command, node_url, API_TIMEOUT)
-      if ('work' in data) {
+      let data: WorkGenerateResponse = await Tools.postData(command, node_url, API_TIMEOUT)
+      if (data.work) {
         let work = data.work
         // create the block with the work found
         let block = Nano.createBlock(privKey,{balance:newAdjustedBalance, representative:representative,
@@ -481,7 +481,7 @@ async function processPending(order_db: OrderDB, blocks: any, keys: any, keyCoun
         subType = 'receive' // only the first block can be an open block, reset for next loop
 
         try {
-          let data = await Tools.postData(jsonBlock, node_url, API_TIMEOUT)
+          let data: ProcessResponse = await Tools.postData(jsonBlock, node_url, API_TIMEOUT)
           if (data.hash) {
             logThis("Processed pending: " + data.hash, log_levels.info)
 
@@ -540,8 +540,8 @@ async function processSend(order_db: OrderDB, privKey: string, previous: string 
 
   // retrive from RPC
   try {
-    let data = await Tools.postData(command, settings.work_server, API_TIMEOUT)
-    if ('work' in data) {
+    let data: WorkGenerateResponse = await Tools.postData(command, settings.work_server, API_TIMEOUT)
+    if (data.work) {
       let work = data.work
       // create the block with the work found
       let block = Nano.createBlock(privKey, {balance:'0', representative:representative,
@@ -553,7 +553,7 @@ async function processSend(order_db: OrderDB, privKey: string, previous: string 
       // publish block for each iteration
       let jsonBlock = {action: "process",  json_block: "true",  subtype:"send", watch_work:"false", block: block.block}
       try {
-        let data = await Tools.postData(jsonBlock, node_url, API_TIMEOUT)
+        let data: ProcessResponse = await Tools.postData(jsonBlock, node_url, API_TIMEOUT)
         if (data.hash) {
           logThis("Funds transferred at block: " + data.hash + " to " + settings.payment_receive_account, log_levels.info)
           // update the db with latest hash to be used if processing pending for the same account

@@ -20,74 +20,72 @@ class APIError extends Error {
   }
 }
 
-// Functions to be required from another file
-module.exports = {
-  // Get data from URL. let data = await getData("url", TIMEOUT)
-  getData: async function (server: string, timeout: number) {
-    let options: any = {
-      method: 'get',
-      timeout: timeout,
-    }
+// Get data from URL. let data = await getData("url", TIMEOUT)
+export async function getData<data>(server: string, timeout: number): Promise<data> {
+  let options: any = {
+    method: 'get',
+    timeout: timeout,
+  }
 
-    let promise = new Promise(async (resolve, reject) => {
-        // https://www.npmjs.com/package/node-fetch
-        Fetch(server, options)
-          .then(checkStatus)
-          .then(res => res.json())
-          .then(json => resolve(json))
-          .catch(err => reject(new Error('Connection error: ' + err)))
-    })
-    return await promise // return promise result when finished instead of returning the promise itself, to avoid nested ".then"
-  },
-  // Post data, for example to RPC node. let data = await postData({"action":"block_count"}, "url", TIMEOUT)
-  postData: async function (data: any, server: string, timeout: number) {
-    let options: any = {
-      method: 'post',
-      body:    JSON.stringify(data),
-      headers: { 'Content-Type': 'application/json' },
-      timeout: timeout,
-    }
+  let promise = new Promise(async (resolve: (value: data) => void, reject) => {
+    // https://www.npmjs.com/package/node-fetch
+    Fetch(server, options)
+        .then(checkStatus)
+        .then(res => res.json())
+        .then(json => resolve(json))
+        .catch(err => reject(new Error('Connection error: ' + err)))
+  })
+  return await promise // return promise result when finished instead of returning the promise itself, to avoid nested ".then"
+}
 
-    let promise = new Promise(async (resolve, reject) => {
-        // https://www.npmjs.com/package/node-fetch
-        Fetch(server, options)
-          .then(checkStatus)
-          .then(res => res.json())
-          .then(json => resolve(json))
-          .catch(err => reject(new Error('Connection error: ' + err)))
-    })
-    return await promise // return promise result when finished instead of returning the promise itself, to avoid nested ".then"
-  },
-  // Check if a string is a valid JSON
-  isValidJson: function (obj: any) {
-    if (obj != null) {
-      try {
-          JSON.parse(JSON.stringify(obj))
-          return true
-      } catch (e) {
-        return false
-      }
-    }
-    else  {
+// Post data, for example to RPC node. let data = await postData({"action":"block_count"}, "url", TIMEOUT)
+export  async function postData<ResponseData>(data: any, server: string, timeout: number): Promise<ResponseData> {
+  let options: any = {
+    method: 'post',
+    body:    JSON.stringify(data),
+    headers: { 'Content-Type': 'application/json' },
+    timeout: timeout,
+  }
+
+  let promise = new Promise(async (resolve: (value: ResponseData) => void, reject) => {
+    // https://www.npmjs.com/package/node-fetch
+    Fetch(server, options)
+        .then(checkStatus)
+        .then(res => res.json())
+        .then(json => resolve(json))
+        .catch(err => reject(new Error('Connection error: ' + err)))
+  })
+  return await promise // return promise result when finished instead of returning the promise itself, to avoid nested ".then"
+}
+// Check if a string is a valid JSON
+export function isValidJson(obj: any) {
+  if (obj != null) {
+    try {
+        JSON.parse(JSON.stringify(obj))
+        return true
+    } catch (e) {
       return false
     }
-  },
-  // Add two big integers
-  bigAdd: function (input: string, value: string): string {
-    let insert = BigInt(input)
-    let val = BigInt(value)
-    return insert.add(val).toString()
-  },
-  rawToMnano: function (input: string) {
-    return isNumeric(input) ? Nano.convert(input, {from: Nano.Unit.raw, to: Nano.Unit.NANO}) : 'N/A'
-  },
-  MnanoToRaw: function (input: string) {
-    return isNumeric(input) ? Nano.convert(input, {from: Nano.Unit.NANO, to: Nano.Unit.raw}) : 'N/A'
-  },
-  // Validate nano address, both format and checksum
-  validateAddress: function (address: string) {
-    return Nano.checkAddress(address)
-  },
+  }
+  else  {
+    return false
+  }
+}
+// Add two big integers
+export function bigAdd(input: string, value: string): string {
+  let insert = BigInt(input)
+  let val = BigInt(value)
+  return insert.add(val).toString()
+}
+export function rawToMnano(input: string) {
+  return isNumeric(input) ? Nano.convert(input, {from: Nano.Unit.raw, to: Nano.Unit.NANO}) : 'N/A'
+}
+export function MnanoToRaw(input: string) {
+  return isNumeric(input) ? Nano.convert(input, {from: Nano.Unit.NANO, to: Nano.Unit.raw}) : 'N/A'
+}
+// Validate nano address, both format and checksum
+export function validateAddress(address: string) {
+  return Nano.checkAddress(address)
 }
 
 function checkStatus(res: Response) {
