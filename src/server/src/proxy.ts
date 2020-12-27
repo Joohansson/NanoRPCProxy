@@ -1,6 +1,6 @@
 import {Credentials, CredentialSettings} from "./credential-settings";
 import ProxySettings from './proxy-settings';
-import {log_levels, LogData, LogLevel} from "./common-settings";
+import {ConfigPaths, log_levels, LogData, LogLevel, readConfigPathsFromENV} from "./common-settings";
 import {loadDefaultUserSettings, readUserSettings, UserSettings, UserSettingsConfig} from "./user-settings";
 import {PowSettings} from "./pow-settings";
 import SlowDown from "express-slow-down";
@@ -20,6 +20,9 @@ import * as Tools from './tools'
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
+
+const configPaths: ConfigPaths = readConfigPathsFromENV()
+
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
 const BasicAuth =             require('express-basic-auth')
@@ -76,7 +79,7 @@ var rpcCount: number = 0
 var logdata: LogData[] = []
 try {
   // read latest count from file
-  logdata = JSON.parse(Fs.readFileSync('request-stat.json', 'UTF-8'))
+  logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'UTF-8'))
   rpcCount = logdata[logdata.length - 1].count
 }
 catch(e) {
@@ -100,7 +103,7 @@ Schedule.scheduleJob('0 0 * * *', () => {
   rpcCount = 0
   // update latest logdata from file
   try {
-    logdata = JSON.parse(Fs.readFileSync('request-stat.json', 'UTF-8'))
+    logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'UTF-8'))
   }
   catch(e) {
     console.log("Could not read request-stat.json.", e)
@@ -128,7 +131,7 @@ function appendFile(count: number) {
 // Read credentials from file
 // ---
 try {
-  const credentials: CredentialSettings = JSON.parse(Fs.readFileSync('creds.json', 'UTF-8'))
+  const credentials: CredentialSettings = JSON.parse(Fs.readFileSync(configPaths.creds, 'UTF-8'))
   users = credentials.users
 }
 catch(e) {
@@ -174,7 +177,7 @@ const loadSettings: () => ProxySettings = () => {
     disable_watch_work: false,
   }
   try {
-    const settings: ProxySettings = JSON.parse(Fs.readFileSync('settings.json', 'UTF-8'))
+    const settings: ProxySettings = JSON.parse(Fs.readFileSync(configPaths.settings, 'UTF-8'))
     const requestPath = defaultSettings.request_path || settings.request_path
     const normalizedRequestPath = requestPath.startsWith('/') ? requestPath : '/' + requestPath
     return {...defaultSettings, ...settings, request_path: normalizedRequestPath }
@@ -187,7 +190,7 @@ const loadSettings: () => ProxySettings = () => {
 // Read settings from file
 // ---
 const settings: ProxySettings = loadSettings()
-const user_settings: UserSettingsConfig = readUserSettings('user_settings.json')
+const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
 let userSettings: UserSettings = loadDefaultUserSettings(settings)
 
 function logObjectEntries(logger: (...data: any[]) => void, title: string, object: any) {
@@ -270,7 +273,7 @@ logSettings(console.log)
 // ---
 if (settings.use_dpow || settings.use_bpow) {
   try {
-    const powcreds: PowSettings = JSON.parse(Fs.readFileSync('pow_creds.json', 'UTF-8'))
+    const powcreds: PowSettings = JSON.parse(Fs.readFileSync(configPaths.pow_creds, 'UTF-8'))
     if (settings.use_dpow && powcreds.dpow) {
       dpow_user = powcreds.dpow.user
       dpow_key = powcreds.dpow.key
