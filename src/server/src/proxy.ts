@@ -161,8 +161,8 @@ const loadSettings: () => ProxySettings = () => {
     https_cert: '',
     https_key: '',
     allowed_commands: [],
-    cached_commands: new Map<Command, number>(),
-    limited_commands: new Map<Command, number>(),
+    cached_commands: {},
+    limited_commands: {},
     slow_down: {},
     rate_limiter: {},
     ddos_protection: {},
@@ -177,12 +177,7 @@ const loadSettings: () => ProxySettings = () => {
     const settings: ProxySettings = JSON.parse(Fs.readFileSync('settings.json', 'UTF-8'))
     const requestPath = defaultSettings.request_path || settings.request_path
     const normalizedRequestPath = requestPath.startsWith('/') ? requestPath : '/' + requestPath
-    const mergedSettings: ProxySettings = {...defaultSettings, ...settings, request_path: normalizedRequestPath }
-    return {
-      ...mergedSettings,
-      cached_commands: new Map(Object.entries(mergedSettings.cached_commands)),
-      limited_commands: new Map(Object.entries(mergedSettings.limited_commands)),
-    }
+    return {...defaultSettings, ...settings, request_path: normalizedRequestPath }
   } catch(e) {
     console.log("Could not read settings.json", e)
     return defaultSettings;
@@ -236,10 +231,10 @@ function logSettings(logger: (...data: any[]) => void) {
 
   logObjectEntries(logger, "Allowed commands:\n-----------\n", settings.allowed_commands)
   if(settings.use_cache)  {
-    logObjectEntries(logger, "Cached commands:\n", Object.fromEntries(settings.cached_commands))
+    logObjectEntries(logger, "Cached commands:\n", settings.cached_commands)
   }
   if (settings.use_output_limiter) {
-    logObjectEntries(logger, "Limited commands:\n", Object.fromEntries(settings.limited_commands))
+    logObjectEntries(logger, "Limited commands:\n", settings.limited_commands)
   }
   if(settings.use_slow_down) {
     logObjectEntries(logger, "Slow down settings:\n", settings.slow_down)
@@ -493,7 +488,7 @@ if (settings.use_cache) {
 }
 
 // To verify username and password provided via basicAuth. Support multiple users
-function myAuthorizer(username: string, password: string) {
+function myAuthorizer(username: string, password: string): boolean {
   // Set default settings specific for authenticated users
   userSettings.use_cache = settings.use_cache
   userSettings.use_output_limiter = settings.use_output_limiter
@@ -503,12 +498,13 @@ function myAuthorizer(username: string, password: string) {
   userSettings.log_level = settings.log_level
 
   var valid_user: boolean = false
-  for (const [key, value] of Object.entries(users)) {
+  for (const [_, value] of Object.entries(users)) {
     if (BasicAuth.safeCompare(username, value.user) && BasicAuth.safeCompare(password, value.password)) {
       valid_user = true
 
       // Override default settings if exists
-      user_settings.forEach((value: UserSettings, key: string, map: UserSettingsConfig) => {
+      for (const key in user_settings) {
+        let value: UserSettings = user_settings[key];
         if(key === username) {
           userSettings.use_cache = value.use_cache
           userSettings.use_output_limiter = value.use_output_limiter
@@ -516,9 +512,9 @@ function myAuthorizer(username: string, password: string) {
           userSettings.cached_commands = value.cached_commands
           userSettings.limited_commands = value.limited_commands
           userSettings.log_level = value.log_level
-          return;
+          break;
         }
-      })
+      }
       break
     }
   }
@@ -907,7 +903,7 @@ async function processRequest(query: any, req: Request, res: Response) {
 
   // Read cache for current request action, if there is one
   if (userSettings.use_cache) {
-    const value: number | undefined = userSettings.cached_commands.get(query.action)
+    const value: number | undefined = userSettings.cached_commands[query.action]
     if(value !== undefined) {
       const cachedValue: any = rpcCache?.get(query.action)
       if (Tools.isValidJson(cachedValue)) {
@@ -922,7 +918,7 @@ async function processRequest(query: any, req: Request, res: Response) {
 
   // Limit response count (if count parameter is provided)
   if (userSettings.use_output_limiter) {
-    const value: number | undefined = userSettings.limited_commands.get(query.action)
+    const value: number | undefined = userSettings.limited_commands[query.action]
     if(value !== undefined) {
       if (parseInt(query.count) > value || !("count" in query)) {
         query.count = value
@@ -938,7 +934,7 @@ async function processRequest(query: any, req: Request, res: Response) {
     let data: ProcessDataResponse = await Tools.postData(query, settings.node_url, API_TIMEOUT)
     // Save cache if applicable
     if (settings.use_cache) {
-      const value: number | undefined = userSettings.cached_commands.get(query.action)
+      const value: number | undefined = userSettings.cached_commands[query.action]
       if(value !== undefined) {
         if (!rpcCache?.set(query.action, data, value)) {
           logThis("Failed saving cache for " + query.action, log_levels.warning)
@@ -956,9 +952,15 @@ async function processRequest(query: any, req: Request, res: Response) {
   }
 }
 
+function getUserSettings(): UserSettings {
+  return userSettings
+}
+
 module.exports = {
   logSettings: logSettings,
-  processRequest: processRequest
+  processRequest: processRequest,
+  myAuthorizer: myAuthorizer,
+  getUserSettings: getUserSettings
 }
 
 var websocket_servers = []
