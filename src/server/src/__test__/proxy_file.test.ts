@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import {copyConfigFiles, deleteConfigFiles} from "./test-commons";
 
 const expectedSettingsWithFile = [
     'PROXY SETTINGS:\n-----------',
@@ -85,20 +85,19 @@ const expectedSettingsWithFile = [
     'Main log level: info'
 ]
 
-const filePath = 'settings.json';
+const filePaths = ['settings.json'];
 
 beforeAll(() => {
-    fs.copyFileSync(`${filePath}.default`, filePath, )
+    process.env.OVERRIDE_USE_HTTP = 'false'
+    process.env.CONFIG_SETTINGS = 'src/__test__/settings.json'
+    copyConfigFiles(filePaths)
 })
 
 test('log proxy settings with default config from file', () => {
     let settings: string[] = []
-    process.env.OVERRIDE_USE_HTTP = 'false'
     require('../proxy').logSettings((setting: string) => settings.push(setting))
     expect(settings.length).toBe(28);
     expect(settings).toStrictEqual(expectedSettingsWithFile)
 })
 
-afterAll(() => {
-    fs.unlinkSync(filePath)
-})
+afterAll(() => deleteConfigFiles(filePaths))
