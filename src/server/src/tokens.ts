@@ -1,5 +1,4 @@
-import * as Fs from 'fs'
-import {TokenSettings} from "./token-settings";
+import {readTokenSettings, tokenLogSettings, TokenSettings} from "./token-settings";
 import {log_levels, LogLevel, readConfigPathsFromENV} from "./common-settings";
 import {Order, OrderDB} from "./lowdb-schema";
 import { wallet } from "nanocurrency-web";
@@ -17,51 +16,9 @@ import {
 
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
 const tokenSettings = readConfigPathsFromENV().token_settings
+const settings: TokenSettings = readTokenSettings(tokenSettings)
+tokenLogSettings(console.log, settings)
 
-const loadSettings: () => TokenSettings = () => {
-  const defaultSettings: TokenSettings = {
-    work_server: "http://[::1]:7076",
-    token_price: 0.0001,
-    payment_timeout: 180,
-    pending_interval: 2,
-    pending_threshold: "100000000000000000000000",
-    pending_count: 10,
-    difficulty_multiplier: "1.0",
-    payment_receive_account: "nano_1gur37mt5cawjg5844bmpg8upo4hbgnbbuwcerdobqoeny4ewoqshowfakfo",
-    min_token_amount: 1,
-    max_token_amount: 10000000,
-    log_level: "info",
-  }
-  // Read settings from file
-// ---
-  try {
-    const readSettings: TokenSettings = JSON.parse(Fs.readFileSync(tokenSettings, 'utf-8'))
-    return {...defaultSettings, ...readSettings}
-  }
-  catch(e) {
-    console.log("Could not read token_settings.json, returns default settings", e)
-    return defaultSettings
-  }
-}
-const settings: TokenSettings = loadSettings()
-
-// Log all initial settings for convenience
-// ---
-export function tokenLogSettings(logger: (...data: any[]) => void) {
-  logger("TOKEN SETTINGS:\n-----------")
-  logger("Work Server: " + settings.work_server)
-  logger("Token Price: " + settings.token_price + " Nano/token")
-  logger("Payment Timeout: " + settings.payment_timeout)
-  logger("Pending Interval: " + settings.pending_interval)
-  logger("Pending Threshold: " + settings.pending_threshold)
-  logger("Pending Max Count: " + settings.pending_count)
-  logger("Difficulty Multiplier: " + settings.difficulty_multiplier)
-  logger("Min allowed tokens to purchase: " + settings.min_token_amount)
-  logger("Max allowed tokens to purchase: " + settings.max_token_amount)
-  logger("Token system log level: " + settings.log_level)
-}
-
-tokenLogSettings(console.log)
 // ---
 const sleep = (milliseconds: number) => {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
