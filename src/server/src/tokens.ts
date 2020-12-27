@@ -1,8 +1,7 @@
 import {TokenSettings} from "./token-settings";
 import {log_levels, LogLevel} from "./common-settings";
-import lowdb from "lowdb";
 import {Order, OrderDB} from "./lowdb-schema";
-import {Account, Wallet} from "nanocurrency-web/dist/lib/address-importer";
+import {Wallet} from "nanocurrency-web/dist/lib/address-importer";
 import * as Tools from './tools'
 
 export {}
@@ -17,17 +16,17 @@ const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
 
 const loadSettings: () => TokenSettings = () => {
   const defaultSettings: TokenSettings = {
-    work_server: "http://127.0.0.1:7000",
+    work_server: "http://[::1]:7076",
     token_price: 0.0001,
-    payment_timeout: 120,
+    payment_timeout: 180,
     pending_interval: 2,
-    pending_threshold: "1",
+    pending_threshold: "100000000000000000000000",
     pending_count: 10,
     difficulty_multiplier: "1.0",
-    payment_receive_account: "nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue",
+    payment_receive_account: "nano_1gur37mt5cawjg5844bmpg8upo4hbgnbbuwcerdobqoeny4ewoqshowfakfo",
     min_token_amount: 1,
     max_token_amount: 10000000,
-    log_level: "none",
+    log_level: "info",
   }
   // Read settings from file
 // ---
@@ -70,13 +69,13 @@ var node_url = "" // will be set by main script
 // Functions to be required from another file
 module.exports = {
   // Generates and provides a payment address while checking for pending tx and collect them
-  requestTokenPayment: async function (token_amount: number, token_key: string="", order_db: OrderDB, url: string) {
+  requestTokenPayment: async function (token_amount: number, token_key: string, order_db: OrderDB, url: string) {
     // Block request if amount is not within interval
     if (token_amount < settings.min_token_amount) {
-      return res = {"error":"Token amount must be larger than " + settings.min_token_amount}
+      return {"error":"Token amount must be larger than " + settings.min_token_amount}
     }
     if (token_amount > settings.max_token_amount) {
-      return res = {"error":"Token amount must be smaller than " + settings.max_token_amount}
+      return {"error":"Token amount must be smaller than " + settings.max_token_amount}
     }
 
     node_url = url
@@ -92,7 +91,7 @@ module.exports = {
         address = order_db.get('orders').find({token_key: token_key}).value().address //reuse old address
       }
       else {
-        return res = {"error":"This order is already processing or was interrupted. Please try again later or request a new key."}
+        return {"error":"This order is already processing or was interrupted. Please try again later or request a new key."}
       }
     }
     // Store new order in db
@@ -315,7 +314,6 @@ async function processAccount(privKey: string, order_db: OrderDB) {
       var validResponse = false
       // if frontier is returned it means the account has been opened and we create a receive block
       if (data.frontier) {
-        validResponse = true
         balance = data.balance
         adjustedBalance = balance
         previous = data.frontier

@@ -2,16 +2,16 @@ export {}
 
 const expectedDefaultSettings = [
     'TOKEN SETTINGS:\n-----------',
-    'Work Server: http://127.0.0.1:7000',
+    'Work Server: http://[::1]:7076',
     'Token Price: 0.0001 Nano/token',
-    'Payment Timeout: 120',
+    'Payment Timeout: 180',
     'Pending Interval: 2',
-    'Pending Threshold: 1',
+    'Pending Threshold: 100000000000000000000000',
     'Pending Max Count: 10',
     'Difficulty Multiplier: 1.0',
     'Min allowed tokens to purchase: 1',
     'Max allowed tokens to purchase: 10000000',
-    'Token system log level: none'
+    'Token system log level: info'
 ]
 
 test('log token settings with no config', () => {

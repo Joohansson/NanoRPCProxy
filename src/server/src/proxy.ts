@@ -1,13 +1,13 @@
 import {Credentials, CredentialSettings} from "./credential-settings";
 import ProxySettings from './proxy-settings';
-import {CachedCommands, Command, LimitedCommands, log_levels, LogData, LogLevel} from "./common-settings";
+import {log_levels, LogData, LogLevel} from "./common-settings";
 import {loadDefaultUserSettings, readUserSettings, UserSettings, UserSettingsConfig} from "./user-settings";
 import {PowSettings} from "./pow-settings";
 import SlowDown from "express-slow-down";
 import FileSync from 'lowdb/adapters/FileSync.js';
 import lowdb from 'lowdb'
 import {OrderDB, OrderSchema, TrackedAccount, User, UserDB, UserSchema} from "./lowdb-schema";
-import {ErrorRequestHandler, NextFunction, Request, Response} from "express";
+import {Request, Response} from "express";
 import {CorsOptions} from "cors";
 import {RateLimiterRes} from "rate-limiter-flexible";
 import ErrnoException = NodeJS.ErrnoException;
@@ -311,7 +311,7 @@ async function checkOldOrders() {
     // Remove if order has been unprocessed with a timeout for 1 month
     if (order.tokens === 0 && order.order_time_left === 0 && order.hashes.length === 0 && order.timestamp < now - 3600*24*31) {
       logThis("REMOVING ORDER:", log_levels.info)
-      logThis(await order_db.get('orders').remove({token_key:order.token_key}).write().toString(), log_levels.info)
+      logThis(order_db.get('orders').remove({token_key:order.token_key}).write().toString(), log_levels.info)
     }
   })
 }
@@ -667,7 +667,6 @@ async function processRequest(query: any, req: Request, res: Response) {
 
     // Verify order status
     if (query.action === 'tokenorder_check') {
-      token_key = ""
       if ('token_key' in query) {
         token_key = query.token_key
         let status = await Tokens.checkOrder(token_key, order_db)
@@ -680,7 +679,6 @@ async function processRequest(query: any, req: Request, res: Response) {
 
     // Claim back private key and replace the account
     if (query.action === 'tokenorder_cancel') {
-      token_key = ""
       if ('token_key' in query) {
         token_key = query.token_key
         let status = await Tokens.cancelOrder(token_key, order_db)
@@ -693,7 +691,6 @@ async function processRequest(query: any, req: Request, res: Response) {
 
     // Verify order status
     if (query.action === 'tokens_check') {
-      token_key = ""
       if ('token_key' in query) {
         token_key = query.token_key
         let status = await Tokens.checkTokens(token_key, order_db)
