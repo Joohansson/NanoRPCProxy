@@ -17,11 +17,11 @@ class MockResponse {
 const filePath = 'settings.json';
 
 beforeAll(() => {
+    process.env.OVERRIDE_USE_HTTP = 'false'
     fs.copyFileSync(`${filePath}.default`, filePath, )
 })
 
 test('processRequest should fail at unreachable node', async () => {
-    process.env.OVERRIDE_USE_HTTP = 'false'
     const proxy = require('../proxy')
 
     let body = {
@@ -38,7 +38,6 @@ test('processRequest should fail at unreachable node', async () => {
 })
 
 test('processRequest should fail on invalid command', async () => {
-    process.env.OVERRIDE_USE_HTTP = 'false'
     const proxy = require('../proxy')
 
     let body = {

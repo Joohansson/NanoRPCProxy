@@ -1,11 +1,9 @@
-import fs from "fs";
+import {copyConfigFiles, deleteConfigFiles} from "./test-commons";
 
 const filePaths = ['creds.json', 'user_settings.json'];
 
 beforeAll(() => {
-    filePaths.forEach(filePath => {
-        fs.copyFileSync(`${filePath}.default`, `src/__test__/${filePath}`, )
-    })
+    copyConfigFiles(filePaths)
     process.env.OVERRIDE_USE_HTTP = 'false'
     process.env.CONFIG_CREDS_SETTINGS = 'src/__test__/creds.json'
     process.env.CONFIG_USER_SETTINGS = 'src/__test__/user_settings.json'
@@ -27,8 +25,4 @@ test('myAuthorizer should override with custom settings', () => {
     expect(proxy.getUserSettings().allowed_commands).toStrictEqual([ 'account_history', 'account_info', 'block_info', 'block_count' ])
 })
 
-afterAll(() => {
-    filePaths.forEach(filePath => {
-        fs.unlinkSync(`src/__test__/${filePath}`)
-    })
-})
+afterAll(() => deleteConfigFiles(filePaths))
