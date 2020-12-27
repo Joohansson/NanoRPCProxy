@@ -246,7 +246,7 @@ async function checkPending(address: string, order_db: OrderDB, moveOn: boolean 
       }
     }
     else if (!pending_result?.amount) {
-      logThis("Amount is missing in the response from processAccount()", log_levels.warning)
+      logThis("Awaiting amount", log_levels.warning)
     }
   }
   catch(err) {
