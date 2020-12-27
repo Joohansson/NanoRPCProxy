@@ -4,6 +4,14 @@ import {Order, OrderDB} from "./lowdb-schema";
 import {Wallet} from "nanocurrency-web/dist/lib/address-importer";
 import * as Tools from './tools'
 import Nacl from 'tweetnacl/nacl'
+import {
+  CancelOrder,
+  Error, StatusCallback,
+  TokenInfo, TokenPriceResponse,
+  TokenResponse,
+  TokenStatusResponse,
+  WaitingTokenOrder
+} from "./node-api/token-api";
 
 const Nano =       require('nanocurrency')
 const Wallet =     require('nanocurrency-web')
@@ -57,46 +65,6 @@ function tokenLogSettings(logger: (...data: any[]) => void) {
 
 tokenLogSettings(console.log)
 // ---
-// Types
-interface Error {
-  error: string
-}
-
-interface TokenInfo {
-  address: string
-  token_key: string
-  payment_amount: number
-}
-
-interface TokenResponse {
-  token_key: string
-  tokens_ordered: number
-  tokens_total: number
-}
-
-interface WaitingTokenOrder {
-  token_key: string
-  order_time_left: number
-}
-
-interface CancelOrder {
-  priv_key: string
-  status: string
-}
-
-interface TokenStatusResponse {
-  tokens_total: number
-  status: string
-}
-interface TokenPriceResponse {
-  token_price: number
-}
-
-interface StatusCallback {
-  amount: number
-  hashes?: string[]
-}
-
 const sleep = (milliseconds: number) => {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
