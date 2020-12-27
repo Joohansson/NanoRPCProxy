@@ -65,6 +65,12 @@ interface Error {
   error: string
 }
 
+interface TokenInfo {
+  address: string
+  token_key: string
+  payment_amount: number
+}
+
 interface TokenResponse {
   token_key: string
   tokens_ordered: number
@@ -76,6 +82,11 @@ interface WaitingTokenOrder {
   order_time_left: number
 }
 
+interface CancelOrder {
+  priv_key: string
+  status: string
+}
+
 const sleep = (milliseconds: number) => {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
@@ -85,7 +96,7 @@ var node_url = "" // will be set by main script
 // Functions to be required from another file
 module.exports = {
   // Generates and provides a payment address while checking for pending tx and collect them
-  requestTokenPayment: async function (token_amount: number, token_key: string, order_db: OrderDB, url: string) {
+  requestTokenPayment: async function (token_amount: number, token_key: string, order_db: OrderDB, url: string): Promise<Error | TokenInfo> {
     // Block request if amount is not within interval
     if (token_amount < settings.min_token_amount) {
       return {"error":"Token amount must be larger than " + settings.min_token_amount}
@@ -124,15 +135,12 @@ module.exports = {
       order_db.get("orders").push(order).write()
     }
 
-    var res = {}
-    res = {"address":address, "token_key":token_key, "payment_amount":nano_amount}
-
     // Start checking for pending and cancel order if taking too long
     logThis("Start checking pending tx every " + settings.pending_interval + "sec for a total of " + nano_amount + " Nano...", log_levels.info)
     checkPending(address, order_db)
 
     // Return payment request
-    return res
+    return { address: address, token_key:token_key, payment_amount:nano_amount }
   },
   // Client checks if order has been processed
   checkOrder: async function (token_key: string, order_db: OrderDB): Promise<Error | TokenResponse | WaitingTokenOrder> {
@@ -154,7 +162,7 @@ module.exports = {
     }
   },
   // Cancel order by replacing the account and return the previous private key for client to claim the funds
-  cancelOrder: async function (token_key: string, order_db: OrderDB) {
+  cancelOrder: async function (token_key: string, order_db: OrderDB): Promise<Error | CancelOrder> {
     // Get the right order based on token_key
     const order: Order | undefined = order_db.get('orders').find({token_key: token_key}).value()
     if (order) {
@@ -170,11 +178,11 @@ module.exports = {
       if (!order.processing) {
         order_db.get('orders').find({token_key: token_key}).assign({"address":address, "priv_key":priv_key, "order_waiting":false, "nano_amount":0, "order_time_left":settings.payment_timeout, "processing":false, "timestamp":Math.floor(Date.now()/1000)}).write()
         logThis("Order was cancelled for " + token_key + ". Previous private key was " + previous_priv_key, log_levels.info)
-        return {"priv_key":previous_priv_key,"status":"Order canceled and account replaced. You can use the private key to claim any leftover funds."}
+        return {priv_key: previous_priv_key, status: "Order canceled and account replaced. You can use the private key to claim any leftover funds."}
       }
       else {
         logThis("Order tried to cancel but still in process: " + token_key, log_levels.info)
-        return {"priv_key":"","status":"Order is currently processing, please try again later."}
+        return {priv_key: "",status: "Order is currently processing, please try again later."}
       }
 
     }
