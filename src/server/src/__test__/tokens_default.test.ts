@@ -16,8 +16,8 @@ const expectedDefaultSettings = [
 
 test('log token settings with no config', () => {
     let settings: string[] = []
+    process.env.CONFIG_TOKEN_SETTINGS = 'src/__test__/token_settings.json'
     require('../tokens').tokenLogSettings((setting: string) => settings.push(setting))
-    console.log(settings)
     expect(settings.length).toBe(11);
     expect(settings).toStrictEqual(expectedDefaultSettings)
 });

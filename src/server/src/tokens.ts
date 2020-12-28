@@ -1,5 +1,5 @@
 import {TokenSettings} from "./token-settings";
-import {log_levels, LogLevel} from "./common-settings";
+import {log_levels, LogLevel, readConfigPathsFromENV} from "./common-settings";
 import {Order, OrderDB} from "./lowdb-schema";
 import {Wallet} from "nanocurrency-web/dist/lib/address-importer";
 import * as Tools from './tools'
@@ -13,6 +13,7 @@ const Fs =         require('fs')
 // const log_levels = {none:"none", warning:"warning", info:"info"}
 
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
+const tokenSettings = readConfigPathsFromENV().token_settings
 
 const loadSettings: () => TokenSettings = () => {
   const defaultSettings: TokenSettings = {
@@ -31,7 +32,7 @@ const loadSettings: () => TokenSettings = () => {
   // Read settings from file
 // ---
   try {
-    const readSettings: TokenSettings = JSON.parse(Fs.readFileSync('token_settings.json', 'UTF-8'))
+    const readSettings: TokenSettings = JSON.parse(Fs.readFileSync(tokenSettings, 'UTF-8'))
     return {...defaultSettings, ...readSettings}
   }
   catch(e) {
