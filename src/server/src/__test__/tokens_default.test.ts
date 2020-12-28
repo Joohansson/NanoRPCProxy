@@ -1,3 +1,5 @@
+import {readTokenSettings, tokenLogSettings} from "../token-settings";
+
 export {}
 
 const expectedDefaultSettings = [
@@ -16,8 +18,8 @@ const expectedDefaultSettings = [
 
 test('log token settings with no config', () => {
     let settings: string[] = []
-    process.env.CONFIG_TOKEN_SETTINGS = 'src/__test__/token_settings.json'
-    require('../tokens').tokenLogSettings((setting: string) => settings.push(setting))
+    const readSettings = readTokenSettings('path-does-not-exist.json')
+    tokenLogSettings((setting: string) => settings.push(setting), readSettings)
     expect(settings.length).toBe(11);
     expect(settings).toStrictEqual(expectedDefaultSettings)
 });
