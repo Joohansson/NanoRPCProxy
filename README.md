@@ -163,11 +163,11 @@ The docker image is available publicly on **[nanojson/nanorpcproxy](https://hub.
 
 Ensure that [Docker](https://docs.docker.com/get-docker/) is installed.
 
-In order to run the public image with default (no) config:
+In order to run the latest stable image with default (no) config:
 
     $ docker run -it nanojson/nanorpcproxy:latest
 
-Or to build and run from source:
+You can also pull the master branch (:master) or previous release tags. To build and run from source:
 
 Step into the `src/` folder. Build image:
 
