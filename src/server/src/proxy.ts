@@ -17,6 +17,7 @@ import ReconnectingWebSocket, { ErrorEvent } from "reconnecting-websocket";
 import NodeCache from "node-cache";
 import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
+import * as Tokens from './tokens'
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -38,7 +39,6 @@ const WS =                    require('ws')
 const Helmet =                require('helmet')
 const Dec =                   require('bigdecimal') //https://github.com/iriscouch/bigdecimal.js
 const RemoveTrailingZeros =   require('remove-trailing-zeros')
-const Tokens =                require('./tokens')
 const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init

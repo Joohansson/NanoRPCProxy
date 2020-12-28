@@ -1,4 +1,5 @@
 import {copyConfigFiles, deleteConfigFiles} from "./test-commons";
+import {readTokenSettings, tokenLogSettings} from "../token-settings";
 
 const expectedDefaultSettings = [
     'TOKEN SETTINGS:\n-----------',
@@ -23,7 +24,8 @@ beforeAll(() => {
 
 test('log tokens settings with default config from file', () => {
     let settings: string[] = []
-    require('../tokens').tokenLogSettings((setting: string) => settings.push(setting))
+    const readSettings = readTokenSettings(filePaths[0])
+    tokenLogSettings((setting: string) => settings.push(setting), readSettings)
     expect(settings.length).toBe(11);
     expect(settings).toStrictEqual(expectedDefaultSettings)
 });
