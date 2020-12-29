@@ -525,7 +525,7 @@ class App extends Component {
           <h3>Demo client for communicating with <a href="https://github.com/Joohansson/NanoRPCProxy">NanoRPCProxy</a></h3>
           <p>Send to a live Nano node using <a href="https://docs.nano.org/commands/rpc-protocol/">RPC json requests</a></p>
           <ul>
-            <li> Everyone are allowed 1000 requests/day. Purchase optional tokens if you need more.</li>
+            <li> Everyone are allowed x requests/day (shown in the response). Purchase optional tokens if you need more.</li>
             <li> Tokens can be refilled/extended using the same Request Key. The order is done when said Nano (or more) is registered.</li>
             <li> If you send nano but order fail you can claim the private key. The old deposit account will be destroyed/replaced.</li>
           </ul>
