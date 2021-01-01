@@ -1026,6 +1026,27 @@ if (settings.use_https) {
   }
 }
 
+type WSTopic = 'confirmation'
+type WSAction = 'subscribe' | 'unsubscribe'
+
+interface WSMessage {
+  topic: WSTopic
+  action: WSAction
+  options: {
+    accounts: string[]
+  }
+  id: string
+}
+
+interface WSError {
+  error: string
+}
+
+interface WSSubscribe {
+  ack: string
+  id: string
+}
+
 // WEBSOCKET SERVER
 //---------------------
 if (settings.use_websocket) {
@@ -1079,70 +1100,57 @@ if (settings.use_websocket) {
     }
 
     connection.on('message', function(message: IMessage) {
-      if (message.type === 'utf8') {
+      if (message.type === 'utf8' && message.utf8Data) {
           //console.log('Received Message: ' + message.utf8Data + ' from ' + remote_ip)
           try {
-            // @ts-ignore utf8Data might be undefined AND don't know what type to expect here
-            let msg = JSON.parse(message.utf8Data)
-            // new subscription
-            if ('action' in msg && 'topic' in msg && msg.action === 'subscribe') {
-              if (msg.topic === 'confirmation') {
-                if ('options' in msg && 'accounts' in msg.options) {
-                  if (msg.options.accounts.length <= settings.websocket_max_accounts) {
-                    // check if new unique accounts + existing accounts exceed max limit
-                    // get existing tracked accounts
-                    let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
-                    var current_tracked_accounts = {} //if not in db, use empty dict
-                    if (current_user !== undefined) {
-                      current_tracked_accounts = current_user.tracked_accounts
-                    }
+            let msg: WSMessage = JSON.parse(message.utf8Data)
+            if (msg.topic === 'confirmation') {
+              // New subscription
+              if (msg.action === 'subscribe' && msg.options && msg.options.accounts) {
+                {
+                  // check if new unique accounts + existing accounts exceed max limit
+                  // get existing tracked accounts
+                  let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
+                  var current_tracked_accounts = {} //if not in db, use empty dict
+                  if (current_user !== undefined) {
+                    current_tracked_accounts = current_user.tracked_accounts
+                  }
 
-                    // count new accounts that are not already tracked
-                    let unique_new = 0
-                    msg.options.accounts.forEach(function(address: string) {
-                      var address_exists = false
-                      for (const [key] of Object.entries(current_tracked_accounts)) {
-                        if (key === address)  {
-                          address_exists = true
-                        }
+                  // count new accounts that are not already tracked
+                  let unique_new = 0
+                  msg.options.accounts.forEach(function (address: string) {
+                    var address_exists = false
+                    for (const [key] of Object.entries(current_tracked_accounts)) {
+                      if (key === address) {
+                        address_exists = true
                       }
-                      if (!address_exists) {
-                        unique_new++
+                    }
+                    if (!address_exists) {
+                      unique_new++
+                    }
+                  })
+                  if (unique_new + Object.keys(current_tracked_accounts).length <= settings.websocket_max_accounts) {
+                    // save connection to global dicionary to reuse when getting messages from the node websocket
+                    websocket_connections.set(remote_ip, connection)
+
+                    // mirror the subscription to the real websocket
+                    var tracking_updated = false
+                    msg.options.accounts.forEach(function (address: string) {
+                      if (trackAccount(connection, address)) {
+                        tracking_updated = true
                       }
                     })
-                    if (unique_new + Object.keys(current_tracked_accounts).length <= settings.websocket_max_accounts) {
-                      // save connection to global dicionary to reuse when getting messages from the node websocket
-                      websocket_connections.set(remote_ip, connection)
-
-                      // mirror the subscription to the real websocket
-                      var tracking_updated = false
-                      msg.options.accounts.forEach(function(address: string) {
-                        if (trackAccount(connection, address)) {
-                          tracking_updated = true
-                        }
-                      })
-                      if (tracking_updated) {
-                        updateTrackedAccounts() //update the websocket subscription
-                      }
-                      connection.sendUTF(JSON.stringify({'ack':'subscribe','id':'id' in msg ? msg.id:""}, null, 2))
+                    if (tracking_updated) {
+                      updateTrackedAccounts() //update the websocket subscription
                     }
-                    else {
-                      connection.sendUTF(JSON.stringify({'error':'Too many accounts subscribed. Max is ' + settings.websocket_max_accounts}, null, 2))
-                    }
-                  }
-                  else {
-                    connection.sendUTF(JSON.stringify({'error':'Too many accounts subscribed. Max is ' + settings.websocket_max_accounts}, null, 2))
+                    wsSend(connection, {ack: 'subscribe', id: 'id' in msg ? msg.id : ""})
+                  } else {
+                    wsSend(connection, {error: 'Too many accounts subscribed. Max is ' + settings.websocket_max_accounts})
                   }
                 }
-                else {
-                  connection.sendUTF(JSON.stringify({'error':'You must provide the accounts to track via the options parameter'}, null, 2))
-                }
-              }
-            }
-            else if ('action' in msg && 'topic' in msg && msg.action === 'unsubscribe') {
-              if (msg.topic === 'confirmation') {
+              } else if (msg.action === 'unsubscribe') {
                 logThis('User unsubscribed from confirmation: ' + remote_ip, log_levels.info)
-                tracking_db.get('users').find({ip: remote_ip}).assign({'tracked_accounts':[]}).write()
+                tracking_db.get('users').find({ip: remote_ip}).assign({'tracked_accounts': []}).write()
               }
             }
           }
@@ -1158,6 +1166,10 @@ if (settings.use_websocket) {
       websocket_connections.delete(remote_ip)
     })
   })
+}
+
+function wsSend(connection: connection, val: WSSubscribe | WSError): void {
+  connection.sendUTF(JSON.stringify(val, null, 2))
 }
 
 function originIsAllowed(origin: string) {
