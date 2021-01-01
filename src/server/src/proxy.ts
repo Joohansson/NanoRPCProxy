@@ -987,18 +987,27 @@ if (settings.use_https) {
   // Verify that cert files exists
   var cert_exists = false
   var key_exists = false
-  Fs.access(settings.https_cert, Fs.F_OK, (err: ErrnoException) => {
-    if (err) {
+  try {
+    if (Fs.existsSync(settings.https_cert)) {
+      cert_exists = true
+    }
+    else {
       console.log("Warning: Https cert file does not exist!")
     }
-    cert_exists = true
-  })
-  Fs.access(settings.https_key, Fs.F_OK, (err: ErrnoException) => {
-    if (err) {
+  } catch(err) {
+    console.log("Warning: Problem reading https cert file!")
+  }
+  try {
+    if (Fs.existsSync(settings.https_key)) {
+      key_exists = true
+    }
+    else {
       console.log("Warning: Https key file does not exist!")
     }
-    key_exists = true
-  })
+  } catch(err) {
+    console.log("Warning: Problem reading https key file!")
+  }
+
   if (cert_exists && key_exists) {
     var https_options = {
       cert: Fs.readFileSync(settings.https_cert),
