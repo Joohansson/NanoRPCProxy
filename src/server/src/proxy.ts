@@ -562,7 +562,7 @@ function appendRateLimiterStatus(res: Response, data: any) {
 
 // Update current list of tracked accounts
 function updateTrackedAccounts() {
-  const confirmation_subscription = {
+  const confirmation_subscription : WSNodeMessage = {
     "action": "subscribe",
     "topic": "confirmation",
     "ack":true,
@@ -1029,6 +1029,16 @@ if (settings.use_https) {
 type WSTopic = 'confirmation'
 type WSAction = 'subscribe' | 'unsubscribe'
 
+interface WSNodeMessage {
+  action: WSAction
+  topic: WSTopic
+  ack: boolean
+  options: {
+    all_local_accounts: boolean
+    accounts: string[]
+  }
+}
+
 interface WSMessage {
   topic: WSTopic
   action: WSAction
@@ -1043,7 +1053,7 @@ interface WSError {
 }
 
 interface WSSubscribe {
-  ack: string
+  ack: WSAction
   id: string
 }
 
@@ -1256,7 +1266,7 @@ if (settings.use_websocket) {
       let tracked_accounts = tracking_db.get('users').value()
       // loop all existing tracked accounts as subscribed to by users
       tracked_accounts.forEach(async function(user) {
-        if ("tracked_accounts" in user && "ip" in user) {
+        if (user.tracked_accounts && user.ip) {
           // loop all existing accounts for that user
           for (const [key] of Object.entries(user.tracked_accounts)) {
             if (key === observed_account || key === observed_link) {
