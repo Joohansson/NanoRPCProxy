@@ -562,7 +562,7 @@ function appendRateLimiterStatus(res: Response, data: any) {
 
 // Update current list of tracked accounts
 function updateTrackedAccounts() {
-  const confirmation_subscription : WSNodeMessage = {
+  const confirmation_subscription : WSNodeSubscribe = {
     "action": "subscribe",
     "topic": "confirmation",
     "ack":true,
@@ -1029,7 +1029,7 @@ if (settings.use_https) {
 type WSTopic = 'confirmation'
 type WSAction = 'subscribe' | 'unsubscribe'
 
-interface WSNodeMessage {
+interface WSNodeSubscribe {
   action: WSAction
   topic: WSTopic
   ack: boolean
@@ -1037,6 +1037,16 @@ interface WSNodeMessage {
     all_local_accounts: boolean
     accounts: string[]
   }
+}
+interface WSNodeReceive {
+  topic: WSTopic
+  message: {
+    account: string
+    block: {
+      link_as_account: string
+    }
+  }
+  ack: WSAction
 }
 
 interface WSMessage {
@@ -1255,7 +1265,7 @@ if (settings.use_websocket) {
 
   // A tracked account was detected
   newWebSocket.onmessage = (msg: MessageEvent) => {
-    let data_json = JSON.parse(msg.data)
+    let data_json: WSNodeReceive = JSON.parse(msg.data)
 
     // Check if the tracked account belongs to a user
     if (data_json.topic === "confirmation") {
@@ -1278,10 +1288,8 @@ if (settings.use_websocket) {
         }
       })
     }
-    else if ("ack" in data_json) {
-      if (data_json.ack === "subscribe") {
-        logThis("Websocket subscription updated", log_levels.info)
-      }
+    else if (data_json.ack === "subscribe") {
+      logThis("Websocket subscription updated", log_levels.info)
     }
   }
 
