@@ -18,13 +18,14 @@ import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
 import * as Tokens from './tokens'
 import {
-  CancelOrder,
+  CancelOrder, isTokensRequest, TokenAPIActions,
   TokenAPIError, TokenAPIResponses,
   TokenInfo,
   TokenResponse,
   TokenStatusResponse,
   WaitingTokenOrder
 } from "./node-api/token-api";
+import {NanoRPCRequest} from "./node-api/proxy-api";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -630,29 +631,6 @@ app.post(settings.request_path, (req: Request, res: Response) => {
   processRequest(req.body, req, res)
 })
 
-type TokenAPIActions = 'tokenorder_check' | 'tokens_buy' | 'tokenprice_check'
-    | 'tokenorder_cancel' | 'tokens_check'
-
-type RPCAction = TokenAPIActions | 'mnano_to_raw' | 'mnano_from_raw' | 'process' | 'work_generate' | 'price'
-
-interface NanoRPCRequest {
-  action: RPCAction
-  token_amount: number
-  token_key: string
-  amount: string
-  watch_work: string
-  difficulty: string | undefined
-  user: string | undefined
-  api_key: string | undefined
-  timeout: number
-  count: number
-  hash: string
-}
-
-function isTokensRequest(action: RPCAction): boolean {
-  return action === 'tokens_buy' || action === 'tokenorder_check' || action === 'tokenorder_cancel' || action === 'tokens_check' || action === 'tokenprice_check'
-}
-
 async function processTokensRequest(query: NanoRPCRequest, req: Request, res: Response<TokenAPIResponses>): Promise<Response> {
   switch (query.action) {
     // Initiate token purchase
@@ -670,8 +648,8 @@ async function processTokensRequest(query: NanoRPCRequest, req: Request, res: Re
       }
 
       let payment_request = await Tokens.requestTokenPayment(token_amount, token_key, order_db, settings.node_url)
-
       return res.json(payment_request)
+
     // Verify order status
     case 'tokenorder_check':
       if (query.token_key) {
@@ -682,6 +660,7 @@ async function processTokensRequest(query: NanoRPCRequest, req: Request, res: Re
       else {
         return res.status(500).json({ error: 'No token key provided'})
       }
+
     // Claim back private key and replace the account
     case 'tokenorder_cancel':
       if (query.token_key) {
@@ -692,6 +671,7 @@ async function processTokensRequest(query: NanoRPCRequest, req: Request, res: Re
       else {
         return res.status(500).json({ error: 'No token key provided'})
       }
+
     // Verify order status
     case 'tokens_check':
       if ('token_key' in query) {
@@ -702,13 +682,14 @@ async function processTokensRequest(query: NanoRPCRequest, req: Request, res: Re
       else {
         return res.status(500).json({ error: 'No token key provided'})
       }
+
     // Check token price
     case 'tokenprice_check':
       let status = await Tokens.checkTokenPrice()
       return res.json(appendRateLimiterStatus(res, status))
+
     default:
       return res.status(404)
-
   }
 }
 
