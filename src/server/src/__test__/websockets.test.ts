@@ -1,12 +1,17 @@
 import {deleteConfigFiles} from "./test-commons";
 import {User} from "../lowdb-schema";
 
-const websocketPath = 'websocket.json';
+let proxy: any;
 
 describe('trackAccount', () => {
-    process.env.CONFIG_WEBSOCKET_PATH = websocketPath
-    process.env.OVERRIDE_USE_HTTP = 'false'
-    const proxy = require('../proxy')
+
+    beforeEach(() => {
+        // deleteConfigFiles([websocketPath])
+        process.env.CONFIG_WEBSOCKET_PATH = 'src/__test__/websocket.json'
+        process.env.OVERRIDE_USE_HTTP = 'false'
+        proxy = require('../proxy')
+        deleteConfigFiles(['websocket.json'])
+    })
 
     test('given invalid nano address should return false', () => {
         const res = proxy.trackAccount('192.16.1.1', 'invalid-address')
@@ -27,6 +32,24 @@ describe('trackAccount', () => {
         }
         expect(proxy.tracking_db.get('users').value()).toStrictEqual([expectedUser])
     })
-})
 
-afterAll(() => deleteConfigFiles([websocketPath]))
+    test('given same ip and different address, should append new address', () => {
+        Date.now = jest.fn(() => 1609595113)
+        proxy.trackAccount('192.168.1.1', 'nano_3m497b1ghppe316aiu4o5eednfyueemzjf7a8wye3gi5rjrkpk1p59okghwb')
+        proxy.trackAccount('192.168.1.1', 'nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue')
+        const expectedUser: User = {
+            ip: '192.168.1.1',
+            tracked_accounts: {
+                nano_3m497b1ghppe316aiu4o5eednfyueemzjf7a8wye3gi5rjrkpk1p59okghwb: {
+                    "timestamp": 1609595,
+                },
+                nano_3jsonxwips1auuub94kd3osfg98s6f4x35ksshbotninrc1duswrcauidnue: {
+                    "timestamp": 1609595,
+                }
+            }
+        }
+        expect(proxy.tracking_db.get('users').value()).toStrictEqual([expectedUser])
+    })
+
+    afterEach(() => deleteConfigFiles(['websocket.json']))
+})
