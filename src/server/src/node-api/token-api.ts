@@ -36,3 +36,5 @@ export interface StatusCallback {
     amount: number
     hashes?: string[]
 }
+
+export type TokenAPIResponses = TokenResponse | TokenInfo | WaitingTokenOrder | CancelOrder | TokenStatusResponse | TokenAPIError | TokenPriceResponse

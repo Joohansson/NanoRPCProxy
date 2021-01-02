@@ -19,7 +19,7 @@ import * as Tools from './tools'
 import * as Tokens from './tokens'
 import {
   CancelOrder,
-  TokenAPIError,
+  TokenAPIError, TokenAPIResponses,
   TokenInfo,
   TokenResponse,
   TokenStatusResponse,
@@ -630,10 +630,10 @@ app.post(settings.request_path, (req: Request, res: Response) => {
   processRequest(req.body, req, res)
 })
 
-type RPCAction = 'tokenorder_check' | 'tokens_buy' | 'tokenprice_check'
-    | 'tokenorder_cancel' | 'tokens_check' | 'price'
-    | 'mnano_to_raw' | 'mnano_from_raw' | 'process'
-    | 'work_generate'
+type TokenAPIActions = 'tokenorder_check' | 'tokens_buy' | 'tokenprice_check'
+    | 'tokenorder_cancel' | 'tokens_check'
+
+type RPCAction = TokenAPIActions | 'mnano_to_raw' | 'mnano_from_raw' | 'process' | 'work_generate' | 'price'
 
 interface NanoRPCRequest {
   action: RPCAction
@@ -649,17 +649,16 @@ interface NanoRPCRequest {
   hash: string
 }
 
-async function processRequest(query: NanoRPCRequest, req: Request, res: Response<ProcessResponse | TokenInfo | TokenResponse | WaitingTokenOrder | CancelOrder | TokenStatusResponse | TokenAPIError>): Promise<Response> {
-  if (query.action !== 'tokenorder_check') {
-    logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
-    rpcCount++
-  }
+function isTokensRequest(action: RPCAction): boolean {
+  return action === 'tokens_buy' || action === 'tokenorder_check' || action === 'tokenorder_cancel' || action === 'tokens_check' || action === 'tokenprice_check'
+}
 
-  if (settings.use_tokens) {
+async function processTokensRequest(query: NanoRPCRequest, req: Request, res: Response<TokenAPIResponses>): Promise<Response> {
+  switch (query.action) {
     // Initiate token purchase
-    var token_key = ""
-    if (query.action === 'tokens_buy') {
-      var token_amount = 0
+    case 'tokens_buy':
+      let token_key = ""
+      let token_amount = 0
       if (query.token_amount) {
         token_amount = Math.round(query.token_amount)
       }
@@ -673,49 +672,54 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
       let payment_request = await Tokens.requestTokenPayment(token_amount, token_key, order_db, settings.node_url)
 
       return res.json(payment_request)
-    }
-
     // Verify order status
-    if (query.action === 'tokenorder_check') {
+    case 'tokenorder_check':
       if (query.token_key) {
-        token_key = query.token_key
+        let token_key = query.token_key
         let status = await Tokens.checkOrder(token_key, order_db)
         return res.json(status)
       }
       else {
         return res.status(500).json({ error: 'No token key provided'})
       }
-    }
-
     // Claim back private key and replace the account
-    if (query.action === 'tokenorder_cancel') {
-      if ('token_key' in query) {
-        token_key = query.token_key
+    case 'tokenorder_cancel':
+      if (query.token_key) {
+        let token_key = query.token_key
         let status = await Tokens.cancelOrder(token_key, order_db)
         return res.json(status)
       }
       else {
         return res.status(500).json({ error: 'No token key provided'})
       }
-    }
-
     // Verify order status
-    if (query.action === 'tokens_check') {
+    case 'tokens_check':
       if ('token_key' in query) {
-        token_key = query.token_key
+        let token_key = query.token_key
         let status = await Tokens.checkTokens(token_key, order_db)
         return res.json(status)
       }
       else {
         return res.status(500).json({ error: 'No token key provided'})
       }
-    }
+    // Check token price
+    case 'tokenprice_check':
+      let status = await Tokens.checkTokenPrice()
+      return res.json(appendRateLimiterStatus(res, status))
+    default:
+      return res.status(404)
+
+  }
+}
+
+async function processRequest(query: NanoRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses | TokenAPIError>): Promise<Response> {
+  if (query.action !== 'tokenorder_check') {
+    logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
+    rpcCount++
   }
 
-  // Check token price
-  if (query.action === 'tokenprice_check') {
-    let status = await Tokens.checkTokenPrice()
-    return res.json(appendRateLimiterStatus(res, status))
+  if(settings.use_tokens && isTokensRequest(query.action)) {
+    return processTokensRequest(query, req, res);
   }
 
   // Block non-allowed RPC commands
