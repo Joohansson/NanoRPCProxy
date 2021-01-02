@@ -38,6 +38,8 @@ jobs:
     - name: Store NPM version
       id: package-version
       uses: martinbeentjes/npm-get-version-action@master
+      with:
+        path: ./src/server/package.json
 
     - name: Release Drafter
       id: release_drafter
