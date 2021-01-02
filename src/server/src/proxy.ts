@@ -612,24 +612,6 @@ function multiplierFromDifficulty(difficulty: string, base_difficulty: string) {
   return big64.subtract(big_base).divide(big64.subtract(big_diff),32,mode).toPlainString()
 }
 
-// Custom error class
-class APIError extends Error {
-
-  private code: any
-
-  constructor(code: string, ...params: any[]) {
-    super(...params)
-
-    // Maintains proper stack trace for where our error was thrown (only available on V8)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, APIError)
-    }
-    this.name = 'APIError'
-    // Custom debugging information
-    this.code = code
-  }
-}
-
 // Default get requests
 if (settings.request_path != '/') {
   app.get('/', async (req: Request, res: Response) => {
