@@ -33,3 +33,15 @@ template: |
   ## Changes
 
   $CHANGES
+
+  ## Docker Container
+  For equivalent docker version, any of:
+  ```bash
+  docker pull nanojson/nanorpcproxy:latest
+  docker pull nanojson/nanorpcproxy:v$RESOLVED_VERSION
+  ```
+
+  For latest master branch:
+  ```bash
+  docker pull nanojson/nanorpcproxy:master
+  ```
