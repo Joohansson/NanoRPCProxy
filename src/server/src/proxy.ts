@@ -10,7 +10,6 @@ import {OrderDB, OrderSchema, TrackedAccount, User, UserDB, UserSchema} from "./
 import {Request, Response} from "express";
 import {CorsOptions} from "cors";
 import {RateLimiterRes} from "rate-limiter-flexible";
-import ErrnoException = NodeJS.ErrnoException;
 import {IncomingMessage, ServerResponse} from "http";
 import {connection, IMessage, request as WSRequest, server as WSServer} from "websocket";
 import ReconnectingWebSocket, { ErrorEvent } from "reconnecting-websocket";
@@ -43,7 +42,7 @@ const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init
 const order_db: OrderDB =  lowdb(new FileSync<OrderSchema>('db.json'))
-const tracking_db: UserDB = lowdb(new FileSync<UserSchema>('websocket.json'))
+const tracking_db: UserDB = lowdb(new FileSync<UserSchema>(configPaths.websocket_path))
 order_db.defaults({orders: []}).write()
 tracking_db.defaults({users: []}).write()
 tracking_db.update('users', n => []).write() //empty db on each new run
@@ -961,6 +960,7 @@ module.exports = {
   myAuthorizer: myAuthorizer,
   getUserSettings: getUserSettings,
   trackAccount: trackAccount,
+  tracking_db: tracking_db,
 }
 
 var websocket_servers = []
