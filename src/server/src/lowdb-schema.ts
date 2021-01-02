@@ -26,7 +26,7 @@ export interface TrackedAccount {
 
 export interface User {
     ip: string
-    tracked_accounts: Map<string, TrackedAccount>
+    tracked_accounts: Record<string, TrackedAccount>
 }
 
 export interface UserSchema {
