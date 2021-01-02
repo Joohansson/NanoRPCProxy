@@ -659,7 +659,7 @@ interface NanoRPCRequest {
   hash: string
 }
 
-async function processRequest(query: NanoRPCRequest, req: Request, res: Response) {
+async function processRequest(query: NanoRPCRequest, req: Request, res: Response): Promise<Response<any>> {
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++
@@ -682,8 +682,7 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
 
       let payment_request = await Tokens.requestTokenPayment(token_amount, token_key, order_db, settings.node_url)
 
-      res.json(payment_request)
-      return
+      return res.json(payment_request)
     }
 
     // Verify order status
@@ -777,34 +776,31 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
       if (tokens_left != null) {
         data.tokens_total = tokens_left
       }
-      res.json(appendRateLimiterStatus(res, data)) // sending back full json price response (Coinpaprika)
+      return res.json(appendRateLimiterStatus(res, data)) // sending back full json price response (Coinpaprika)
     }
     catch(err) {
-      res.status(500).json({error: err.toString()})
+      return res.status(500).json({error: err.toString()})
     }
-    return
   }
 
   if (query.action === 'mnano_to_raw') {
     if (query.amount) {
       let amount = Tools.MnanoToRaw(query.amount)
-      res.json(appendRateLimiterStatus(res, {"amount":amount}))
+      return res.json(appendRateLimiterStatus(res, {"amount":amount}))
     }
     else {
       return res.status(500).json({ error: 'Amount not provided!'})
     }
-    return
   }
 
   if (query.action === 'mnano_from_raw') {
     if (query.amount) {
       let amount = Tools.rawToMnano(query.amount)
-      res.json(appendRateLimiterStatus(res, {"amount":amount}))
+      return res.json(appendRateLimiterStatus(res, {"amount":amount}))
     }
     else {
       return res.status(500).json({ error: 'Amount not provided!'})
     }
-    return
   }
 
   // Force no watch_work (don't want the node to perform pow)
@@ -869,22 +865,19 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
           if ((data.error) || !(data.work)) {
             bpow_failed = true
             if (!settings.use_dpow) {
-              res.json(appendRateLimiterStatus(res, data)) // forward error if not retrying with dpow
-              return
+              return res.json(appendRateLimiterStatus(res, data)) // forward error if not retrying with dpow
             }
           }
           else if (data.work) {
-            res.json(appendRateLimiterStatus(res, data)) // sending back successful json response
-            return
+            return res.json(appendRateLimiterStatus(res, data)) // sending back successful json response
           }
         }
         catch(err) {
           bpow_failed = true
-          if (!settings.use_dpow) {
-            res.status(500).json({error: err.toString()})
-            return
-          }
           logThis("Bpow connection error: " + err.toString(), log_levels.warning)
+          if (!settings.use_dpow) {
+            return res.status(500).json({error: err.toString()})
+          }
         }
       }
       // Use dpow only if not already used bpow or bpow timed out
@@ -903,18 +896,17 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
           if (data.error) {
             logThis("dPoW failed: " + data.error, log_levels.warning)
           }
-          res.json(appendRateLimiterStatus(res, data)) // sending back json response (regardless if timeout error)
+          return res.json(appendRateLimiterStatus(res, data)) // sending back json response (regardless if timeout error)
         }
         catch(err) {
-          res.status(500).json({error: err.toString()})
           logThis("Dpow connection error: " + err.toString(), log_levels.warning)
+          return res.status(500).json({error: err.toString()})
         }
       }
     }
     else {
       return res.status(500).json({ error: 'Hash not provided!'})
     }
-    return
   }
 
   // ---
@@ -962,11 +954,11 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
     if (tokens_left != null) {
       data.tokens_total = tokens_left
     }
-    res.json(appendRateLimiterStatus(res, data)) // sending back json response
+    return res.json(appendRateLimiterStatus(res, data)) // sending back json response
   }
   catch(err) {
-    res.status(500).json({error: err.toString()})
     logThis("Node conection error: " + err.toString(), log_levels.warning)
+    return res.status(500).json({error: err.toString()})
   }
 }
 
