@@ -631,6 +631,7 @@ if (settings.request_path != '/') {
 
 // Process any API requests
 app.get(settings.request_path, (req: Request, res: Response) => {
+  // @ts-ignore
   processRequest(req.query, req, res)
 })
 
@@ -639,7 +640,21 @@ app.post(settings.request_path, (req: Request, res: Response) => {
   processRequest(req.body, req, res)
 })
 
-async function processRequest(query: any, req: Request, res: Response) {
+interface NanoRPCRequest {
+  action: string
+  token_amount: number
+  token_key: string
+  amount: string
+  watch_work: string
+  difficulty: string | undefined
+  user: string | undefined
+  api_key: string | undefined
+  timeout: number
+  count: number
+  hash: string
+}
+
+async function processRequest(query: NanoRPCRequest, req: Request, res: Response) {
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++
@@ -650,13 +665,13 @@ async function processRequest(query: any, req: Request, res: Response) {
     var token_key = ""
     if (query.action === 'tokens_buy') {
       var token_amount = 0
-      if ('token_amount' in query) {
+      if (query.token_amount) {
         token_amount = Math.round(query.token_amount)
       }
       else {
         return res.status(500).json({ error: 'The amount of tokens (token_amount) to purchase must be provided'})
       }
-      if ('token_key' in query) {
+      if (query.token_key) {
         token_key = query.token_key
       }
 
@@ -668,7 +683,7 @@ async function processRequest(query: any, req: Request, res: Response) {
 
     // Verify order status
     if (query.action === 'tokenorder_check') {
-      if ('token_key' in query) {
+      if (query.token_key) {
         token_key = query.token_key
         let status = await Tokens.checkOrder(token_key, order_db)
         return res.json(status)
@@ -796,11 +811,11 @@ async function processRequest(query: any, req: Request, res: Response) {
 
   // Handle work generate via dpow and/or bpow
   if (query.action === 'work_generate' && (settings.use_dpow || settings.use_bpow)) {
-    if ('hash' in query) {
+    if (query.hash) {
       var bpow_failed = false
-      if (!("difficulty" in query)) {
+      if (!(query.difficulty)) {
         // Use cached value first
-        const cachedValue = rpcCache?.get('difficulty')
+        const cachedValue: string | undefined = rpcCache?.get<string>('difficulty')
         if (Tools.isValidJson(cachedValue)) {
           logThis("Cache requested: " + 'difficulty', log_levels.info)
           query.difficulty = cachedValue
@@ -808,7 +823,7 @@ async function processRequest(query: any, req: Request, res: Response) {
         else {
           // get latest difficulty from network
           let data: ActiveDifficultyResponse = await Tools.postData({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
-          if ('network_current' in data) {
+          if (data.network_current) {
             // Store the difficulty in cache for 60sec
             if (!rpcCache?.set('difficulty', data.network_current, 60)) {
               logThis("Failed saving cache for " + 'difficulty', log_levels.warning)
@@ -821,19 +836,19 @@ async function processRequest(query: any, req: Request, res: Response) {
             logThis("Using default difficulty: " + query.difficulty, log_levels.info)
           }
         }
-        if (compareHex(work_threshold_default, query.difficulty)) {
+        if (query.difficulty && compareHex(work_threshold_default, query.difficulty)) {
           query.difficulty = work_threshold_default
         }
       }
-      if (!("timeout" in query)) {
+      if (!(query.timeout)) {
         query.timeout = work_default_timeout
       }
 
       // Try bpow first
       if (settings.use_bpow) {
         logThis("Requesting work using bpow with diff: " + query.difficulty, log_levels.info)
-        query.user = bpow_user
-        query.api_key = bpow_key
+        query.user = bpow_user ? bpow_url : undefined
+        query.api_key = bpow_key ? bpow_key : undefined
 
         try {
           let data: ProcessDataResponse = await Tools.postData(query, bpow_url, work_default_timeout*1000*2)
@@ -870,8 +885,8 @@ async function processRequest(query: any, req: Request, res: Response) {
       // Use dpow only if not already used bpow or bpow timed out
       if (settings.use_dpow && (!settings.use_bpow || bpow_failed)) {
         logThis("Requesting work using dpow with diff: " + query.difficulty, log_levels.info)
-        query.user = dpow_user
-        query.api_key = dpow_key
+        query.user = dpow_user ? dpow_user : undefined
+        query.api_key = dpow_key ? dpow_key : undefined
 
         try {
           let data: ProcessDataResponse = await Tools.postData(query, dpow_url, work_default_timeout*1000*2)
@@ -918,9 +933,9 @@ async function processRequest(query: any, req: Request, res: Response) {
   if (userSettings.use_output_limiter) {
     const value: number | undefined = userSettings.limited_commands[query.action]
     if(value !== undefined) {
-      if (parseInt(query.count) > value || !("count" in query)) {
+      if (query.count > value || !(query.count)) {
         query.count = value
-        if (parseInt(query.count) > value) {
+        if (query.count > value) {
           logThis("Response count was limited to " + value.toString(), log_levels.info)
         }
       }
