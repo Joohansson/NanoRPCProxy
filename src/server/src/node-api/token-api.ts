@@ -41,7 +41,7 @@ export interface StatusCallback {
 
 export type TokenAPIResponses = TokenResponse | TokenInfo | WaitingTokenOrder | CancelOrder | TokenStatusResponse | TokenAPIError | TokenPriceResponse
 
-export type TokenAPIActions = 'tokenorder_check' | 'tokens_buy' | 'tokenprice_check' | 'tokenorder_cancel' | 'tokens_check'
+export type TokenAPIActions = 'tokens_buy' | 'tokenorder_check' | 'tokenorder_cancel' | 'tokens_check' | 'tokenprice_check'
 
 export function isTokensRequest(action: RPCAction): boolean {
     return action === 'tokens_buy' || action === 'tokenorder_check' || action === 'tokenorder_cancel' || action === 'tokens_check' || action === 'tokenprice_check'

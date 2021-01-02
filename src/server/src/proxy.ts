@@ -17,15 +17,9 @@ import NodeCache from "node-cache";
 import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
 import * as Tokens from './tokens'
-import {
-  CancelOrder, isTokensRequest, TokenAPIActions,
-  TokenAPIError, TokenAPIResponses,
-  TokenInfo,
-  TokenResponse,
-  TokenStatusResponse,
-  WaitingTokenOrder
-} from "./node-api/token-api";
+import {isTokensRequest, TokenAPIError, TokenAPIResponses} from "./node-api/token-api";
 import {NanoRPCRequest} from "./node-api/proxy-api";
+import {compareHex, multiplierFromDifficulty} from "./tools";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -45,7 +39,6 @@ const Schedule =              require('node-schedule')
 const WebSocketServer =       require('websocket').server
 const WS =                    require('ws')
 const Helmet =                require('helmet')
-const Dec =                   require('bigdecimal') //https://github.com/iriscouch/bigdecimal.js
 const RemoveTrailingZeros =   require('remove-trailing-zeros')
 const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
@@ -532,7 +525,7 @@ function myAuthorizer(username: string, password: string): boolean {
 }
 
 // Deduct token count for given token_key
-function useToken(query: any) {
+function useToken(query: NanoRPCRequest) {
   let token_key = query.token_key
   // Find token_key in order DB
   if (order_db.get('orders').find({token_key: token_key}).value()) {
@@ -592,25 +585,6 @@ function logThis(str: string, level: LogLevel) {
       console.warn(str)
     }
   }
-}
-
-// Compare two hex strings, returns 0 if equal, -1 if A<B and 1 if A>B
-function compareHex(a: string | number, b: string | number) {
-  a = parseInt('0x' + a, 16)
-  b = parseInt('0x' + b, 16)
-  let result = 0
-  if (a > b) result = 1
-  else if(a < b) result = -1
-  return result
-}
-
-// Determine new multiplier from base difficulty (hexadecimal string) and target difficulty (hexadecimal string). Returns float
-function multiplierFromDifficulty(difficulty: string, base_difficulty: string) {
-  let big64 = Dec.BigDecimal(2).pow(64)
-  let big_diff = Dec.BigDecimal(Dec.BigInteger(difficulty,16))
-  let big_base = Dec.BigDecimal(Dec.BigInteger(base_difficulty,16))
-  let mode = Dec.RoundingMode.HALF_DOWN()
-  return big64.subtract(big_base).divide(big64.subtract(big_diff),32,mode).toPlainString()
 }
 
 // Default get requests
