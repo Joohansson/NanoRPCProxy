@@ -11,10 +11,8 @@ export function deleteConfigFiles(filePaths: string[]) {
     filePaths.forEach(filePath => {
         try {
             let path = `${testFolder}${filePath}`;
-            console.log(path)
             fs.unlinkSync(path)
         } catch (e) {
-            console.log(e)
             // file might not be found which is OK
         }
     })
