@@ -7,7 +7,7 @@ import * as Tools from './tools'
 import Nacl from 'tweetnacl/nacl'
 import {
   CancelOrder,
-  Error, StatusCallback,
+  TokenAPIError, StatusCallback,
   TokenInfo, TokenPriceResponse,
   TokenResponse,
   TokenStatusResponse,
@@ -28,7 +28,7 @@ var node_url = "" // will be set by main script
 
 // Functions to be required from another file
 // Generates and provides a payment address while checking for pending tx and collect them
-export async function requestTokenPayment(token_amount: number, token_key: string, order_db: OrderDB, url: string): Promise<Error | TokenInfo> {
+export async function requestTokenPayment(token_amount: number, token_key: string, order_db: OrderDB, url: string): Promise<TokenAPIError | TokenInfo> {
   // Block request if amount is not within interval
   if (token_amount < settings.min_token_amount) {
     return {error: "Token amount must be larger than " + settings.min_token_amount}
@@ -75,7 +75,7 @@ export async function requestTokenPayment(token_amount: number, token_key: strin
   return { address: address, token_key:token_key, payment_amount:nano_amount }
 }
 
-export async function checkOrder(token_key: string, order_db: OrderDB): Promise<Error | TokenResponse | WaitingTokenOrder> {
+export async function checkOrder(token_key: string, order_db: OrderDB): Promise<TokenAPIError | TokenResponse | WaitingTokenOrder> {
   // Get the right order based on token_key
   const order: Order | undefined = order_db.get('orders').find({token_key: token_key}).value()
   if (order) {
@@ -93,7 +93,7 @@ export async function checkOrder(token_key: string, order_db: OrderDB): Promise<
     return {error: "Order not found for key: " + token_key}
   }
 }
-export async function cancelOrder(token_key: string, order_db: OrderDB): Promise<Error | CancelOrder> {
+export async function cancelOrder(token_key: string, order_db: OrderDB): Promise<TokenAPIError | CancelOrder> {
   // Get the right order based on token_key
   const order: Order | undefined = order_db.get('orders').find({token_key: token_key}).value()
   if (order) {
@@ -121,7 +121,7 @@ export async function cancelOrder(token_key: string, order_db: OrderDB): Promise
     return {error: "Order not found"}
   }
 }
-export async function checkTokens(token_key: string, order_db: OrderDB): Promise<Error | TokenStatusResponse> {
+export async function checkTokens(token_key: string, order_db: OrderDB): Promise<TokenAPIError | TokenStatusResponse> {
   // Get the right order based on token_key
   const order = order_db.get('orders').find({token_key: token_key}).value()
   if (order) {

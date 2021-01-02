@@ -1,4 +1,4 @@
-export interface Error {
+export interface TokenAPIError {
     error: string
 }
 

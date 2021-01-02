@@ -17,6 +17,14 @@ import NodeCache from "node-cache";
 import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
 import * as Tokens from './tokens'
+import {
+  CancelOrder,
+  TokenAPIError,
+  TokenInfo,
+  TokenResponse,
+  TokenStatusResponse,
+  WaitingTokenOrder
+} from "./node-api/token-api";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -353,7 +361,7 @@ if (settings.use_ip_blacklist) {
 }
 
 // Error handling
-app.use((err: Error, req: Request, res: Response, _next: any) => {
+app.use((err: TokenAPIError, req: Request, res: Response, _next: any) => {
   if (err instanceof IpDeniedError) {
     return res.status(401).json({error: 'IP has been blocked'})
   }
@@ -438,7 +446,7 @@ const rateLimiterMiddleware2 = (req: Request, res: Response, next: (err?: any) =
     .then((response: RateLimiterRes) => {
       next()
     })
-    .catch((error?: Error) => {
+    .catch((error?: TokenAPIError) => {
       res.status(429).send('You are making requests too fast, please slow down!')
     })
  }
@@ -659,7 +667,7 @@ interface NanoRPCRequest {
   hash: string
 }
 
-async function processRequest(query: NanoRPCRequest, req: Request, res: Response): Promise<Response<any>> {
+async function processRequest(query: NanoRPCRequest, req: Request, res: Response<ProcessResponse | TokenInfo | TokenResponse | WaitingTokenOrder | CancelOrder | TokenStatusResponse | TokenAPIError>): Promise<Response> {
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++
