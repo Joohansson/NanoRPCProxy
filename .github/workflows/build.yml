@@ -35,9 +35,17 @@ jobs:
     - name: Zip Folder
       run: cd ./src/server/ && zip -r ../../proxy.zip ./dist -x ./dist/__test__\* && cd -
 
+    - name: Store NPM version
+      id: package-version
+      uses: martinbeentjes/npm-get-version-action@master
+
     - name: Release Drafter
       id: release_drafter
       uses: release-drafter/release-drafter@v5
+      with:
+          name: ${{ steps.package-version.outputs.current-version }}
+          tag: v${{ steps.package-version.outputs.current-version }}
+          version: ${{ steps.package-version.outputs.current-version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
