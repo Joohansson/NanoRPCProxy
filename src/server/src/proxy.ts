@@ -959,7 +959,8 @@ module.exports = {
   logSettings: logSettings,
   processRequest: processRequest,
   myAuthorizer: myAuthorizer,
-  getUserSettings: getUserSettings
+  getUserSettings: getUserSettings,
+  trackAccount: trackAccount,
 }
 
 var websocket_servers = []
@@ -1124,7 +1125,7 @@ if (settings.use_websocket) {
                     // mirror the subscription to the real websocket
                     var tracking_updated = false
                     msg.options.accounts.forEach(function (address: string) {
-                      if (trackAccount(connection, address)) {
+                      if (trackAccount(connection.remoteAddress, address)) {
                         tracking_updated = true
                       }
                     })
@@ -1167,11 +1168,10 @@ function originIsAllowed(origin: string) {
 }
 
 // Start websocket subscription for an address
-function trackAccount(connection: connection, address: string) {
+function trackAccount(remote_ip: string, address: string): boolean {
   if (!Tools.validateAddress(address)) {
     return false
   }
-  let remote_ip = connection.remoteAddress
   // get existing tracked accounts
   let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
   var current_tracked_accounts: Record<string, TrackedAccount> = {} //if not in db, use empty dict
