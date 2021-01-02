@@ -1174,7 +1174,7 @@ function trackAccount(connection: connection, address: string) {
   let remote_ip = connection.remoteAddress
   // get existing tracked accounts
   let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
-  var current_tracked_accounts: Map<string, TrackedAccount> = new Map<string, TrackedAccount>() //if not in db, use empty dict
+  var current_tracked_accounts: Record<string, TrackedAccount> = {} //if not in db, use empty dict
   if (current_user !== undefined) {
     current_tracked_accounts = current_user.tracked_accounts
   }
@@ -1189,7 +1189,7 @@ function trackAccount(connection: connection, address: string) {
 
   // start tracking new address
   if (!address_exists) {
-    current_tracked_accounts.set(address, {timestamp: Math.floor(Date.now()/1000)}) // append new tracking
+    current_tracked_accounts[address] = { timestamp: Math.floor(Date.now()/1000) } // append new tracking
 
     // add user and tracked account to db
     if (current_user === undefined) {
