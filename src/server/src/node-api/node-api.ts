@@ -12,6 +12,7 @@ interface ProcessDataResponse {
     multiplier: string
     tokens_total: number
     error: string | null
+    work: string | null
 }
 
 interface PendingBlock {

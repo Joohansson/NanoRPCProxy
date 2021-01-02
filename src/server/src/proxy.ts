@@ -640,8 +640,13 @@ app.post(settings.request_path, (req: Request, res: Response) => {
   processRequest(req.body, req, res)
 })
 
+type RPCAction = 'tokenorder_check' | 'tokens_buy' | 'tokenprice_check'
+    | 'tokenorder_cancel' | 'tokens_check' | 'price'
+    | 'mnano_to_raw' | 'mnano_from_raw' | 'process'
+    | 'work_generate'
+
 interface NanoRPCRequest {
-  action: string
+  action: RPCAction
   token_amount: number
   token_key: string
   amount: string
@@ -733,7 +738,7 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
   // Decrease user tokens and block if zero left
   var tokens_left: number | null = null
   if (settings.use_tokens) {
-    if ('token_key' in query) {
+    if (query.token_key) {
       let status = useToken(query)
       if (status === -1) {
         return res.status(500).json({ error: 'You have no more tokens to use!'})
@@ -781,7 +786,7 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
   }
 
   if (query.action === 'mnano_to_raw') {
-    if ('amount' in query) {
+    if (query.amount) {
       let amount = Tools.MnanoToRaw(query.amount)
       res.json(appendRateLimiterStatus(res, {"amount":amount}))
     }
@@ -792,7 +797,7 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
   }
 
   if (query.action === 'mnano_from_raw') {
-    if ('amount' in query) {
+    if (query.amount) {
       let amount = Tools.rawToMnano(query.amount)
       res.json(appendRateLimiterStatus(res, {"amount":amount}))
     }
@@ -858,17 +863,17 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
             data.tokens_total = tokens_left
           }
           // if bpow time out
-          if ('error' in data) {
+          if (data.error) {
             logThis("bPoW failed: " + data.error, log_levels.warning)
           }
-          if (('error' in data) || !('work' in data)) {
+          if ((data.error) || !(data.work)) {
             bpow_failed = true
             if (!settings.use_dpow) {
               res.json(appendRateLimiterStatus(res, data)) // forward error if not retrying with dpow
               return
             }
           }
-          else if ('work' in data) {
+          else if (data.work) {
             res.json(appendRateLimiterStatus(res, data)) // sending back successful json response
             return
           }
@@ -895,7 +900,7 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
           if (tokens_left != null) {
             data.tokens_total = tokens_left
           }
-          if ('error' in data) {
+          if (data.error) {
             logThis("dPoW failed: " + data.error, log_levels.warning)
           }
           res.json(appendRateLimiterStatus(res, data)) // sending back json response (regardless if timeout error)
