@@ -1,6 +1,6 @@
 import Fetch, {Response} from 'node-fetch'
-const BigInt =  require('big-integer')
-const Nano =    require('nanocurrency')
+import BigInt from 'big-integer'
+import * as Nano from 'nanocurrency'
 
 // Custom error class
 class APIError extends Error {
