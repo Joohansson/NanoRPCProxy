@@ -11,9 +11,9 @@ import {
   TokenInfo, TokenPriceResponse,
   TokenResponse,
   TokenStatusResponse,
-  WaitingTokenOrder
+  WaitingTokenOrder,
+  NodeRPCError,
 } from "./node-api/token-api";
-import {NodeRPCError} from "./node-api/proxy-api";
 
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
 const tokenSettings = readConfigPathsFromENV().token_settings

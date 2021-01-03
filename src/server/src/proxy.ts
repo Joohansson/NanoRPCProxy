@@ -18,7 +18,7 @@ import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
 import * as Tokens from './tokens'
 import {isTokensRequest, TokenAPIResponses} from "./node-api/token-api";
-import {NanoRPCRequest, NodeRPCError} from "./node-api/proxy-api";
+import {NanoRPCRequest} from "./node-api/proxy-api";
 import {compareHex, multiplierFromDifficulty} from "./tools";
 
 require('dotenv').config() // load variables from .env into the environment
@@ -668,7 +668,7 @@ async function processTokensRequest(query: NanoRPCRequest, req: Request, res: Re
   }
 }
 
-async function processRequest(query: NanoRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses | NodeRPCError>): Promise<Response> {
+async function processRequest(query: NanoRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++
