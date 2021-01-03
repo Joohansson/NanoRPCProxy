@@ -1,4 +1,4 @@
-import {bigAdd, MnanoToRaw, rawToMnano} from "../tools";
+import {bigAdd, MnanoToRaw, multiplierFromDifficulty, rawToMnano} from "../tools";
 
 
 describe('rawToMnano', () => {
@@ -22,5 +22,11 @@ describe('MnanoToRaw', () => {
 describe('bigAdd', () => {
     test('add two large numbers', () => {
         expect(bigAdd('100000000000000000000000', '100000000000000000000000')).toStrictEqual('200000000000000000000000')
+    })
+})
+
+describe('multiplierFromDifficulty', () => {
+    test('calculates multiplier given base and difficulty', () => {
+        expect(multiplierFromDifficulty('fffffff800000000', 'fffffe0000000000')).toStrictEqual('64.00000000000000000000000000000000')
     })
 })
