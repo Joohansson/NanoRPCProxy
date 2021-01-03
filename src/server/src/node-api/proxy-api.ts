@@ -1,5 +1,9 @@
 import {TokenAPIActions} from "./token-api";
 
+export interface NodeRPCError {
+    error: string
+}
+
 export type RPCAction = TokenAPIActions | 'mnano_to_raw' | 'mnano_from_raw' | 'process' | 'work_generate' | 'price'
 
 export interface NanoRPCRequest {

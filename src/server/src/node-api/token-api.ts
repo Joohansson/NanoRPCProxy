@@ -1,8 +1,4 @@
-import {RPCAction} from "./proxy-api";
-
-export interface NodeRPCError {
-    error: string
-}
+import {NodeRPCError, RPCAction} from "./proxy-api";
 
 export interface TokenInfo {
     address: string

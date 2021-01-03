@@ -17,8 +17,8 @@ import NodeCache from "node-cache";
 import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
 import * as Tokens from './tokens'
-import {isTokensRequest, NodeRPCError, TokenAPIResponses} from "./node-api/token-api";
-import {NanoRPCRequest} from "./node-api/proxy-api";
+import {isTokensRequest, TokenAPIResponses} from "./node-api/token-api";
+import {NanoRPCRequest, NodeRPCError} from "./node-api/proxy-api";
 import {compareHex, multiplierFromDifficulty} from "./tools";
 
 require('dotenv').config() // load variables from .env into the environment

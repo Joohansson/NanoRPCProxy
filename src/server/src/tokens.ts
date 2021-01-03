@@ -7,12 +7,13 @@ import * as Tools from './tools'
 import Nacl from 'tweetnacl/nacl'
 import {
   CancelOrder,
-  NodeRPCError, StatusCallback,
+  StatusCallback,
   TokenInfo, TokenPriceResponse,
   TokenResponse,
   TokenStatusResponse,
   WaitingTokenOrder
 } from "./node-api/token-api";
+import {NodeRPCError} from "./node-api/proxy-api";
 
 const API_TIMEOUT = 10000 // 10sec timeout for calling http APIs
 const tokenSettings = readConfigPathsFromENV().token_settings
