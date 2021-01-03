@@ -10,7 +10,6 @@ import {OrderDB, OrderSchema, TrackedAccount, User, UserDB, UserSchema} from "./
 import {Request, Response} from "express";
 import {CorsOptions} from "cors";
 import {RateLimiterRes} from "rate-limiter-flexible";
-import ErrnoException = NodeJS.ErrnoException;
 import {IncomingMessage, ServerResponse} from "http";
 import {connection, IMessage, request as WSRequest, server as WSServer} from "websocket";
 import ReconnectingWebSocket, { ErrorEvent } from "reconnecting-websocket";
@@ -43,7 +42,7 @@ const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init
 const order_db: OrderDB =  lowdb(new FileSync<OrderSchema>('db.json'))
-const tracking_db: UserDB = lowdb(new FileSync<UserSchema>('websocket.json'))
+const tracking_db: UserDB = lowdb(new FileSync<UserSchema>(configPaths.websocket_path))
 order_db.defaults({orders: []}).write()
 tracking_db.defaults({users: []}).write()
 tracking_db.update('users', n => []).write() //empty db on each new run
@@ -959,7 +958,9 @@ module.exports = {
   logSettings: logSettings,
   processRequest: processRequest,
   myAuthorizer: myAuthorizer,
-  getUserSettings: getUserSettings
+  getUserSettings: getUserSettings,
+  trackAccount: trackAccount,
+  tracking_db: tracking_db,
 }
 
 var websocket_servers = []
@@ -1124,7 +1125,7 @@ if (settings.use_websocket) {
                     // mirror the subscription to the real websocket
                     var tracking_updated = false
                     msg.options.accounts.forEach(function (address: string) {
-                      if (trackAccount(connection, address)) {
+                      if (trackAccount(connection.remoteAddress, address)) {
                         tracking_updated = true
                       }
                     })
@@ -1167,11 +1168,10 @@ function originIsAllowed(origin: string) {
 }
 
 // Start websocket subscription for an address
-function trackAccount(connection: connection, address: string) {
+function trackAccount(remote_ip: string, address: string): boolean {
   if (!Tools.validateAddress(address)) {
     return false
   }
-  let remote_ip = connection.remoteAddress
   // get existing tracked accounts
   let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
   var current_tracked_accounts: Record<string, TrackedAccount> = {} //if not in db, use empty dict

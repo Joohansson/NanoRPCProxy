@@ -9,6 +9,11 @@ export function copyConfigFiles(filePaths: string[]) {
 }
 export function deleteConfigFiles(filePaths: string[]) {
     filePaths.forEach(filePath => {
-        fs.unlinkSync(`${testFolder}${filePath}`)
+        try {
+            let path = `${testFolder}${filePath}`;
+            fs.unlinkSync(path)
+        } catch (e) {
+            // file might not be found which is OK
+        }
     })
 }
