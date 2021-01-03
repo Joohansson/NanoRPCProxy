@@ -795,10 +795,10 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
       }
 
       // Try bpow first
-      if (settings.use_bpow) {
+      if (settings.use_bpow && bpow_user && bpow_key) {
         logThis("Requesting work using bpow with diff: " + query.difficulty, log_levels.info)
-        query.user = bpow_user ? bpow_url : undefined
-        query.api_key = bpow_key ? bpow_key : undefined
+        query.user = bpow_user
+        query.api_key = bpow_key
 
         try {
           let data: ProcessDataResponse = await Tools.postData(query, bpow_url, work_default_timeout*1000*2)
@@ -830,10 +830,10 @@ async function processRequest(query: NanoRPCRequest, req: Request, res: Response
         }
       }
       // Use dpow only if not already used bpow or bpow timed out
-      if (settings.use_dpow && (!settings.use_bpow || bpow_failed)) {
+      if (settings.use_dpow && (!settings.use_bpow || bpow_failed) && dpow_user && dpow_key) {
         logThis("Requesting work using dpow with diff: " + query.difficulty, log_levels.info)
-        query.user = dpow_user ? dpow_user : undefined
-        query.api_key = dpow_key ? dpow_key : undefined
+        query.user = dpow_user
+        query.api_key = dpow_key
 
         try {
           let data: ProcessDataResponse = await Tools.postData(query, dpow_url, work_default_timeout*1000*2)
