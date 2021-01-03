@@ -355,7 +355,7 @@ if (settings.use_ip_blacklist) {
 }
 
 // Error handling
-app.use((err: NodeRPCError, req: Request, res: Response, _next: any) => {
+app.use((err: Error, req: Request, res: Response, _next: any) => {
   if (err instanceof IpDeniedError) {
     return res.status(401).json({error: 'IP has been blocked'})
   }
@@ -440,7 +440,7 @@ const rateLimiterMiddleware2 = (req: Request, res: Response, next: (err?: any) =
     .then((response: RateLimiterRes) => {
       next()
     })
-    .catch((error?: NodeRPCError) => {
+    .catch((error?: Error) => {
       res.status(429).send('You are making requests too fast, please slow down!')
     })
  }
