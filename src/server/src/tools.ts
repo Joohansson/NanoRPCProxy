@@ -1,6 +1,7 @@
 import Fetch, {Response} from 'node-fetch'
 import BigInt from 'big-integer'
 import * as Nano from 'nanocurrency'
+const Dec = require('bigdecimal') //https://github.com/iriscouch/bigdecimal.js
 
 // Custom error class
 class APIError extends Error {
@@ -97,7 +98,7 @@ function checkStatus(res: Response) {
 }
 
 // Check if numeric string
-function isNumeric(val: string) {
+function isNumeric(val: string): boolean {
   //numerics and last character is not a dot and number of dots is 0 or 1
   let isnum = /^-?\d*\.?\d*$/.test(val)
   if (isnum && String(val).slice(-1) !== '.') {
@@ -106,4 +107,23 @@ function isNumeric(val: string) {
   else {
     return false
   }
+}
+
+// Compare two hex strings, returns 0 if equal, -1 if A<B and 1 if A>B
+export function compareHex(a: string | number, b: string | number): number {
+  a = parseInt('0x' + a, 16)
+  b = parseInt('0x' + b, 16)
+  let result = 0
+  if (a > b) result = 1
+  else if(a < b) result = -1
+  return result
+}
+
+// Determine new multiplier from base difficulty (hexadecimal string) and target difficulty (hexadecimal string). Returns float
+export function multiplierFromDifficulty(difficulty: string, base_difficulty: string): string {
+  let big64 = Dec.BigDecimal(2).pow(64)
+  let big_diff = Dec.BigDecimal(Dec.BigInteger(difficulty,16))
+  let big_base = Dec.BigDecimal(Dec.BigInteger(base_difficulty,16))
+  let mode = Dec.RoundingMode.HALF_DOWN()
+  return big64.subtract(big_base).divide(big64.subtract(big_diff),32,mode).toPlainString()
 }

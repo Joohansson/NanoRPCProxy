@@ -17,6 +17,9 @@ import NodeCache from "node-cache";
 import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
 import * as Tokens from './tokens'
+import {isTokensRequest, TokenAPIResponses} from "./node-api/token-api";
+import {ProxyRPCRequest} from "./node-api/proxy-api";
+import {compareHex, multiplierFromDifficulty} from "./tools";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -36,7 +39,6 @@ const Schedule =              require('node-schedule')
 const WebSocketServer =       require('websocket').server
 const WS =                    require('ws')
 const Helmet =                require('helmet')
-const Dec =                   require('bigdecimal') //https://github.com/iriscouch/bigdecimal.js
 const RemoveTrailingZeros =   require('remove-trailing-zeros')
 const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
@@ -523,7 +525,7 @@ function myAuthorizer(username: string, password: string): boolean {
 }
 
 // Deduct token count for given token_key
-function useToken(query: any) {
+function useToken(query: ProxyRPCRequest) {
   let token_key = query.token_key
   // Find token_key in order DB
   if (order_db.get('orders').find({token_key: token_key}).value()) {
@@ -585,43 +587,6 @@ function logThis(str: string, level: LogLevel) {
   }
 }
 
-// Compare two hex strings, returns 0 if equal, -1 if A<B and 1 if A>B
-function compareHex(a: string | number, b: string | number) {
-  a = parseInt('0x' + a, 16)
-  b = parseInt('0x' + b, 16)
-  let result = 0
-  if (a > b) result = 1
-  else if(a < b) result = -1
-  return result
-}
-
-// Determine new multiplier from base difficulty (hexadecimal string) and target difficulty (hexadecimal string). Returns float
-function multiplierFromDifficulty(difficulty: string, base_difficulty: string) {
-  let big64 = Dec.BigDecimal(2).pow(64)
-  let big_diff = Dec.BigDecimal(Dec.BigInteger(difficulty,16))
-  let big_base = Dec.BigDecimal(Dec.BigInteger(base_difficulty,16))
-  let mode = Dec.RoundingMode.HALF_DOWN()
-  return big64.subtract(big_base).divide(big64.subtract(big_diff),32,mode).toPlainString()
-}
-
-// Custom error class
-class APIError extends Error {
-
-  private code: any
-
-  constructor(code: string, ...params: any[]) {
-    super(...params)
-
-    // Maintains proper stack trace for where our error was thrown (only available on V8)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, APIError)
-    }
-    this.name = 'APIError'
-    // Custom debugging information
-    this.code = code
-  }
-}
-
 // Default get requests
 if (settings.request_path != '/') {
   app.get('/', async (req: Request, res: Response) => {
@@ -631,6 +596,7 @@ if (settings.request_path != '/') {
 
 // Process any API requests
 app.get(settings.request_path, (req: Request, res: Response) => {
+  // @ts-ignore
   processRequest(req.query, req, res)
 })
 
@@ -639,74 +605,77 @@ app.post(settings.request_path, (req: Request, res: Response) => {
   processRequest(req.body, req, res)
 })
 
-async function processRequest(query: any, req: Request, res: Response) {
-  if (query.action !== 'tokenorder_check') {
-    logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
-    rpcCount++
-  }
-
-  if (settings.use_tokens) {
+async function processTokensRequest(query: ProxyRPCRequest, req: Request, res: Response<TokenAPIResponses>): Promise<Response> {
+  switch (query.action) {
     // Initiate token purchase
-    var token_key = ""
-    if (query.action === 'tokens_buy') {
-      var token_amount = 0
-      if ('token_amount' in query) {
+    case 'tokens_buy':
+      let token_key = ""
+      let token_amount = 0
+      if (query.token_amount) {
         token_amount = Math.round(query.token_amount)
       }
       else {
         return res.status(500).json({ error: 'The amount of tokens (token_amount) to purchase must be provided'})
       }
-      if ('token_key' in query) {
+      if (query.token_key) {
         token_key = query.token_key
       }
 
       let payment_request = await Tokens.requestTokenPayment(token_amount, token_key, order_db, settings.node_url)
-
-      res.json(payment_request)
-      return
-    }
+      return res.json(payment_request)
 
     // Verify order status
-    if (query.action === 'tokenorder_check') {
-      if ('token_key' in query) {
-        token_key = query.token_key
+    case 'tokenorder_check':
+      if (query.token_key) {
+        let token_key = query.token_key
         let status = await Tokens.checkOrder(token_key, order_db)
         return res.json(status)
       }
       else {
         return res.status(500).json({ error: 'No token key provided'})
       }
-    }
 
     // Claim back private key and replace the account
-    if (query.action === 'tokenorder_cancel') {
-      if ('token_key' in query) {
-        token_key = query.token_key
+    case 'tokenorder_cancel':
+      if (query.token_key) {
+        let token_key = query.token_key
         let status = await Tokens.cancelOrder(token_key, order_db)
         return res.json(status)
       }
       else {
         return res.status(500).json({ error: 'No token key provided'})
       }
-    }
 
     // Verify order status
-    if (query.action === 'tokens_check') {
+    case 'tokens_check':
       if ('token_key' in query) {
-        token_key = query.token_key
+        let token_key = query.token_key
         let status = await Tokens.checkTokens(token_key, order_db)
         return res.json(status)
       }
       else {
         return res.status(500).json({ error: 'No token key provided'})
       }
-    }
+
+    // Check token price
+    case 'tokenprice_check':
+      let status = await Tokens.checkTokenPrice()
+      return res.json(appendRateLimiterStatus(res, status))
+
+    default:
+      logThis(`Unable to handle token api=${query.action}, this is probably a developer error`, log_levels.warning)
+      return res.status(500).json({ error: 'Invalid token API request'})
+  }
+}
+
+async function processRequest(query: ProxyRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
+  if (query.action !== 'tokenorder_check') {
+    logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
+    rpcCount++
   }
 
-  // Check token price
-  if (query.action === 'tokenprice_check') {
-    let status = await Tokens.checkTokenPrice()
-    return res.json(appendRateLimiterStatus(res, status))
+  if(settings.use_tokens && isTokensRequest(query.action)) {
+    return processTokensRequest(query, req, res);
   }
 
   // Block non-allowed RPC commands
@@ -718,7 +687,7 @@ async function processRequest(query: any, req: Request, res: Response) {
   // Decrease user tokens and block if zero left
   var tokens_left: number | null = null
   if (settings.use_tokens) {
-    if ('token_key' in query) {
+    if (query.token_key) {
       let status = useToken(query)
       if (status === -1) {
         return res.status(500).json({ error: 'You have no more tokens to use!'})
@@ -757,34 +726,31 @@ async function processRequest(query: any, req: Request, res: Response) {
       if (tokens_left != null) {
         data.tokens_total = tokens_left
       }
-      res.json(appendRateLimiterStatus(res, data)) // sending back full json price response (Coinpaprika)
+      return res.json(appendRateLimiterStatus(res, data)) // sending back full json price response (Coinpaprika)
     }
     catch(err) {
-      res.status(500).json({error: err.toString()})
+      return res.status(500).json({error: err.toString()})
     }
-    return
   }
 
   if (query.action === 'mnano_to_raw') {
-    if ('amount' in query) {
+    if (query.amount) {
       let amount = Tools.MnanoToRaw(query.amount)
-      res.json(appendRateLimiterStatus(res, {"amount":amount}))
+      return res.json(appendRateLimiterStatus(res, {"amount":amount}))
     }
     else {
       return res.status(500).json({ error: 'Amount not provided!'})
     }
-    return
   }
 
   if (query.action === 'mnano_from_raw') {
-    if ('amount' in query) {
+    if (query.amount) {
       let amount = Tools.rawToMnano(query.amount)
-      res.json(appendRateLimiterStatus(res, {"amount":amount}))
+      return res.json(appendRateLimiterStatus(res, {"amount":amount}))
     }
     else {
       return res.status(500).json({ error: 'Amount not provided!'})
     }
-    return
   }
 
   // Force no watch_work (don't want the node to perform pow)
@@ -796,11 +762,11 @@ async function processRequest(query: any, req: Request, res: Response) {
 
   // Handle work generate via dpow and/or bpow
   if (query.action === 'work_generate' && (settings.use_dpow || settings.use_bpow)) {
-    if ('hash' in query) {
+    if (query.hash) {
       var bpow_failed = false
-      if (!("difficulty" in query)) {
+      if (!(query.difficulty)) {
         // Use cached value first
-        const cachedValue = rpcCache?.get('difficulty')
+        const cachedValue: string | undefined = rpcCache?.get<string>('difficulty')
         if (Tools.isValidJson(cachedValue)) {
           logThis("Cache requested: " + 'difficulty', log_levels.info)
           query.difficulty = cachedValue
@@ -808,7 +774,7 @@ async function processRequest(query: any, req: Request, res: Response) {
         else {
           // get latest difficulty from network
           let data: ActiveDifficultyResponse = await Tools.postData({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
-          if ('network_current' in data) {
+          if (data.network_current) {
             // Store the difficulty in cache for 60sec
             if (!rpcCache?.set('difficulty', data.network_current, 60)) {
               logThis("Failed saving cache for " + 'difficulty', log_levels.warning)
@@ -821,16 +787,16 @@ async function processRequest(query: any, req: Request, res: Response) {
             logThis("Using default difficulty: " + query.difficulty, log_levels.info)
           }
         }
-        if (compareHex(work_threshold_default, query.difficulty)) {
+        if (query.difficulty && compareHex(work_threshold_default, query.difficulty)) {
           query.difficulty = work_threshold_default
         }
       }
-      if (!("timeout" in query)) {
+      if (!(query.timeout)) {
         query.timeout = work_default_timeout
       }
 
       // Try bpow first
-      if (settings.use_bpow) {
+      if (settings.use_bpow && bpow_user && bpow_key) {
         logThis("Requesting work using bpow with diff: " + query.difficulty, log_levels.info)
         query.user = bpow_user
         query.api_key = bpow_key
@@ -843,32 +809,29 @@ async function processRequest(query: any, req: Request, res: Response) {
             data.tokens_total = tokens_left
           }
           // if bpow time out
-          if ('error' in data) {
+          if (data.error) {
             logThis("bPoW failed: " + data.error, log_levels.warning)
           }
-          if (('error' in data) || !('work' in data)) {
+          if ((data.error) || !(data.work)) {
             bpow_failed = true
             if (!settings.use_dpow) {
-              res.json(appendRateLimiterStatus(res, data)) // forward error if not retrying with dpow
-              return
+              return res.json(appendRateLimiterStatus(res, data)) // forward error if not retrying with dpow
             }
           }
-          else if ('work' in data) {
-            res.json(appendRateLimiterStatus(res, data)) // sending back successful json response
-            return
+          else if (data.work) {
+            return res.json(appendRateLimiterStatus(res, data)) // sending back successful json response
           }
         }
         catch(err) {
           bpow_failed = true
-          if (!settings.use_dpow) {
-            res.status(500).json({error: err.toString()})
-            return
-          }
           logThis("Bpow connection error: " + err.toString(), log_levels.warning)
+          if (!settings.use_dpow) {
+            return res.status(500).json({error: err.toString()})
+          }
         }
       }
       // Use dpow only if not already used bpow or bpow timed out
-      if (settings.use_dpow && (!settings.use_bpow || bpow_failed)) {
+      if (settings.use_dpow && (!settings.use_bpow || bpow_failed) && dpow_user && dpow_key) {
         logThis("Requesting work using dpow with diff: " + query.difficulty, log_levels.info)
         query.user = dpow_user
         query.api_key = dpow_key
@@ -880,21 +843,20 @@ async function processRequest(query: any, req: Request, res: Response) {
           if (tokens_left != null) {
             data.tokens_total = tokens_left
           }
-          if ('error' in data) {
+          if (data.error) {
             logThis("dPoW failed: " + data.error, log_levels.warning)
           }
-          res.json(appendRateLimiterStatus(res, data)) // sending back json response (regardless if timeout error)
+          return res.json(appendRateLimiterStatus(res, data)) // sending back json response (regardless if timeout error)
         }
         catch(err) {
-          res.status(500).json({error: err.toString()})
           logThis("Dpow connection error: " + err.toString(), log_levels.warning)
+          return res.status(500).json({error: err.toString()})
         }
       }
     }
     else {
       return res.status(500).json({ error: 'Hash not provided!'})
     }
-    return
   }
 
   // ---
@@ -918,9 +880,9 @@ async function processRequest(query: any, req: Request, res: Response) {
   if (userSettings.use_output_limiter) {
     const value: number | undefined = userSettings.limited_commands[query.action]
     if(value !== undefined) {
-      if (parseInt(query.count) > value || !("count" in query)) {
+      if (query.count > value || !(query.count)) {
         query.count = value
-        if (parseInt(query.count) > value) {
+        if (query.count > value) {
           logThis("Response count was limited to " + value.toString(), log_levels.info)
         }
       }
@@ -942,11 +904,11 @@ async function processRequest(query: any, req: Request, res: Response) {
     if (tokens_left != null) {
       data.tokens_total = tokens_left
     }
-    res.json(appendRateLimiterStatus(res, data)) // sending back json response
+    return res.json(appendRateLimiterStatus(res, data)) // sending back json response
   }
   catch(err) {
-    res.status(500).json({error: err.toString()})
     logThis("Node conection error: " + err.toString(), log_levels.warning)
+    return res.status(500).json({error: err.toString()})
   }
 }
 

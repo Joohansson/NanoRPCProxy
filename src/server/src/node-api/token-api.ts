@@ -1,4 +1,6 @@
-export interface Error {
+import {RPCAction} from "./proxy-api";
+
+export interface TokenRPCError {
     error: string
 }
 
@@ -35,4 +37,12 @@ export interface TokenPriceResponse {
 export interface StatusCallback {
     amount: number
     hashes?: string[]
+}
+
+export type TokenAPIResponses = TokenResponse | TokenInfo | WaitingTokenOrder | CancelOrder | TokenStatusResponse | TokenPriceResponse | TokenRPCError
+
+export type TokenAPIActions = 'tokens_buy' | 'tokenorder_check' | 'tokenorder_cancel' | 'tokens_check' | 'tokenprice_check'
+
+export function isTokensRequest(action: RPCAction): boolean {
+    return action === 'tokens_buy' || action === 'tokenorder_check' || action === 'tokenorder_cancel' || action === 'tokens_check' || action === 'tokenprice_check'
 }
