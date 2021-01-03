@@ -663,7 +663,7 @@ async function processTokensRequest(query: NanoRPCRequest, req: Request, res: Re
       return res.json(appendRateLimiterStatus(res, status))
 
     default:
-      return res.status(404)
+      return res.status(500).json({ error: 'Invalid token API request'})
   }
 }
 
