@@ -18,7 +18,7 @@ import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
 import * as Tokens from './tokens'
 import {isTokensRequest, TokenAPIResponses} from "./node-api/token-api";
-import {NanoRPCRequest} from "./node-api/proxy-api";
+import {ProxyRPCRequest} from "./node-api/proxy-api";
 import {compareHex, multiplierFromDifficulty} from "./tools";
 
 require('dotenv').config() // load variables from .env into the environment
@@ -525,7 +525,7 @@ function myAuthorizer(username: string, password: string): boolean {
 }
 
 // Deduct token count for given token_key
-function useToken(query: NanoRPCRequest) {
+function useToken(query: ProxyRPCRequest) {
   let token_key = query.token_key
   // Find token_key in order DB
   if (order_db.get('orders').find({token_key: token_key}).value()) {
@@ -605,7 +605,7 @@ app.post(settings.request_path, (req: Request, res: Response) => {
   processRequest(req.body, req, res)
 })
 
-async function processTokensRequest(query: NanoRPCRequest, req: Request, res: Response<TokenAPIResponses>): Promise<Response> {
+async function processTokensRequest(query: ProxyRPCRequest, req: Request, res: Response<TokenAPIResponses>): Promise<Response> {
   switch (query.action) {
     // Initiate token purchase
     case 'tokens_buy':
@@ -668,7 +668,7 @@ async function processTokensRequest(query: NanoRPCRequest, req: Request, res: Re
   }
 }
 
-async function processRequest(query: NanoRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
+async function processRequest(query: ProxyRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++
