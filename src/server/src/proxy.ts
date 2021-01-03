@@ -17,7 +17,7 @@ import NodeCache from "node-cache";
 import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
 import * as Tokens from './tokens'
-import {isTokensRequest, TokenAPIError, TokenAPIResponses} from "./node-api/token-api";
+import {isTokensRequest, NodeRPCError, TokenAPIResponses} from "./node-api/token-api";
 import {NanoRPCRequest} from "./node-api/proxy-api";
 import {compareHex, multiplierFromDifficulty} from "./tools";
 
@@ -355,7 +355,7 @@ if (settings.use_ip_blacklist) {
 }
 
 // Error handling
-app.use((err: TokenAPIError, req: Request, res: Response, _next: any) => {
+app.use((err: NodeRPCError, req: Request, res: Response, _next: any) => {
   if (err instanceof IpDeniedError) {
     return res.status(401).json({error: 'IP has been blocked'})
   }
@@ -440,7 +440,7 @@ const rateLimiterMiddleware2 = (req: Request, res: Response, next: (err?: any) =
     .then((response: RateLimiterRes) => {
       next()
     })
-    .catch((error?: TokenAPIError) => {
+    .catch((error?: NodeRPCError) => {
       res.status(429).send('You are making requests too fast, please slow down!')
     })
  }
@@ -667,7 +667,7 @@ async function processTokensRequest(query: NanoRPCRequest, req: Request, res: Re
   }
 }
 
-async function processRequest(query: NanoRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses | TokenAPIError>): Promise<Response> {
+async function processRequest(query: NanoRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses | NodeRPCError>): Promise<Response> {
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++

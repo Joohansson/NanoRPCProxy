@@ -1,6 +1,6 @@
 import {RPCAction} from "./proxy-api";
 
-export interface TokenAPIError {
+export interface NodeRPCError {
     error: string
 }
 
@@ -39,7 +39,7 @@ export interface StatusCallback {
     hashes?: string[]
 }
 
-export type TokenAPIResponses = TokenResponse | TokenInfo | WaitingTokenOrder | CancelOrder | TokenStatusResponse | TokenAPIError | TokenPriceResponse
+export type TokenAPIResponses = TokenResponse | TokenInfo | WaitingTokenOrder | CancelOrder | TokenStatusResponse | TokenPriceResponse | NodeRPCError
 
 export type TokenAPIActions = 'tokens_buy' | 'tokenorder_check' | 'tokenorder_cancel' | 'tokens_check' | 'tokenprice_check'
 
