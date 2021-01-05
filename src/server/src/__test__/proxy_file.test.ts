@@ -59,7 +59,8 @@ const expectedSettingsWithFile = [
     '33 : mnano_from_raw\n' +
     '34 : work_validate\n' +
     '35 : validate_account_number\n' +
-    '36 : version\n',
+    '36 : version\n' +
+    '37 : verified_accounts\n',
     'Cached commands:\n' +
     '\n' +
     'block_count : 30\n' +
