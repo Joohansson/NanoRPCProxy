@@ -368,6 +368,23 @@ Returns the latest Nano price quote from Coinpaprika. Will always be cached for 
       }
     }
 
+* **{"action":"verified_accounts"}**
+
+Returns a list of verified accounts from https://mynano.ninja/. These can be used as suggestions for representative accounts.
+This response is cached for 1 minute:
+
+    [
+      {
+        "votingweight": 7.231803912122739e+35,
+        "delegators": 1359,
+        "uptime": 99.72967712635973,
+        "score": 99,
+        "account": "nano_33ad5app7jeo6jfe9ure6zsj8yg7knt6c1zrr5yg79ktfzk5ouhmpn6p5d7p",
+        "alias": "warai"
+      },
+      ...
+    ]
+
 * **{"action":"mnano_to_raw","amount":"1"}**
 
 Converts NANO to raw

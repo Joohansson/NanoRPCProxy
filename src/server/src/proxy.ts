@@ -18,8 +18,9 @@ import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
 import * as Tokens from './tokens'
 import {isTokensRequest, TokenAPIResponses} from "./node-api/token-api";
-import {ProxyRPCRequest} from "./node-api/proxy-api";
+import {ProxyRPCRequest, VerifiedAccount} from "./node-api/proxy-api";
 import {compareHex, multiplierFromDifficulty} from "./tools";
+import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-api/mynano-api";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -56,6 +57,7 @@ var users: Credentials[] = []                      // a list of base64 user/pass
 let cache_duration_default: number = 60
 var rpcCache: NodeCache | null = null
 const price_url = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
+const mynano_ninja_url = 'https://mynano.ninja/api/accounts/verified'
 //const price_url2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
 //const CMC_API_KEY = 'xxx'
 const API_TIMEOUT: number = 10000 // 10sec timeout for calling http APIs
@@ -727,6 +729,27 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         data.tokens_total = tokens_left
       }
       return res.json(appendRateLimiterStatus(res, data)) // sending back full json price response (Coinpaprika)
+    }
+    catch(err) {
+      return res.status(500).json({error: err.toString()})
+    }
+  }
+
+  if(query.action === 'verified_accounts') {
+    try {
+      // Use cached value first
+      const cachedValue: MynanoVerifiedAccountsResponse | undefined = rpcCache?.get('verified_accounts')
+      if (cachedValue && Tools.isValidJson(cachedValue)) {
+        logThis("Cache requested: " + 'verified_accounts', log_levels.info)
+        return res.json(appendRateLimiterStatus(res, cachedValue.map(mynanoToVerifiedAccount)))
+      }
+
+      let data: MynanoVerifiedAccountsResponse = await Tools.getData(mynano_ninja_url, API_TIMEOUT)
+      // Store the list in cache for 60 sec
+      if (!rpcCache?.set('verified_accounts', data, 60)) {
+        logThis("Failed saving cache for " + 'verified_accounts', log_levels.warning)
+      }
+      return res.json(appendRateLimiterStatus(res, data.map(mynanoToVerifiedAccount)))
     }
     catch(err) {
       return res.status(500).json({error: err.toString()})

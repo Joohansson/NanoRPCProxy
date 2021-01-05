@@ -59,7 +59,8 @@
     "mnano_from_raw",
     "work_validate",
     "validate_account_number",
-    "version"
+    "version",
+    "verified_accounts"
   ],
   "cached_commands":        {
     "block_count":            30,
