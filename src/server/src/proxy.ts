@@ -18,8 +18,9 @@ import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
 import * as Tokens from './tokens'
 import {isTokensRequest, TokenAPIResponses} from "./node-api/token-api";
-import {ProxyRPCRequest} from "./node-api/proxy-api";
+import {ProxyRPCRequest, VerifiedAccount} from "./node-api/proxy-api";
 import {compareHex, multiplierFromDifficulty} from "./tools";
+import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-api/mynano-api";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -737,19 +738,18 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   if(query.action === 'verified_accounts') {
     try {
       // Use cached value first
-      const cachedValue: VerifiedAccountsResponse | undefined = rpcCache?.get('verified_accounts')
+      const cachedValue: MynanoVerifiedAccountsResponse | undefined = rpcCache?.get('verified_accounts')
       if (cachedValue && Tools.isValidJson(cachedValue)) {
         logThis("Cache requested: " + 'verified_accounts', log_levels.info)
-        return res.json(appendRateLimiterStatus(res, cachedValue))
+        return res.json(appendRateLimiterStatus(res, cachedValue.map(a => mynanoToVerifiedAccount(a))))
       }
 
-      let data: VerifiedAccountsResponse = await Tools.getData(mynano_ninja_url, API_TIMEOUT)
-
-      // Store the price in cache for 60sec
+      let data: MynanoVerifiedAccountsResponse = await Tools.getData(mynano_ninja_url, API_TIMEOUT)
+      // Store the list in cache for 60 sec
       if (!rpcCache?.set('verified_accounts', data, 60)) {
-        logThis("Failed saving cache for " + 'price', log_levels.warning)
+        logThis("Failed saving cache for " + 'verified_accounts', log_levels.warning)
       }
-      return res.json(appendRateLimiterStatus(res, data))
+      return res.json(appendRateLimiterStatus(res, data.map(a => mynanoToVerifiedAccount(a))))
     }
     catch(err) {
       return res.status(500).json({error: err.toString()})

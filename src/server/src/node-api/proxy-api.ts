@@ -15,3 +15,12 @@ export interface ProxyRPCRequest {
     count: number
     hash: string
 }
+
+export interface VerifiedAccount {
+    votingweight: number
+    delegators: number
+    uptime: number
+    score: number
+    account: string
+    alias: string
+}
