@@ -250,7 +250,7 @@ Example of config-node.toml
 To upgrade you need to first turn off running container ("docker stop xxx", or "docker-compose down"). Also remove the container if you want to keep the same name (label)
 
 * Normal container: docker pull nanojson/nanorpcproxy:latest
-* Composer: docker-compose upgrade
+* Composer: docker-compose pull
 
 ---
 ---
