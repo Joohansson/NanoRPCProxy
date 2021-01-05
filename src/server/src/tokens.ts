@@ -414,7 +414,7 @@ async function processPending(order_db: OrderDB, blocks: any, keys: any, keyCoun
 
     // retrive from RPC
     try {
-      let data: WorkGenerateResponse = await Tools.postData(command, node_url, API_TIMEOUT)
+      let data: WorkGenerateResponse = await Tools.postData(command, settings.work_server, API_TIMEOUT)
       if (data.work) {
         let work = data.work
         // create the block with the work found
