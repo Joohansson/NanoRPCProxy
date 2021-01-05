@@ -741,7 +741,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
       const cachedValue: MynanoVerifiedAccountsResponse | undefined = rpcCache?.get('verified_accounts')
       if (cachedValue && Tools.isValidJson(cachedValue)) {
         logThis("Cache requested: " + 'verified_accounts', log_levels.info)
-        return res.json(appendRateLimiterStatus(res, cachedValue.map(a => mynanoToVerifiedAccount(a))))
+        return res.json(appendRateLimiterStatus(res, cachedValue.map(mynanoToVerifiedAccount)))
       }
 
       let data: MynanoVerifiedAccountsResponse = await Tools.getData(mynano_ninja_url, API_TIMEOUT)
@@ -749,7 +749,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
       if (!rpcCache?.set('verified_accounts', data, 60)) {
         logThis("Failed saving cache for " + 'verified_accounts', log_levels.warning)
       }
-      return res.json(appendRateLimiterStatus(res, data.map(a => mynanoToVerifiedAccount(a))))
+      return res.json(appendRateLimiterStatus(res, data.map(mynanoToVerifiedAccount)))
     }
     catch(err) {
       return res.status(500).json({error: err.toString()})
