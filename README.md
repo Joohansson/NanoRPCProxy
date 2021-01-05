@@ -306,7 +306,7 @@ The following parameters can be set in **token_settings.json** for configuration
 
 More info about the token system [in this section](#the-token-system)
 
-* **work_server** Source for calculating PoW. Can be a node (http://[::1]:7076) (with enable_control active) or a [work server](https://github.com/nanocurrency/nano-work-server) which can be run as "./nano-work-server --gpu 0:0 -l 127.0.0.1:7000" and then set work_server to http://127.0.0.1:7000. Also available pre-compiled [here](https://github.com/guilhermelawless/nano-dpow/tree/master/client).
+* **work_server** Source for calculating PoW. Can be a node (http://[::1]:7076) (with enable_control active) or a [work server](https://github.com/nanocurrency/nano-work-server) which can be run as "./nano-work-server --gpu 0:0 -l 127.0.0.1:7000" and then set work_server to http://127.0.0.1:7000. Also available pre-compiled [here](https://github.com/guilhermelawless/nano-dpow/tree/master/client). To use bpow or dpow, just point the server to itself such as http://127.0.0.1:9950/proxy (requires bpow/dpow to be configured and work_generate as allowed command)
 * **token_price**: Purchase price per token [Nano]
 * **payment_timeout**: Payment window before timeout and cancelled [seconds]
 * **pending_interval**: How often to check for deposit during the payment window (may be removed if websocket is implemented)

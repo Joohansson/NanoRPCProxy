@@ -3,6 +3,7 @@ import Fs from "fs";
 
 export interface TokenSettings {
     // the work server for doing PoW (the node can be used as well, for example http://127.0.0.1:7076, but enable_control is needed in the node config)
+    // To use bpow or dpow, just point the server to itself such as http://127.0.0.1:9950/proxy (requires bpow/dpow to be configured and work_generate as allowed command)
     work_server: string
     // Nano per token
     token_price: number
