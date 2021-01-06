@@ -343,7 +343,7 @@ if (settings.use_cors) {
   }
 }
 
-app.use(Express.json())
+app.use(Express.json({type: '*/*'}))
 app.use(Express.static('static'))
 
 // Define the number of proxy hops on the system to detect correct source IP for the filters below

@@ -407,11 +407,11 @@ The curl command looks just a tiny bit different than for a direct node request.
 
 **POST: No authentication**
 
-    curl -H "Content-Type: application/json" -d '{"action":"block_count"}' http://localhost:9950/proxy
+    curl -d '{"action":"block_count"}' http://localhost:9950/proxy
 
 **POST: With authentication**
 
-    curl --user user1:user1 -H "Content-Type: application/json" -d '{"action":"block_count"}' http://127.0.0.1:9950/proxy
+    curl --user user1:user1 -d '{"action":"block_count"}' http://127.0.0.1:9950/proxy
 
 **GET: No authentication**
 
@@ -464,7 +464,6 @@ See the js demo client for full example with error handling
         method: 'POST',
         cache: 'no-cache',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': 'Basic ' + Base64.encode('user1:user1')
         },
         body: JSON.stringify(data)
