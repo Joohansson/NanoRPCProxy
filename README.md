@@ -423,6 +423,10 @@ The curl command looks just a tiny bit different than for a direct node request.
 
 ![Curl demo](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/demo_curl.png)
 
+**Using Windows Powershell 7 - Escape quotes**
+
+    curl -d '{\"action\":\"block_count\"}' http://localhost:9950/proxy
+
 ---
 ### Using python
 **POST: No authentication**
