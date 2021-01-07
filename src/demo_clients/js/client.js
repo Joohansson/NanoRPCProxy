@@ -83,7 +83,6 @@ async function postData(data = {}, server=NODE_SERVER) {
         cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
         credentials: 'same-origin', // include, *same-origin, omit
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': 'Basic ' + Base64.encode(CREDS)
         },
         redirect: 'follow', // manual, *follow, error
@@ -132,7 +131,6 @@ async function postDataSimple(data = {}, server=NODE_SERVER) {
     method: 'POST', // *GET, POST, PUT, DELETE, etc.
     cache: 'no-cache',
     headers: {
-      'Content-Type': 'application/json',
       'Authorization': 'Basic ' + Base64.encode(CREDS)
     },
     body: JSON.stringify(data) // body data type must match "Content-Type" header

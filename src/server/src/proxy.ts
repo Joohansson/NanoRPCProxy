@@ -343,7 +343,7 @@ if (settings.use_cors) {
   }
 }
 
-app.use(Express.json())
+app.use(Express.json({type: '*/*'}))
 app.use(Express.static('static'))
 
 // Define the number of proxy hops on the system to detect correct source IP for the filters below
@@ -358,7 +358,10 @@ if (settings.use_ip_blacklist) {
 
 // Error handling
 app.use((err: Error, req: Request, res: Response, _next: any) => {
-  if (err instanceof IpDeniedError) {
+  if (err instanceof SyntaxError) {
+    return res.status(400).json({error: err.message}); // Bad request
+  }
+  else if (err instanceof IpDeniedError) {
     return res.status(401).json({error: 'IP has been blocked'})
   }
   else {

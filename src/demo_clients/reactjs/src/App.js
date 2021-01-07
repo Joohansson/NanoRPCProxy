@@ -461,7 +461,7 @@ class App extends Component {
   // Post RPC data with timeout and catch errors
   async postData(data = {}, server=constants.RPC_SERVER) {
     let didTimeOut = false;
-    var headers = {'Content-Type': 'application/json'}
+    var headers = {}
     if (this.state.useAuth) {
       headers.Authorization = 'Basic ' + Base64.encode(constants.RPC_CREDS)
     }
