@@ -517,6 +517,10 @@ Any RPC command can be made by including a request key. For each request 1 token
       "tokens_total": 4999
     }
 
+As an alternative, it's also valid to include the token key via the header "Token: xyz".
+
+    curl -H "Token: 815c8c736756da0965ca0994e9ac59a0da7f635aa0675184eff96a3146c49d74" -d '{"action":"block_count"}' http://127.0.0.1:9950/proxy
+
 * **{"action":"tokens_buy","token_amount":10}**
 
 Initiates a new order of 10 tokens and respond with a deposit account, a token key and the amount of Nano to pay
