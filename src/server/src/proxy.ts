@@ -691,7 +691,12 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
 
   // Decrease user tokens and block if zero left
   var tokens_left: number | null = null
+  var token_header: string | undefined = req.get('Token')
   if (settings.use_tokens) {
+    // If token supplied via header, use it instead
+    if (token_header) {
+      query.token_key = token_header
+    }
     if (query.token_key) {
       let status = useToken(query)
       if (status === -1) {

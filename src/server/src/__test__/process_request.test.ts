@@ -28,7 +28,9 @@ test('processRequest should fail at unreachable node', async () => {
     let body = {
         action: 'block_info'
     }
-    let request: any = {}
+    let request: any = {
+        get: (name: string) => undefined
+    }
     let mockResponse: MockResponse = new MockResponse()
 
     await proxy.processRequest(body, request, mockResponse)
