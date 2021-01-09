@@ -203,12 +203,13 @@ All files but settings.json is disabled in the docker-compose file by default.
 
 #### Example docker-compose.yml for running a Nano node and the proxy
 
-1. Copy the server/settings.json.default to a new folder settings/settings.json (or other setting files mentioned above)
+1. Copy the server/settings.json.default to a new folder nano_proxy/settings.json (or other setting files mentioned above)
 2. Edit settings.json and make sure "node_url":"http://node:7076" and "node_ws_url":"ws://node:7078". That means the proxy will connect to the node service (name=node) internally.
-3. Create a docker-compose.yml and paste this (at the root of the settings folder). It will download the latest node and proxy. Then forward the node port 7075, RPC port 9950 and Websocket port 9952. Those will be the ones exposed.
+3. Create a docker-compose.yml and paste this (at the root of the nano_proxy folder). It will download the latest node and proxy. Then forward the node port 7075, RPC port 9950 and Websocket port 9952. Those will be the ones exposed.
 
 docker-compose.yml
-
+    
+    version: "3"
     services:
       node:
         image: "nanocurrency/nano:latest"
@@ -224,7 +225,7 @@ docker-compose.yml
           - "9950:9950"
           - "9952:9952"
         volumes:
-          - ./settings/settings.json:/usr/src/app/settings.json
+          - ./nano_proxy/settings.json:/usr/src/app/settings.json
 
 4. Create a folder called nano_node (same level as the settings folder)
 5. Run this in the same folder as the docker-compose.yml
