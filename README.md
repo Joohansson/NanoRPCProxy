@@ -208,7 +208,8 @@ All files but settings.json is disabled in the docker-compose file by default.
 3. Create a docker-compose.yml and paste this (at the root of the settings folder). It will download the latest node and proxy. Then forward the node port 7075, RPC port 9950 and Websocket port 9952. Those will be the ones exposed.
 
 docker-compose.yml
-
+    
+    version: "3"
     services:
       node:
         image: "nanocurrency/nano:latest"
