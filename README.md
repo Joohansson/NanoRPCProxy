@@ -225,7 +225,7 @@ docker-compose.yml
           - "9950:9950"
           - "9952:9952"
         volumes:
-          - ./settings/settings.json:/usr/src/app/settings.json
+          - ./nano_proxy/settings.json:/usr/src/app/settings.json
 
 4. Create a folder called nano_node (same level as the settings folder)
 5. Run this in the same folder as the docker-compose.yml
