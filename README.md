@@ -114,6 +114,7 @@ Example of PM2 web monitor. Can track all your apps and with realtime logs.
 https://expeditedsecurity.com/blog/deploy-node-on-linux/#node-linux-service-systemd
 
 _Make sure you have build the project (npm run build) first as specified in the `Setup nodejs and test server` section._
+__Setting files need to be in the `dist` folder for the proxy to read them properly.__
 
 1. Create a file /etc/systemd/system/nanorpcproxy.service
 2. Paste this
