@@ -22,6 +22,7 @@ import {ProxyRPCRequest, VerifiedAccount} from "./node-api/proxy-api";
 import {multiplierFromDifficulty} from "./tools";
 import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-api/mynano-api";
 import process from 'process'
+import {createPrometheusClient, PromClient} from "./prom-client";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -179,6 +180,7 @@ const loadSettings: () => ProxySettings = () => {
     cors_whitelist: [],
     log_level: log_levels.none,
     disable_watch_work: false,
+    enable_prometheus: false,
   }
   try {
     const settings: ProxySettings = JSON.parse(Fs.readFileSync(configPaths.settings, 'UTF-8'))
@@ -196,6 +198,7 @@ const loadSettings: () => ProxySettings = () => {
 const settings: ProxySettings = loadSettings()
 const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
 let userSettings: UserSettings = loadDefaultUserSettings(settings)
+const promClient: PromClient | undefined = settings.enable_prometheus ? createPrometheusClient() : undefined
 
 function logObjectEntries(logger: (...data: any[]) => void, title: string, object: any) {
   let log_string = title + "\n"
@@ -592,12 +595,20 @@ function logThis(str: string, level: LogLevel) {
       console.warn(str)
     }
   }
+  promClient?.incLogging(level)
 }
 
 // Default get requests
 if (settings.request_path != '/') {
   app.get('/', async (req: Request, res: Response) => {
     res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
+  })
+}
+
+if(promClient) {
+  app.get('/prometheus', async (req: Request, res: Response) => {
+    let metrics = await promClient.metrics();
+    res.set('content-type', 'text/plain').send(metrics)
   })
 }
 
@@ -718,6 +729,8 @@ async function getOrFetchDifficulty(): Promise<ActiveDifficultyResponse | undefi
 }
 
 async function processRequest(query: ProxyRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
+  promClient?.incRequest(query.action, req.ip)
+
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++
@@ -943,6 +956,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   }
 
   // Send the request to the Nano node and return the response
+  let endNodeTimer = promClient ? promClient.timeNodeRpc(query.action) : undefined
   try {
     let data: ProcessDataResponse = await Tools.postData(query, settings.node_url, API_TIMEOUT)
     // Save cache if applicable
@@ -962,6 +976,8 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   catch(err) {
     logThis("Node conection error: " + err.toString(), log_levels.warning)
     return res.status(500).json({error: err.toString()})
+  } finally {
+    endNodeTimer?.()
   }
 }
 

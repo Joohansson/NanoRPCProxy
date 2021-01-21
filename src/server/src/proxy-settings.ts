@@ -95,4 +95,6 @@ export default interface ProxySettings {
     log_level: LogLevel;
     // forcefully set watch_work=false for process calls (to block node from doing rework)
     disable_watch_work: boolean;
+    // Enables prometheus metrics
+    enable_prometheus: boolean;
 }
