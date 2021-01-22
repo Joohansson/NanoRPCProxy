@@ -180,7 +180,7 @@ const loadSettings: () => ProxySettings = () => {
   }
   try {
     const settings: ProxySettings = JSON.parse(Fs.readFileSync(configPaths.settings, 'UTF-8'))
-    const requestPath = defaultSettings.request_path || settings.request_path
+    const requestPath = settings.request_path || defaultSettings.request_path
     const normalizedRequestPath = requestPath.startsWith('/') ? requestPath : '/' + requestPath
     return {...defaultSettings, ...settings, request_path: normalizedRequestPath }
   } catch(e) {
