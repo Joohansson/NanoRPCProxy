@@ -708,7 +708,7 @@ async function getOrFetchDifficulty(): Promise<ActiveDifficultyResponse | undefi
     const difficultyResponse = await Tools.postData<ActiveDifficultyResponse>({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
     const saved = rpcCache?.set('active_difficulty', difficultyResponse, 60)
     if(saved) {
-      logThis("New active_difficulty: " + difficultyResponse, log_levels.info)
+      logThis("New active_difficulty: " + JSON.stringify(difficultyResponse), log_levels.info)
       return difficultyResponse
     } else {
       logThis("Failed saving cache for " + 'active_difficulty', log_levels.warning)
