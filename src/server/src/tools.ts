@@ -109,16 +109,6 @@ function isNumeric(val: string): boolean {
   }
 }
 
-// Compare two hex strings, returns 0 if equal, -1 if A<B and 1 if A>B
-export function compareHex(a: string | number, b: string | number): number {
-  a = parseInt('0x' + a, 16)
-  b = parseInt('0x' + b, 16)
-  let result = 0
-  if (a > b) result = 1
-  else if(a < b) result = -1
-  return result
-}
-
 // Determine new multiplier from base difficulty (hexadecimal string) and target difficulty (hexadecimal string). Returns float
 export function multiplierFromDifficulty(difficulty: string, base_difficulty: string): string {
   let big64 = Dec.BigDecimal(2).pow(64)

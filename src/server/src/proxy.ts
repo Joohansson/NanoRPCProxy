@@ -19,7 +19,7 @@ import * as Tools from './tools'
 import * as Tokens from './tokens'
 import {isTokensRequest, TokenAPIResponses} from "./node-api/token-api";
 import {ProxyRPCRequest, VerifiedAccount} from "./node-api/proxy-api";
-import {compareHex, multiplierFromDifficulty} from "./tools";
+import {multiplierFromDifficulty} from "./tools";
 import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-api/mynano-api";
 
 require('dotenv').config() // load variables from .env into the environment
@@ -62,6 +62,7 @@ const mynano_ninja_url = 'https://mynano.ninja/api/accounts/verified'
 //const CMC_API_KEY = 'xxx'
 const API_TIMEOUT: number = 10000 // 10sec timeout for calling http APIs
 const work_threshold_default: string = 'fffffff800000000'
+const work_threshold_receive_default: string = 'fffffe0000000000'
 const work_default_timeout: number = 10 // x sec timeout before trying next delegated work method (only when use_dpow or use_bpow)
 const bpow_url: string = 'https://bpow.banano.cc/service/'
 const dpow_url: string = 'https://dpow.nanocenter.org/service/'
@@ -673,6 +674,48 @@ async function processTokensRequest(query: ProxyRPCRequest, req: Request, res: R
   }
 }
 
+async function getLatestDifficulty(difficulty: string | undefined) {
+  const activeDifficulty: ActiveDifficultyResponse | undefined = await getOrFetchDifficulty()
+  // Receive-block difficulty
+  if(difficulty === work_threshold_receive_default) {
+    if(activeDifficulty?.network_receive_current) {
+      logThis("Using new difficulty for receive: " + activeDifficulty.network_receive_current, log_levels.info)
+      return activeDifficulty.network_receive_current;
+    } else {
+      logThis("Using default difficulty for receive: " + work_threshold_receive_default, log_levels.info)
+      return work_threshold_receive_default
+    }
+  }
+  // Send-block difficulty if default or not specified
+  else {
+    if(activeDifficulty?.network_current) {
+      logThis("Using new difficulty: " + activeDifficulty.network_current, log_levels.info)
+      return activeDifficulty.network_current;
+    } else {
+      logThis("Using default difficulty: " + work_threshold_default, log_levels.info)
+      return work_threshold_default
+    }
+  }
+}
+
+/** Returns `active_difficulty` from cache, or fetches from network */
+async function getOrFetchDifficulty(): Promise<ActiveDifficultyResponse | undefined> {
+  const difficultyFromCache: ActiveDifficultyResponse | undefined = rpcCache?.get<ActiveDifficultyResponse>('active_difficulty')
+  if(difficultyFromCache) {
+    logThis("Cache requested: " + 'active_difficulty', log_levels.info)
+    return difficultyFromCache
+  } else {
+    const difficultyResponse = await Tools.postData<ActiveDifficultyResponse>({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
+    const saved = rpcCache?.set('active_difficulty', difficultyResponse, 60)
+    if(saved) {
+      return difficultyResponse
+    } else {
+      logThis("Failed saving cache for " + 'active_difficulty', log_levels.warning)
+      return undefined
+    }
+  }
+}
+
 async function processRequest(query: ProxyRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
@@ -796,33 +839,10 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     if (query.hash) {
       var bpow_failed = false
       // Only set difficulty from live network if not requested or if it was exactly default
-      if (!(query.difficulty) || query.difficulty === work_threshold_default) {
-        // Use cached value first
-        const cachedValue: string | undefined = rpcCache?.get<string>('difficulty')
-        if (Tools.isValidJson(cachedValue)) {
-          logThis("Cache requested: " + 'difficulty', log_levels.info)
-          query.difficulty = cachedValue
-        }
-        else {
-          // get latest difficulty from network
-          let data: ActiveDifficultyResponse = await Tools.postData({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
-          if (data.network_current) {
-            // Store the difficulty in cache for 60sec
-            if (!rpcCache?.set('difficulty', data.network_current, 60)) {
-              logThis("Failed saving cache for " + 'difficulty', log_levels.warning)
-            }
-            query.difficulty = data.network_current
-            logThis("New difficulty: " + query.difficulty, log_levels.info)
-          }
-          else {
-            query.difficulty = work_threshold_default
-            logThis("Using default difficulty: " + query.difficulty, log_levels.info)
-          }
-        }
-        if (query.difficulty && compareHex(work_threshold_default, query.difficulty)) {
-          query.difficulty = work_threshold_default
-        }
+      if (!query.difficulty || query.difficulty === work_threshold_default || query.difficulty === work_threshold_receive_default) {
+        query.difficulty = await getLatestDifficulty(query.difficulty)
       }
+
       if (!(query.timeout)) {
         query.timeout = work_default_timeout
       }
