@@ -690,8 +690,8 @@ async function getLatestDifficulty(difficulty: string | undefined): Promise<stri
         logThis("Using new difficulty for receive: " + activeDifficulty.network_receive_current, log_levels.info)
         return activeDifficulty.network_receive_current;
       } else {
-        logThis("Using default difficulty for receive: " + work_threshold_receive_default, log_levels.info)
-        return work_threshold_receive_default
+        logThis("Using default difficulty for receive: " + work_threshold_default, log_levels.info)
+        return work_threshold_default
       }
     default:
       return difficulty // TODO: Other fallback here?
