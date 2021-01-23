@@ -674,6 +674,48 @@ async function processTokensRequest(query: ProxyRPCRequest, req: Request, res: R
   }
 }
 
+async function getLatestDifficulty(difficulty: string | undefined) {
+  const activeDifficulty: ActiveDifficultyResponse | undefined = await getOrFetchDifficulty()
+  switch (difficulty) {
+    case work_threshold_default:
+      if(activeDifficulty?.network_current) {
+        logThis("Using new difficulty: " + activeDifficulty.network_current, log_levels.info)
+        return activeDifficulty.network_current;
+      } else {
+        logThis("Using default difficulty: " + work_threshold_default, log_levels.info)
+        return work_threshold_default
+      }
+    case work_threshold_receive_default:
+      if(activeDifficulty?.network_receive_current) {
+        logThis("Using new difficulty for receive: " + activeDifficulty.network_receive_current, log_levels.info)
+        return activeDifficulty.network_receive_current;
+      } else {
+        logThis("Using default difficulty for receive: " + work_threshold_default, log_levels.info)
+        return work_threshold_default
+      }
+    default:
+      return difficulty // TODO: Other fallback here?
+  }
+}
+
+async function getOrFetchDifficulty(): Promise<ActiveDifficultyResponse | undefined> {
+  const difficultyFromCache: ActiveDifficultyResponse | undefined = rpcCache?.get<ActiveDifficultyResponse>('active_difficulty')
+  if(difficultyFromCache) {
+    logThis("Cache requested: " + 'active_difficulty', log_levels.info)
+    return difficultyFromCache
+  } else {
+    const difficultyResponse = await Tools.postData<ActiveDifficultyResponse>({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
+    const saved = rpcCache?.set('active_difficulty', difficultyResponse, 60)
+    if(saved) {
+      logThis("New active_difficulty: " + difficultyResponse, log_levels.info)
+      return difficultyResponse
+    } else {
+      logThis("Failed saving cache for " + 'active_difficulty', log_levels.warning)
+      return undefined
+    }
+  }
+}
+
 async function processRequest(query: ProxyRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
@@ -798,52 +840,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
       var bpow_failed = false
       // Only set difficulty from live network if not requested or if it was exactly default
       if (!(query.difficulty) || query.difficulty === work_threshold_default || query.difficulty === work_threshold_receive_default) {
-        // Use cached value first
-        let cachedValue: string | undefined
-        if (query.difficulty === work_threshold_default) {
-          cachedValue = rpcCache?.get<string>('difficulty')
-        } else if (query.difficulty === work_threshold_receive_default) {
-          cachedValue = rpcCache?.get<string>('difficulty_receive')
-        }
-
-        if (Tools.isValidJson(cachedValue)) {
-          logThis("Cache requested: " + 'difficulty', log_levels.info)
-          query.difficulty = cachedValue
-        }
-        else {
-          // get latest difficulty from network
-          let data: ActiveDifficultyResponse = await Tools.postData({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
-          // Send block threshold
-          if (query.difficulty === work_threshold_default) {
-            if (data.network_current) {
-              // Store the difficulty in cache for 60sec
-              if (!rpcCache?.set('difficulty', data.network_current, 60)) {
-                logThis("Failed saving cache for " + 'difficulty', log_levels.warning)
-              }
-              query.difficulty = data.network_current
-              logThis("New difficulty: " + query.difficulty, log_levels.info)
-            }
-            else {
-              query.difficulty = work_threshold_default
-              logThis("Using default difficulty: " + query.difficulty, log_levels.info)
-            }
-          }
-          // Receive block threshold
-          if (query.difficulty === work_threshold_receive_default) {
-            if (data.network_receive_current) {
-              // Store the difficulty in cache for 60sec
-              if (!rpcCache?.set('difficulty_receive', data.network_receive_current, 60)) {
-                logThis("Failed saving cache for " + 'difficulty_receive', log_levels.warning)
-              }
-              query.difficulty = data.network_receive_current
-              logThis("New difficulty receive: " + query.difficulty, log_levels.info)
-            }
-            else {
-              query.difficulty = work_threshold_receive_default
-              logThis("Using default difficulty for receive: " + query.difficulty, log_levels.info)
-            }
-          }
-        }
+        query.difficulty = await getLatestDifficulty(query.difficulty)
       }
       if (!(query.timeout)) {
         query.timeout = work_default_timeout
