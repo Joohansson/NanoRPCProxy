@@ -797,13 +797,16 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     if (query.hash) {
       var bpow_failed = false
       // Only set difficulty from live network if not requested or if it was exactly default
-      if (!(query.difficulty) || query.difficulty === work_threshold_default || query.difficulty === work_threshold_receive_default) {
+      if (!query.difficulty || query.difficulty === work_threshold_default || query.difficulty === work_threshold_receive_default) {
         // Use cached value first
         let cachedValue: string | undefined
-        if (query.difficulty === work_threshold_default) {
-          cachedValue = rpcCache?.get<string>('difficulty')
-        } else if (query.difficulty === work_threshold_receive_default) {
+        // Receive-difficulty
+        if (query.difficulty === work_threshold_receive_default) {
           cachedValue = rpcCache?.get<string>('difficulty_receive')
+        }
+        // Default send-difficulty or not specified
+        else {
+          cachedValue = rpcCache?.get<string>('difficulty')
         }
 
         if (Tools.isValidJson(cachedValue)) {
@@ -811,10 +814,10 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
           query.difficulty = cachedValue
         }
         else {
-          // get latest difficulty from network
+          // Get latest difficulty from network
           let data: ActiveDifficultyResponse = await Tools.postData({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
-          // Send block threshold
-          if (query.difficulty === work_threshold_default) {
+          // Send-block difficulty if default or not specified
+          if (!query.difficulty || query.difficulty === work_threshold_default) {
             if (data.network_current) {
               // Store the difficulty in cache for 60sec
               if (!rpcCache?.set('difficulty', data.network_current, 60)) {
@@ -828,8 +831,8 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
               logThis("Using default difficulty: " + query.difficulty, log_levels.info)
             }
           }
-          // Receive block threshold
-          if (query.difficulty === work_threshold_receive_default) {
+          // Receive-block difficulty
+          else if (query.difficulty === work_threshold_receive_default) {
             if (data.network_receive_current) {
               // Store the difficulty in cache for 60sec
               if (!rpcCache?.set('difficulty_receive', data.network_receive_current, 60)) {
@@ -845,6 +848,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
           }
         }
       }
+
       if (!(query.timeout)) {
         query.timeout = work_default_timeout
       }
