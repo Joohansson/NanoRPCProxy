@@ -674,7 +674,7 @@ async function processTokensRequest(query: ProxyRPCRequest, req: Request, res: R
   }
 }
 
-async function getLatestDifficulty(difficulty: string | undefined): Promise<string | undefined> {
+async function getLatestDifficulty(difficulty: string | undefined) {
   const activeDifficulty: ActiveDifficultyResponse | undefined = await getOrFetchDifficulty()
   switch (difficulty) {
     case work_threshold_default:
@@ -704,7 +704,7 @@ async function getOrFetchDifficulty(): Promise<ActiveDifficultyResponse | undefi
     logThis("Cache requested: " + 'active_difficulty', log_levels.info)
     return difficultyFromCache
   } else {
-    const difficultyResponse = await Tools.postData<ActiveDifficultyResponse>({ action: "active_difficulty" }, settings.node_url, API_TIMEOUT)
+    const difficultyResponse = await Tools.postData<ActiveDifficultyResponse>({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
     const saved = rpcCache?.set('active_difficulty', difficultyResponse, 60)
     if(saved) {
       logThis("New active_difficulty: " + difficultyResponse, log_levels.info)
