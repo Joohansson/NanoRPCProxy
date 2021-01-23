@@ -795,7 +795,8 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   if (query.action === 'work_generate' && (settings.use_dpow || settings.use_bpow)) {
     if (query.hash) {
       var bpow_failed = false
-      if (!(query.difficulty)) {
+      // Only set difficulty from live network if not requested or if it was exactly default
+      if (!(query.difficulty) || query.difficulty === work_threshold_default) {
         // Use cached value first
         const cachedValue: string | undefined = rpcCache?.get<string>('difficulty')
         if (Tools.isValidJson(cachedValue)) {
