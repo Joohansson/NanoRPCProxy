@@ -181,8 +181,7 @@ const loadSettings: () => ProxySettings = () => {
     cors_whitelist: [],
     log_level: log_levels.none,
     disable_watch_work: false,
-    enable_prometheus: false,
-    prometheus_ip_whitelist: [],
+    enable_prometheus_for_ips: [],
   }
   try {
     const settings: ProxySettings = JSON.parse(Fs.readFileSync(configPaths.settings, 'UTF-8'))
@@ -200,7 +199,7 @@ const loadSettings: () => ProxySettings = () => {
 const settings: ProxySettings = loadSettings()
 const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
 let userSettings: UserSettings = loadDefaultUserSettings(settings)
-const promClient: PromClient | undefined = settings.enable_prometheus ? createPrometheusClient() : undefined
+const promClient: PromClient | undefined = settings.enable_prometheus_for_ips.length > 0 ? createPrometheusClient() : undefined
 
 function logObjectEntries(logger: (...data: any[]) => void, title: string, object: any) {
   let log_string = title + "\n"
@@ -259,8 +258,8 @@ function logSettings(logger: (...data: any[]) => void) {
   if (settings.use_ip_blacklist) {
     logObjectEntries(logger, "IPs blacklisted:\n", settings.ip_blacklist)
   }
-  if(settings.enable_prometheus) {
-    logObjectEntries(logger, "Prometheus enabled for the following addresses:\n", settings.prometheus_ip_whitelist)
+  if(settings.enable_prometheus_for_ips.length > 0) {
+    logObjectEntries(logger, "Prometheus enabled for the following addresses:\n", settings.enable_prometheus_for_ips)
   }
 
   if (settings.proxy_hops > 0) {
@@ -618,7 +617,7 @@ if (settings.request_path != '/') {
 
 if(promClient) {
   app.get(promClient.path, async (req: Request, res: Response) => {
-    if(req.connection.remoteAddress && settings.prometheus_ip_whitelist.includes(req.connection.remoteAddress)) {
+    if(req.connection.remoteAddress && settings.enable_prometheus_for_ips.includes(req.connection.remoteAddress)) {
       let metrics = await promClient.metrics();
       res.set('content-type', 'text/plain').send(metrics)
     } else {
