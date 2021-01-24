@@ -22,6 +22,7 @@
   "use_dpow":               false,
   "use_bpow":               false,
   "disable_watch_work":     false,
+  "enable_prometheus":      false,
   "allowed_commands":       [
     "account_history",
     "account_info",
