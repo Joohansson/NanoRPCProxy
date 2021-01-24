@@ -6,7 +6,8 @@ export interface PromClient {
     metrics(): Promise<string>
     incRequest: (action: RPCAction, ip: string) => void
     incLogging: (logLevel: LogLevel) => void
-    timeNodeRpc: (action: RPCAction) => (labels?: LabelValues<any>) => number
+    timeNodeRpc: (action: RPCAction) => (labels?: LabelValues<any>) => number,
+    path: string
 }
 
 export function createPrometheusClient(): PromClient {
@@ -40,6 +41,7 @@ export function createPrometheusClient(): PromClient {
         metrics: async () => register.metrics(),
         incRequest: (action: RPCAction, ip: string) => processRequestCounter.labels(action, ip).inc(),
         incLogging: (logLevel: LogLevel) => logCounter.labels(logLevel).inc(),
-        timeNodeRpc: (action: RPCAction) => rpcHistogram.startTimer({action: action})
+        timeNodeRpc: (action: RPCAction) => rpcHistogram.startTimer({action: action}),
+        path: '/prometheus'
     }
 }

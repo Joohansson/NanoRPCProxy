@@ -389,6 +389,9 @@ if (settings.use_rate_limiter) {
   })
 
   const rateLimiterMiddleware1 = (req: Request, res: Response, next: (err?: any) => any) => {
+    if(promClient && req.path === promClient.path) {
+      return
+    }
     if (settings.use_tokens) {
       // Check if token key exist in DB and have enough tokens, then skip IP block by returning true
       if ('token_key' in req.body && order_db.get('orders').find({token_key: req.body.token_key}).value()) {
@@ -606,7 +609,7 @@ if (settings.request_path != '/') {
 }
 
 if(promClient) {
-  app.get('/prometheus', async (req: Request, res: Response) => {
+  app.get(promClient.path, async (req: Request, res: Response) => {
     let metrics = await promClient.metrics();
     res.set('content-type', 'text/plain').send(metrics)
   })
