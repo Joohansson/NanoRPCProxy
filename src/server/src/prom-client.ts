@@ -8,6 +8,7 @@ export interface PromClient {
     metrics(): Promise<string>
     incRequest: (action: RPCAction, ip: string) => void
     incLogging: (logLevel: LogLevel) => void
+    incRateLimited: (ip: string) => void,
     timeNodeRpc: (action: RPCAction) => MaybeTimedCall,
     timePrice: () => MaybeTimedCall,
     timeVerifiedAccounts: () => MaybeTimedCall,
@@ -34,6 +35,13 @@ export function createPrometheusClient(): PromClient {
         labelNames: ["log_level"]
     })
 
+    let countRateLimited = new client.Counter({
+        registers: [register],
+        name: "user_ratelimited",
+        help: "Incremented a client is rate limited",
+        labelNames: ["ip"]
+    })
+
     let rpcHistogram = new client.Histogram({
         registers: [register],
         name: "time_rpc_call",
@@ -57,6 +65,7 @@ export function createPrometheusClient(): PromClient {
         metrics: async () => register.metrics(),
         incRequest: (action: RPCAction, ip: string) => processRequestCounter.labels(action, ip).inc(),
         incLogging: (logLevel: LogLevel) => logCounter.labels(logLevel).inc(),
+        incRateLimited: (ip: string) => countRateLimited.labels(ip).inc(),
         timeNodeRpc: (action: RPCAction) => rpcHistogram.startTimer({action: action}),
         timePrice: () => priceHistogram.startTimer(),
         timeVerifiedAccounts: () => verifiedAccountsHistogram.startTimer(),

@@ -433,6 +433,7 @@ if (settings.use_rate_limiter) {
         next()
       })
       .catch((rej: any) => {
+        promClient?.incRateLimited(req.ip)
         res.set("X-RateLimit-Limit", settings.rate_limiter.request_limit)
         res.set("X-RateLimit-Remaining", `${Math.max(settings.rate_limiter.request_limit-rej.consumedPoints, 0)}`)
         res.set("X-RateLimit-Reset", `${new Date(Date.now() + rej.msBeforeNext)}`)
