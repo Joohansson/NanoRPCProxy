@@ -390,6 +390,7 @@ if (settings.use_rate_limiter) {
 
   const rateLimiterMiddleware1 = (req: Request, res: Response, next: (err?: any) => any) => {
     if(promClient && req.path === promClient.path) {
+      next();
       return
     }
     if (settings.use_tokens) {
@@ -610,8 +611,13 @@ if (settings.request_path != '/') {
 
 if(promClient) {
   app.get(promClient.path, async (req: Request, res: Response) => {
-    let metrics = await promClient.metrics();
-    res.set('content-type', 'text/plain').send(metrics)
+    let isLocal = (req.connection.localAddress === req.connection.remoteAddress);
+    if(isLocal) {
+      let metrics = await promClient.metrics();
+      res.set('content-type', 'text/plain').send(metrics)
+    } else {
+      res.status(403)
+    }
   })
 }
 
