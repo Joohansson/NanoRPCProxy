@@ -22,7 +22,8 @@ import {ProxyRPCRequest, VerifiedAccount} from "./node-api/proxy-api";
 import {multiplierFromDifficulty} from "./tools";
 import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-api/mynano-api";
 import process from 'process'
-import {createPrometheusClient, PromClient} from "./prom-client";
+import {createPrometheusClient, MaybeTimedCall, PromClient} from "./prom-client";
+import {LabelValues} from "prom-client";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -780,6 +781,8 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   // Respond directly if non-node-related request
   //  --
   if (query.action === 'price') {
+
+    let endPriceTimer: MaybeTimedCall = undefined
     try {
       // Use cached value first
       const cachedValue: PriceResponse | undefined = rpcCache?.get('price')
@@ -791,6 +794,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         return res.json(appendRateLimiterStatus(res, cachedValue))
       }
 
+      endPriceTimer = promClient?.timePrice()
       let data: PriceResponse = await Tools.getData(price_url, API_TIMEOUT)
 
       // Store the price in cache for 10sec
@@ -806,10 +810,13 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     }
     catch(err) {
       return res.status(500).json({error: err.toString()})
+    } finally {
+      endPriceTimer?.()
     }
   }
 
   if(query.action === 'verified_accounts') {
+    let endVerifiedAccountsTimer: MaybeTimedCall = undefined
     try {
       // Use cached value first
       const cachedValue: MynanoVerifiedAccountsResponse | undefined = rpcCache?.get('verified_accounts')
@@ -817,7 +824,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         logThis("Cache requested: " + 'verified_accounts', log_levels.info)
         return res.json(appendRateLimiterStatus(res, cachedValue.map(mynanoToVerifiedAccount)))
       }
-
+      endVerifiedAccountsTimer = promClient?.timeVerifiedAccounts()
       let data: MynanoVerifiedAccountsResponse = await Tools.getData(mynano_ninja_url, API_TIMEOUT)
       // Store the list in cache for 60 sec
       if (!rpcCache?.set('verified_accounts', data, 60)) {
@@ -827,6 +834,8 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     }
     catch(err) {
       return res.status(500).json({error: err.toString()})
+    } finally {
+      endVerifiedAccountsTimer?.()
     }
   }
 
@@ -965,7 +974,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   }
 
   // Send the request to the Nano node and return the response
-  let endNodeTimer = promClient?.timeNodeRpc(query.action)
+  let endNodeTimer: MaybeTimedCall = promClient?.timeNodeRpc(query.action)
   try {
     let data: ProcessDataResponse = await Tools.postData(query, settings.node_url, API_TIMEOUT)
     // Save cache if applicable
