@@ -24,7 +24,7 @@ export function createPrometheusClient(): PromClient {
     let processRequestCounter = new client.Counter({
         registers: [register],
         name: "processRequest",
-        help: "Counts processRequest per IP address",
+        help: "Counts processRequest per IP address and action",
         labelNames: ["action", "ip"]
     })
 
@@ -38,14 +38,14 @@ export function createPrometheusClient(): PromClient {
     let countRateLimited = new client.Counter({
         registers: [register],
         name: "user_ratelimited",
-        help: "Incremented a client is rate limited",
+        help: "Counts number of times an IP address is rate limited",
         labelNames: ["ip"]
     })
 
     let rpcHistogram = new client.Histogram({
         registers: [register],
         name: "time_rpc_call",
-        help: "Times the RPC calls to the Nano node",
+        help: "Times RPC calls to the Nano backend",
         labelNames: ["action"]
     })
 
