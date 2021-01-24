@@ -23,6 +23,7 @@
   "use_bpow":               false,
   "disable_watch_work":     false,
   "enable_prometheus":      false,
+  "prometheus_ip_whitelist": [],
   "allowed_commands":       [
     "account_history",
     "account_info",

@@ -182,6 +182,7 @@ const loadSettings: () => ProxySettings = () => {
     log_level: log_levels.none,
     disable_watch_work: false,
     enable_prometheus: false,
+    prometheus_ip_whitelist: [],
   }
   try {
     const settings: ProxySettings = JSON.parse(Fs.readFileSync(configPaths.settings, 'UTF-8'))
@@ -258,6 +259,10 @@ function logSettings(logger: (...data: any[]) => void) {
   if (settings.use_ip_blacklist) {
     logObjectEntries(logger, "IPs blacklisted:\n", settings.ip_blacklist)
   }
+  if(settings.enable_prometheus) {
+    logObjectEntries(logger, "Prometheus enabled for the following addresses:\n", settings.prometheus_ip_whitelist)
+  }
+
   if (settings.proxy_hops > 0) {
     logger("Additional proxy servers: " + settings.proxy_hops)
   }
@@ -613,8 +618,7 @@ if (settings.request_path != '/') {
 
 if(promClient) {
   app.get(promClient.path, async (req: Request, res: Response) => {
-    const isLocal = (req.connection.localAddress === req.connection.remoteAddress);
-    if(isLocal) {
+    if(req.connection.remoteAddress && settings.prometheus_ip_whitelist.includes(req.connection.remoteAddress)) {
       let metrics = await promClient.metrics();
       res.set('content-type', 'text/plain').send(metrics)
     } else {

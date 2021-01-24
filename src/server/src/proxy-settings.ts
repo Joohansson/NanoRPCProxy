@@ -97,4 +97,6 @@ export default interface ProxySettings {
     disable_watch_work: boolean;
     // Enables prometheus metrics
     enable_prometheus: boolean;
+    // IP addresses to whitelist prometheus for. Typically '127.0.0.1', or '::ffff:127.0.0.1' for IPv6
+    prometheus_ip_whitelist: string[];
 }
