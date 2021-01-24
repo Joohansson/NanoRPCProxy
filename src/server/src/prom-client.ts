@@ -23,7 +23,7 @@ export function createPrometheusClient(): PromClient {
 
     let processRequestCounter = new client.Counter({
         registers: [register],
-        name: "processRequest",
+        name: "process_request",
         help: "Counts processRequest per IP address and action",
         labelNames: ["action", "ip"]
     })
@@ -37,7 +37,7 @@ export function createPrometheusClient(): PromClient {
 
     let countRateLimited = new client.Counter({
         registers: [register],
-        name: "user_ratelimited",
+        name: "user_rate_limited",
         help: "Counts number of times an IP address is rate limited",
         labelNames: ["ip"]
     })
