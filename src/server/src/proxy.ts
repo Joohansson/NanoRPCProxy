@@ -21,6 +21,7 @@ import {isTokensRequest, TokenAPIResponses} from "./node-api/token-api";
 import {ProxyRPCRequest, VerifiedAccount} from "./node-api/proxy-api";
 import {multiplierFromDifficulty} from "./tools";
 import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-api/mynano-api";
+import process from 'process'
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -976,6 +977,11 @@ module.exports = {
   trackAccount: trackAccount,
   tracking_db: tracking_db,
 }
+
+process.on('SIGINT', () => {
+  logThis('Proxy shut down', log_levels.info)
+  process.exit(0)
+})
 
 var websocket_servers = []
 // Create an HTTP service
