@@ -616,7 +616,7 @@ if(promClient) {
       let metrics = await promClient.metrics();
       res.set('content-type', 'text/plain').send(metrics)
     } else {
-      res.status(403)
+      res.status(403).send()
     }
   })
 }
