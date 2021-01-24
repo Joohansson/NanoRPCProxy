@@ -617,10 +617,12 @@ if (settings.request_path != '/') {
 
 if(promClient) {
   app.get(promClient.path, async (req: Request, res: Response) => {
-    if(req.connection.remoteAddress && settings.enable_prometheus_for_ips.includes(req.connection.remoteAddress)) {
+    const remoteAddress: string | undefined = req.connection.remoteAddress;
+    if(remoteAddress && settings.enable_prometheus_for_ips.includes(remoteAddress)) {
       let metrics = await promClient.metrics();
       res.set('content-type', 'text/plain').send(metrics)
     } else {
+      logThis(`Prometheus not enabled for ${remoteAddress}`, log_levels.info)
       res.status(403).send()
     }
   })
