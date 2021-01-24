@@ -611,7 +611,7 @@ if (settings.request_path != '/') {
 
 if(promClient) {
   app.get(promClient.path, async (req: Request, res: Response) => {
-    let isLocal = (req.connection.localAddress === req.connection.remoteAddress);
+    const isLocal = (req.connection.localAddress === req.connection.remoteAddress);
     if(isLocal) {
       let metrics = await promClient.metrics();
       res.set('content-type', 'text/plain').send(metrics)
