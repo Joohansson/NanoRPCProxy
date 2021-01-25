@@ -23,7 +23,6 @@ import {multiplierFromDifficulty} from "./tools";
 import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-api/mynano-api";
 import process from 'process'
 import {createPrometheusClient, MaybeTimedCall, PromClient} from "./prom-client";
-import {LabelValues} from "prom-client";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
