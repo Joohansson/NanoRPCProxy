@@ -254,6 +254,10 @@ To upgrade you need to first turn off running container ("docker stop xxx", or "
 * Normal container: docker pull nanojson/nanorpcproxy:latest
 * Composer: docker-compose pull
 
+If you used docker compose to build from local source (nanorpcproxy:latest) you will have to rebuild:
+
+* docker-compose build
+
 ---
 ---
 ---
