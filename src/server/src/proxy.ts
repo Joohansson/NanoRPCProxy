@@ -774,6 +774,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     if (query.token_key) {
       let status = useToken(query)
       if (status === -1) {
+        promClient?.incRequest(query.action, req.ip, false)
         return res.status(500).json({ error: 'You have no more tokens to use!'})
       }
       else if (status === -2) {
@@ -781,12 +782,10 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
       }
       else {
         tokens_left = status
+        promClient?.incRequest(query.action, req.ip, true)
       }
     }
   }
-
-  const tokenUsed: boolean =  (tokens_left && tokens_left >= 0) ? true:false
-  promClient?.incRequest(query.action, req.ip, tokenUsed)
 
   // Respond directly if non-node-related request
   //  --
