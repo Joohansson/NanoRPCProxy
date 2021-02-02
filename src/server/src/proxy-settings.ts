@@ -95,4 +95,6 @@ export default interface ProxySettings {
     log_level: LogLevel;
     // forcefully set watch_work=false for process calls (to block node from doing rework)
     disable_watch_work: boolean;
+    // IP addresses to enable prometheus for. Typically '127.0.0.1', or '::ffff:127.0.0.1' for IPv6
+    enable_prometheus_for_ips: string[];
 }

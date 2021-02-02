@@ -22,6 +22,7 @@ import {ProxyRPCRequest, VerifiedAccount} from "./node-api/proxy-api";
 import {multiplierFromDifficulty} from "./tools";
 import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-api/mynano-api";
 import process from 'process'
+import {createPrometheusClient, MaybeTimedCall, PromClient} from "./prom-client";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -179,6 +180,7 @@ const loadSettings: () => ProxySettings = () => {
     cors_whitelist: [],
     log_level: log_levels.none,
     disable_watch_work: false,
+    enable_prometheus_for_ips: [],
   }
   try {
     const settings: ProxySettings = JSON.parse(Fs.readFileSync(configPaths.settings, 'UTF-8'))
@@ -196,6 +198,7 @@ const loadSettings: () => ProxySettings = () => {
 const settings: ProxySettings = loadSettings()
 const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
 let userSettings: UserSettings = loadDefaultUserSettings(settings)
+const promClient: PromClient | undefined = settings.enable_prometheus_for_ips.length > 0 ? createPrometheusClient() : undefined
 
 function logObjectEntries(logger: (...data: any[]) => void, title: string, object: any) {
   let log_string = title + "\n"
@@ -254,6 +257,10 @@ function logSettings(logger: (...data: any[]) => void) {
   if (settings.use_ip_blacklist) {
     logObjectEntries(logger, "IPs blacklisted:\n", settings.ip_blacklist)
   }
+  if(settings.enable_prometheus_for_ips.length > 0) {
+    logObjectEntries(logger, "Prometheus enabled for the following addresses:\n", settings.enable_prometheus_for_ips)
+  }
+
   if (settings.proxy_hops > 0) {
     logger("Additional proxy servers: " + settings.proxy_hops)
   }
@@ -386,6 +393,10 @@ if (settings.use_rate_limiter) {
   })
 
   const rateLimiterMiddleware1 = (req: Request, res: Response, next: (err?: any) => any) => {
+    if(promClient && req.path === promClient.path) {
+      next();
+      return
+    }
     if (settings.use_tokens) {
       // Check if token key exist in DB and have enough tokens, then skip IP block by returning true
       if ('token_key' in req.body && order_db.get('orders').find({token_key: req.body.token_key}).value()) {
@@ -425,6 +436,7 @@ if (settings.use_rate_limiter) {
         next()
       })
       .catch((rej: any) => {
+        promClient?.incRateLimited(req.ip)
         res.set("X-RateLimit-Limit", settings.rate_limiter.request_limit)
         res.set("X-RateLimit-Remaining", `${Math.max(settings.rate_limiter.request_limit-rej.consumedPoints, 0)}`)
         res.set("X-RateLimit-Reset", `${new Date(Date.now() + rej.msBeforeNext)}`)
@@ -592,12 +604,26 @@ function logThis(str: string, level: LogLevel) {
       console.warn(str)
     }
   }
+  promClient?.incLogging(level)
 }
 
 // Default get requests
 if (settings.request_path != '/') {
   app.get('/', async (req: Request, res: Response) => {
     res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
+  })
+}
+
+if(promClient) {
+  app.get(promClient.path, async (req: Request, res: Response) => {
+    const remoteAddress: string | undefined = req.connection.remoteAddress;
+    if(remoteAddress && settings.enable_prometheus_for_ips.includes(remoteAddress)) {
+      let metrics = await promClient.metrics();
+      res.set('content-type', 'text/plain').send(metrics)
+    } else {
+      logThis(`Prometheus not enabled for ${remoteAddress}`, log_levels.info)
+      res.status(403).send()
+    }
   })
 }
 
@@ -718,6 +744,8 @@ async function getOrFetchDifficulty(): Promise<ActiveDifficultyResponse | undefi
 }
 
 async function processRequest(query: ProxyRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
+  promClient?.incRequest(query.action, req.ip)
+
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++
@@ -758,6 +786,8 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   // Respond directly if non-node-related request
   //  --
   if (query.action === 'price') {
+
+    let endPriceTimer: MaybeTimedCall = undefined
     try {
       // Use cached value first
       const cachedValue: PriceResponse | undefined = rpcCache?.get('price')
@@ -769,6 +799,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         return res.json(appendRateLimiterStatus(res, cachedValue))
       }
 
+      endPriceTimer = promClient?.timePrice()
       let data: PriceResponse = await Tools.getData(price_url, API_TIMEOUT)
 
       // Store the price in cache for 10sec
@@ -784,10 +815,13 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     }
     catch(err) {
       return res.status(500).json({error: err.toString()})
+    } finally {
+      endPriceTimer?.()
     }
   }
 
   if(query.action === 'verified_accounts') {
+    let endVerifiedAccountsTimer: MaybeTimedCall = undefined
     try {
       // Use cached value first
       const cachedValue: MynanoVerifiedAccountsResponse | undefined = rpcCache?.get('verified_accounts')
@@ -795,7 +829,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         logThis("Cache requested: " + 'verified_accounts', log_levels.info)
         return res.json(appendRateLimiterStatus(res, cachedValue.map(mynanoToVerifiedAccount)))
       }
-
+      endVerifiedAccountsTimer = promClient?.timeVerifiedAccounts()
       let data: MynanoVerifiedAccountsResponse = await Tools.getData(mynano_ninja_url, API_TIMEOUT)
       // Store the list in cache for 60 sec
       if (!rpcCache?.set('verified_accounts', data, 60)) {
@@ -805,6 +839,8 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     }
     catch(err) {
       return res.status(500).json({error: err.toString()})
+    } finally {
+      endVerifiedAccountsTimer?.()
     }
   }
 
@@ -943,6 +979,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   }
 
   // Send the request to the Nano node and return the response
+  let endNodeTimer: MaybeTimedCall = promClient?.timeNodeRpc(query.action)
   try {
     let data: ProcessDataResponse = await Tools.postData(query, settings.node_url, API_TIMEOUT)
     // Save cache if applicable
@@ -962,6 +999,8 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   catch(err) {
     logThis("Node conection error: " + err.toString(), log_levels.warning)
     return res.status(500).json({error: err.toString()})
+  } finally {
+    endNodeTimer?.()
   }
 }
 
