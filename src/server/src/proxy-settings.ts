@@ -1,4 +1,5 @@
-import {CachedCommands, LimitedCommands, LogLevel} from "./common-settings";
+import {CachedCommands, LimitedCommands, log_levels, LogLevel} from "./common-settings";
+import * as Fs from "fs";
 
 /** Contains the settings for the slow down filter */
 export interface SlowDown {
@@ -97,4 +98,127 @@ export default interface ProxySettings {
     disable_watch_work: boolean;
     // IP addresses to enable prometheus for. Typically '127.0.0.1', or '::ffff:127.0.0.1' for IPv6
     enable_prometheus_for_ips: string[];
+}
+
+function logObjectEntries(logger: (...data: any[]) => void, title: string, object: any) {
+    let log_string = title + "\n"
+    for (const [key, value] of Object.entries(object)) {
+        if(key) {
+            log_string = log_string + key + " : " + value + "\n"
+        } else {
+            log_string = log_string + " " + value + "\n"
+        }
+    }
+    logger(log_string)
+}
+
+export function proxyLogSettings(logger: (...data: any[]) => void, settings: ProxySettings) {
+    logger("PROXY SETTINGS:\n-----------")
+    logger("Node url: " + settings.node_url)
+    logger("Websocket url: " + settings.node_ws_url)
+    logger("Http port: " + String(settings.http_port))
+    logger("Https port: " + String(settings.https_port))
+    logger("Request path: " + settings.request_path)
+    if (settings.use_websocket) {
+        logger("Websocket http port: " + String(settings.websocket_http_port))
+        logger("Websocket https port: " + String(settings.websocket_https_port))
+        logger("Websocket nax accounts: " + String(settings.websocket_max_accounts))
+    }
+    logger("Use authentication: " + settings.use_auth)
+    logger("Use slow down: " + settings.use_slow_down)
+    logger("Use rate limiter: " + settings.use_rate_limiter)
+    logger("Use cached requests: " + settings.use_cache)
+    logger("Use output limiter: " + settings.use_output_limiter)
+    logger("Use IP blacklist: " + settings.use_ip_blacklist)
+    logger("Use token system: " + settings.use_tokens)
+    logger("Use websocket system: " + settings.use_websocket)
+    logger("Use dPoW: " + settings.use_dpow)
+    logger("Use bPoW: " + settings.use_bpow)
+    logger("Disabled watch_work for process: " + settings.disable_watch_work)
+    logger("Listen on http: " + settings.use_http)
+    logger("Listen on https: " + settings.use_https)
+
+    logObjectEntries(logger, "Allowed commands:\n-----------\n", settings.allowed_commands)
+    if(settings.use_cache)  {
+        logObjectEntries(logger, "Cached commands:\n", settings.cached_commands)
+    }
+    if (settings.use_output_limiter) {
+        logObjectEntries(logger, "Limited commands:\n", settings.limited_commands)
+    }
+    if(settings.use_slow_down) {
+        logObjectEntries(logger, "Slow down settings:\n", settings.slow_down)
+    }
+    if (settings.use_rate_limiter) {
+        logObjectEntries(logger, "Rate limiter settings:\n", settings.rate_limiter)
+    }
+    logObjectEntries(logger, "DDOS protection settings:\n", settings.ddos_protection)
+
+    if (settings.use_ip_blacklist) {
+        logObjectEntries(logger, "IPs blacklisted:\n", settings.ip_blacklist)
+    }
+    if(settings.enable_prometheus_for_ips.length > 0) {
+        logObjectEntries(logger, "Prometheus enabled for the following addresses:\n", settings.enable_prometheus_for_ips)
+    }
+
+    if (settings.proxy_hops > 0) {
+        logger("Additional proxy servers: " + settings.proxy_hops)
+    }
+    if (settings.use_cors) {
+        if (settings.cors_whitelist.length == 0) {
+            logger("Use cors. Any ORIGIN allowed")
+        }
+        else {
+            logObjectEntries(logger, "Use cors. Whitelisted ORIGINs or IPs:\n", settings.cors_whitelist)
+        }
+    }
+    logger("Main log level: " + settings.log_level)
+}
+
+export function readProxySettings(settingsPath: string): ProxySettings {
+    const defaultSettings: ProxySettings = {
+        node_url: "http://[::1]:7076",
+        node_ws_url: "ws://127.0.0.1:7078",
+        http_port: 9950,
+        https_port: 9951,
+        websocket_http_port: 9952,
+        websocket_https_port: 9953,
+        request_path: '/proxy',
+        use_auth: false,
+        use_slow_down: false,
+        use_rate_limiter: false,
+        use_cache: false,
+        use_http: true,
+        use_https: false,
+        use_output_limiter: false,
+        use_ip_blacklist: false,
+        use_tokens: false,
+        use_websocket: false,
+        use_cors: true,
+        use_dpow: false,
+        use_bpow: false,
+        https_cert: '',
+        https_key: '',
+        allowed_commands: [],
+        cached_commands: {},
+        limited_commands: {},
+        slow_down: {},
+        rate_limiter: {},
+        ddos_protection: {},
+        ip_blacklist: [],
+        proxy_hops: 0,
+        websocket_max_accounts: 100,
+        cors_whitelist: [],
+        log_level: log_levels.none,
+        disable_watch_work: false,
+        enable_prometheus_for_ips: [],
+    }
+    try {
+        const settings: ProxySettings = JSON.parse(Fs.readFileSync(settingsPath, 'utf-8'))
+        const requestPath = settings.request_path || defaultSettings.request_path
+        const normalizedRequestPath = requestPath.startsWith('/') ? requestPath : '/' + requestPath
+        return {...defaultSettings, ...settings, request_path: normalizedRequestPath }
+    } catch(e) {
+        console.log("Could not read settings.json", e)
+        return defaultSettings;
+    }
 }
