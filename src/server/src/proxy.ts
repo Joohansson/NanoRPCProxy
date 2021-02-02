@@ -1,5 +1,5 @@
 import {Credentials, CredentialSettings} from "./credential-settings";
-import ProxySettings from './proxy-settings';
+import ProxySettings, {proxyLogSettings} from './proxy-settings';
 import {ConfigPaths, log_levels, LogData, LogLevel, readConfigPathsFromENV} from "./common-settings";
 import {loadDefaultUserSettings, readUserSettings, UserSettings, UserSettingsConfig} from "./user-settings";
 import {PowSettings} from "./pow-settings";
@@ -200,82 +200,7 @@ const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_sett
 let userSettings: UserSettings = loadDefaultUserSettings(settings)
 const promClient: PromClient | undefined = settings.enable_prometheus_for_ips.length > 0 ? createPrometheusClient() : undefined
 
-function logObjectEntries(logger: (...data: any[]) => void, title: string, object: any) {
-  let log_string = title + "\n"
-  for (const [key, value] of Object.entries(object)) {
-    if(key) {
-      log_string = log_string + key + " : " + value + "\n"
-    } else {
-      log_string = log_string + " " + value + "\n"
-    }
-  }
-  logger(log_string)
-}
-// ---
-// Log all initial settings for convenience
-function logSettings(logger: (...data: any[]) => void) {
-  logger("PROXY SETTINGS:\n-----------")
-  logger("Node url: " + settings.node_url)
-  logger("Websocket url: " + settings.node_ws_url)
-  logger("Http port: " + String(settings.http_port))
-  logger("Https port: " + String(settings.https_port))
-  logger("Request path: " + settings.request_path)
-  if (settings.use_websocket) {
-    logger("Websocket http port: " + String(settings.websocket_http_port))
-    logger("Websocket https port: " + String(settings.websocket_https_port))
-    logger("Websocket nax accounts: " + String(settings.websocket_max_accounts))
-  }
-  logger("Use authentication: " + settings.use_auth)
-  logger("Use slow down: " + settings.use_slow_down)
-  logger("Use rate limiter: " + settings.use_rate_limiter)
-  logger("Use cached requests: " + settings.use_cache)
-  logger("Use output limiter: " + settings.use_output_limiter)
-  logger("Use IP blacklist: " + settings.use_ip_blacklist)
-  logger("Use token system: " + settings.use_tokens)
-  logger("Use websocket system: " + settings.use_websocket)
-  logger("Use dPoW: " + settings.use_dpow)
-  logger("Use bPoW: " + settings.use_bpow)
-  logger("Disabled watch_work for process: " + settings.disable_watch_work)
-  logger("Listen on http: " + settings.use_http)
-  logger("Listen on https: " + settings.use_https)
-
-  logObjectEntries(logger, "Allowed commands:\n-----------\n", settings.allowed_commands)
-  if(settings.use_cache)  {
-    logObjectEntries(logger, "Cached commands:\n", settings.cached_commands)
-  }
-  if (settings.use_output_limiter) {
-    logObjectEntries(logger, "Limited commands:\n", settings.limited_commands)
-  }
-  if(settings.use_slow_down) {
-    logObjectEntries(logger, "Slow down settings:\n", settings.slow_down)
-  }
-  if (settings.use_rate_limiter) {
-    logObjectEntries(logger, "Rate limiter settings:\n", settings.rate_limiter)
-  }
-  logObjectEntries(logger, "DDOS protection settings:\n", settings.ddos_protection)
-
-  if (settings.use_ip_blacklist) {
-    logObjectEntries(logger, "IPs blacklisted:\n", settings.ip_blacklist)
-  }
-  if(settings.enable_prometheus_for_ips.length > 0) {
-    logObjectEntries(logger, "Prometheus enabled for the following addresses:\n", settings.enable_prometheus_for_ips)
-  }
-
-  if (settings.proxy_hops > 0) {
-    logger("Additional proxy servers: " + settings.proxy_hops)
-  }
-  if (settings.use_cors) {
-    if (settings.cors_whitelist.length == 0) {
-      logger("Use cors. Any ORIGIN allowed")
-    }
-    else {
-      logObjectEntries(logger, "Use cors. Whitelisted ORIGINs or IPs:\n", settings.cors_whitelist)
-    }
-  }
-  logger("Main log level: " + settings.log_level)
-
-}
-logSettings(console.log)
+proxyLogSettings(console.log, settings)
 
 
 // ---
@@ -1009,7 +934,6 @@ function getUserSettings(): UserSettings {
 }
 
 module.exports = {
-  logSettings: logSettings,
   processRequest: processRequest,
   myAuthorizer: myAuthorizer,
   getUserSettings: getUserSettings,
