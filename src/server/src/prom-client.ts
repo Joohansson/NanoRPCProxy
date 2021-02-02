@@ -6,9 +6,13 @@ export type MaybeTimedCall = ((labels?: LabelValues<any>) => number) | undefined
 
 export interface PromClient {
     metrics(): Promise<string>
-    incRequest: (action: RPCAction, ip: string) => void
+    incRequest: (action: RPCAction, ip: string, token_used: boolean) => void
     incLogging: (logLevel: LogLevel) => void
     incRateLimited: (ip: string) => void,
+    incSlowDown: (ip: string) => void,
+    incDDOS: (ip: string) => void,
+    incWebsocketSubscription: (ip: string) => void,
+    incWebsocketMessage: (ip: string) => void,
     timeNodeRpc: (action: RPCAction) => MaybeTimedCall,
     timePrice: () => MaybeTimedCall,
     timeVerifiedAccounts: () => MaybeTimedCall,
@@ -25,7 +29,7 @@ export function createPrometheusClient(): PromClient {
         registers: [register],
         name: "process_request",
         help: "Counts processRequest per IP address and action",
-        labelNames: ["action", "ip"]
+        labelNames: ["action", "ip", "token_used"]
     })
 
     let logCounter = new client.Counter({
@@ -39,6 +43,34 @@ export function createPrometheusClient(): PromClient {
         registers: [register],
         name: "user_rate_limited",
         help: "Counts number of times an IP address is rate limited",
+        labelNames: ["ip"]
+    })
+
+    let countSlowDown = new client.Counter({
+        registers: [register],
+        name: "user_slow_down",
+        help: "Counts number of times an IP address is rate limited with slow down",
+        labelNames: ["ip"]
+    })
+
+    let countDDOS = new client.Counter({
+        registers: [register],
+        name: "user_ddos",
+        help: "Counts number of times an IP address is rate limited from DDOS",
+        labelNames: ["ip"]
+    })
+
+    let countWebsocketSubscription = new client.Counter({
+        registers: [register],
+        name: "websocket_subscription",
+        help: "Counts number of times an IP has subscribed to websocket",
+        labelNames: ["ip"]
+    })
+
+    let countWebsocketMessage = new client.Counter({
+        registers: [register],
+        name: "websocket_message",
+        help: "Counts number of times an IP has received a websocket message",
         labelNames: ["ip"]
     })
 
@@ -63,9 +95,13 @@ export function createPrometheusClient(): PromClient {
 
     return {
         metrics: async () => register.metrics(),
-        incRequest: (action: RPCAction, ip: string) => processRequestCounter.labels(action, ip).inc(),
+        incRequest: (action: RPCAction, ip: string, token_used: boolean) => processRequestCounter.labels(action, ip, token_used?"1":"0").inc(),
         incLogging: (logLevel: LogLevel) => logCounter.labels(logLevel).inc(),
         incRateLimited: (ip: string) => countRateLimited.labels(ip).inc(),
+        incSlowDown: (ip: string) => countSlowDown.labels(ip).inc(),
+        incDDOS: (ip: string) => countDDOS.labels(ip).inc(),
+        incWebsocketSubscription: (ip: string) => countWebsocketSubscription.labels(ip).inc(),
+        incWebsocketMessage: (ip: string) => countWebsocketMessage.labels(ip).inc(),
         timeNodeRpc: (action: RPCAction) => rpcHistogram.startTimer({action: action}),
         timePrice: () => priceHistogram.startTimer(),
         timeVerifiedAccounts: () => verifiedAccountsHistogram.startTimer(),

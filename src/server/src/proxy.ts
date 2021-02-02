@@ -460,6 +460,7 @@ const rateLimiterMiddleware2 = (req: Request, res: Response, next: (err?: any) =
       next()
     })
     .catch((error?: Error) => {
+      promClient?.incDDOS(req.ip)
       res.status(429).send('You are making requests too fast, please slow down!')
     })
  }
@@ -499,6 +500,9 @@ if (settings.use_slow_down) {
         }
       }
       return false
+    },
+    onLimitReached(req, res, options) {
+      promClient?.incSlowDown(req.ip)
     }
   })
   app.use(slow_down_settings)
@@ -744,8 +748,6 @@ async function getOrFetchDifficulty(): Promise<ActiveDifficultyResponse | undefi
 }
 
 async function processRequest(query: ProxyRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
-  promClient?.incRequest(query.action, req.ip)
-
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++
@@ -782,6 +784,9 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
       }
     }
   }
+
+  const tokenUsed: boolean =  (tokens_left && tokens_left >= 0) ? true:false
+  promClient?.incRequest(query.action, req.ip, tokenUsed)
 
   // Respond directly if non-node-related request
   //  --
@@ -1120,6 +1125,7 @@ if (settings.use_websocket) {
 
     let remote_ip = request.remoteAddress
     logThis('Websocket Connection requested from: ' + remote_ip, log_levels.info)
+    promClient?.incWebsocketSubscription(remote_ip)
 
     // Black list protection
     if (settings.ip_blacklist.includes(remote_ip)) {
@@ -1310,6 +1316,7 @@ if (settings.use_websocket) {
               // send message to each subscribing user for this particular account
               logThis('A tracked account was pushed to client: ' + key, log_levels.info)
               websocket_connections.get(user.ip)?.sendUTF(msg.data)
+              promClient?.incWebsocketMessage(user.ip)
             }
           }
         }
