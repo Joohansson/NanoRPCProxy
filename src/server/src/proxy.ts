@@ -1,5 +1,5 @@
 import {Credentials, CredentialSettings} from "./credential-settings";
-import ProxySettings, {proxyLogSettings} from './proxy-settings';
+import ProxySettings, {proxyLogSettings, readProxySettings} from './proxy-settings';
 import {ConfigPaths, log_levels, LogData, LogLevel, readConfigPathsFromENV} from "./common-settings";
 import {loadDefaultUserSettings, readUserSettings, UserSettings, UserSettingsConfig} from "./user-settings";
 import {PowSettings} from "./pow-settings";
@@ -142,66 +142,15 @@ try {
 catch(e) {
   console.log("Could not read creds.json", e)
 }
-// ---
-
-const loadSettings: () => ProxySettings = () => {
-  const defaultSettings: ProxySettings = {
-    node_url: "http://[::1]:7076",
-    node_ws_url: "ws://127.0.0.1:7078",
-    http_port: 9950,
-    https_port: 9951,
-    websocket_http_port: 9952,
-    websocket_https_port: 9953,
-    request_path: '/proxy',
-    use_auth: false,
-    use_slow_down: false,
-    use_rate_limiter: false,
-    use_cache: false,
-    use_http: true,
-    use_https: false,
-    use_output_limiter: false,
-    use_ip_blacklist: false,
-    use_tokens: false,
-    use_websocket: false,
-    use_cors: true,
-    use_dpow: false,
-    use_bpow: false,
-    https_cert: '',
-    https_key: '',
-    allowed_commands: [],
-    cached_commands: {},
-    limited_commands: {},
-    slow_down: {},
-    rate_limiter: {},
-    ddos_protection: {},
-    ip_blacklist: [],
-    proxy_hops: 0,
-    websocket_max_accounts: 100,
-    cors_whitelist: [],
-    log_level: log_levels.none,
-    disable_watch_work: false,
-    enable_prometheus_for_ips: [],
-  }
-  try {
-    const settings: ProxySettings = JSON.parse(Fs.readFileSync(configPaths.settings, 'UTF-8'))
-    const requestPath = settings.request_path || defaultSettings.request_path
-    const normalizedRequestPath = requestPath.startsWith('/') ? requestPath : '/' + requestPath
-    return {...defaultSettings, ...settings, request_path: normalizedRequestPath }
-  } catch(e) {
-    console.log("Could not read settings.json", e)
-    return defaultSettings;
-  }
-}
 
 // Read settings from file
 // ---
-const settings: ProxySettings = loadSettings()
+const settings: ProxySettings = readProxySettings(configPaths.settings)
 const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
 let userSettings: UserSettings = loadDefaultUserSettings(settings)
 const promClient: PromClient | undefined = settings.enable_prometheus_for_ips.length > 0 ? createPrometheusClient() : undefined
 
 proxyLogSettings(console.log, settings)
-
 
 // ---
 

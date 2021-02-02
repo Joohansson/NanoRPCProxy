@@ -1,4 +1,4 @@
-export {}
+import ProxySettings, {proxyLogSettings, readProxySettings} from "../proxy-settings";
 
 const expectedDefaultSettings = [
     'PROXY SETTINGS:\n-----------',
@@ -28,9 +28,8 @@ const expectedDefaultSettings = [
 
 test('log proxy settings with no config', () => {
     let settings: string[] = []
-    process.env.OVERRIDE_USE_HTTP = 'false'
-    process.env.CONFIG_SETTINGS = 'src/__test__/settings.json'
-    require('../proxy').logSettings((setting: string) => settings.push(setting))
+    const readSettings: ProxySettings = readProxySettings('path-does-not-exist')
+    proxyLogSettings((setting: string) => settings.push(setting), readSettings)
     expect(settings.length).toBe(23);
     expect(settings).toStrictEqual(expectedDefaultSettings)
 });

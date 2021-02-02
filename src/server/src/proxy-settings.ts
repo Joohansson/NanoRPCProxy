@@ -1,5 +1,5 @@
-import {CachedCommands, LimitedCommands, LogLevel} from "./common-settings";
-import {TokenSettings} from "./token-settings";
+import {CachedCommands, LimitedCommands, log_levels, LogLevel} from "./common-settings";
+import * as Fs from "fs";
 
 /** Contains the settings for the slow down filter */
 export interface SlowDown {
@@ -172,4 +172,53 @@ export function proxyLogSettings(logger: (...data: any[]) => void, settings: Pro
         }
     }
     logger("Main log level: " + settings.log_level)
+}
+
+export function readProxySettings(settingsPath: string): ProxySettings {
+    const defaultSettings: ProxySettings = {
+        node_url: "http://[::1]:7076",
+        node_ws_url: "ws://127.0.0.1:7078",
+        http_port: 9950,
+        https_port: 9951,
+        websocket_http_port: 9952,
+        websocket_https_port: 9953,
+        request_path: '/proxy',
+        use_auth: false,
+        use_slow_down: false,
+        use_rate_limiter: false,
+        use_cache: false,
+        use_http: true,
+        use_https: false,
+        use_output_limiter: false,
+        use_ip_blacklist: false,
+        use_tokens: false,
+        use_websocket: false,
+        use_cors: true,
+        use_dpow: false,
+        use_bpow: false,
+        https_cert: '',
+        https_key: '',
+        allowed_commands: [],
+        cached_commands: {},
+        limited_commands: {},
+        slow_down: {},
+        rate_limiter: {},
+        ddos_protection: {},
+        ip_blacklist: [],
+        proxy_hops: 0,
+        websocket_max_accounts: 100,
+        cors_whitelist: [],
+        log_level: log_levels.none,
+        disable_watch_work: false,
+        enable_prometheus_for_ips: [],
+    }
+    try {
+        const settings: ProxySettings = JSON.parse(Fs.readFileSync(settingsPath, 'utf-8'))
+        const requestPath = settings.request_path || defaultSettings.request_path
+        const normalizedRequestPath = requestPath.startsWith('/') ? requestPath : '/' + requestPath
+        return {...defaultSettings, ...settings, request_path: normalizedRequestPath }
+    } catch(e) {
+        console.log("Could not read settings.json", e)
+        return defaultSettings;
+    }
 }
