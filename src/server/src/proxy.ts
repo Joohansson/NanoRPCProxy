@@ -53,11 +53,11 @@ tracking_db.defaults({users: []}).write()
 tracking_db.update('users', n => []).write() //empty db on each new run
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
-var users: Credentials[] = []                      // a list of base64 user/password credentials
+let users: Credentials[] = []                      // a list of base64 user/password credentials
 
 // default vars
 let cache_duration_default: number = 60
-var rpcCache: NodeCache | null = null
+let rpcCache: NodeCache | null = null
 const price_url = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
 const mynano_ninja_url = 'https://mynano.ninja/api/accounts/verified'
 //const price_url2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
@@ -69,19 +69,19 @@ const work_default_timeout: number = 10 // x sec timeout before trying next dele
 const bpow_url: string = 'https://bpow.banano.cc/service/'
 const dpow_url: string = 'https://dpow.nanocenter.org/service/'
 const work_token_cost = 10 // work_generate will consume x token points
-var ws: ReconnectingWebSocket | null = null
-var global_tracked_accounts: string[] = [] // the accounts to track in websocket (synced with database)
-var websocket_connections: Map<string, connection> = new Map<string, connection>() // active ws connections
+let ws: ReconnectingWebSocket | null = null
+let global_tracked_accounts: string[] = [] // the accounts to track in websocket (synced with database)
+let websocket_connections: Map<string, connection> = new Map<string, connection>() // active ws connections
 
-var dpow_user: string | null = null
-var dpow_key: string | null = null
-var bpow_user: string | null = null
-var bpow_key: string | null = null
+let dpow_user: string | null = null
+let dpow_key: string | null = null
+let bpow_user: string | null = null
+let bpow_key: string | null = null
 
 // track daily requests and save to a log file (daily stat is reset if the server is restarted)
 // ---
-var rpcCount: number = 0
-var logdata: LogData[] = []
+let rpcCount: number = 0
+let logdata: LogData[] = []
 try {
   // read latest count from file
   logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'UTF-8'))
@@ -341,7 +341,7 @@ if (settings.use_cors) {
     app.use(Cors())
   }
   else {
-    var corsOptions = function (req: Request, callback: (err: Error | null, options?: CorsOptions) => void) {
+    let corsOptions = function (req: Request, callback: (err: Error | null, options?: CorsOptions) => void) {
       if (settings.cors_whitelist.indexOf(req.header('Origin')) !== -1 || settings.cors_whitelist.indexOf(req.ip) !== -1) {
         callback(null, {origin: true}) // reflect (enable) the requested origin in the CORS response
       } else {
@@ -423,7 +423,7 @@ if (settings.use_rate_limiter) {
         return
       }
     }
-    var points_to_consume = 1
+    let points_to_consume = 1
     // work is more costly
     if (req.body.action === 'work_generate') {
       points_to_consume = work_token_cost
@@ -519,7 +519,7 @@ function myAuthorizer(username: string, password: string): boolean {
   userSettings.limited_commands = settings.limited_commands
   userSettings.log_level = settings.log_level
 
-  var valid_user: boolean = false
+  let valid_user: boolean = false
   for (const [_, value] of Object.entries(users)) {
     if (BasicAuth.safeCompare(username, value.user) && BasicAuth.safeCompare(password, value.password)) {
       valid_user = true
@@ -550,7 +550,7 @@ function useToken(query: ProxyRPCRequest) {
   if (order_db.get('orders').find({token_key: token_key}).value()) {
     let tokens = order_db.get('orders').find({token_key: token_key}).value().tokens
     if (tokens > 0) {
-      var decrease_by = 1
+      let decrease_by = 1
       // work is more costly
       if (query.action === 'work_generate') {
         decrease_by = work_token_cost
@@ -762,8 +762,8 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   }
 
   // Decrease user tokens and block if zero left
-  var tokens_left: number | null = null
-  var token_header: string | undefined = req.get('Token')
+  let tokens_left: number | null = null
+  let token_header: string | undefined = req.get('Token')
   if (settings.use_tokens) {
     // If token supplied via header, use it instead
     if (token_header) {
@@ -874,7 +874,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   // Handle work generate via dpow and/or bpow
   if (query.action === 'work_generate' && (settings.use_dpow || settings.use_bpow)) {
     if (query.hash) {
-      var bpow_failed = false
+      let bpow_failed = false
       // Only set difficulty from live network if not requested or if it was exactly default
       if (!query.difficulty || query.difficulty === work_threshold_default || query.difficulty === work_threshold_receive_default) {
         query.difficulty = await getLatestDifficulty(query.difficulty)
@@ -1022,7 +1022,7 @@ process.on('SIGINT', () => {
   process.exit(0)
 })
 
-var websocket_servers = []
+let websocket_servers = []
 // Create an HTTP service
 if (settings.use_http && test_override_http) {
   Http.createServer(app).listen(settings.http_port, function() {
@@ -1031,7 +1031,7 @@ if (settings.use_http && test_override_http) {
 
   // websocket
   if (settings.use_websocket) {
-    var ws_http_server = Http.createServer(function(request: IncomingMessage, response: ServerResponse) {
+    let ws_http_server = Http.createServer(function(request: IncomingMessage, response: ServerResponse) {
       response.writeHead(404)
       response.end()
     })
@@ -1045,8 +1045,8 @@ if (settings.use_http && test_override_http) {
 // Create an HTTPS service
 if (settings.use_https) {
   // Verify that cert files exists
-  var cert_exists = false
-  var key_exists = false
+  let cert_exists = false
+  let key_exists = false
   try {
     if (Fs.existsSync(settings.https_cert)) {
       cert_exists = true
@@ -1069,7 +1069,7 @@ if (settings.use_https) {
   }
 
   if (cert_exists && key_exists) {
-    var https_options = {
+    let https_options = {
       cert: Fs.readFileSync(settings.https_cert),
       key: Fs.readFileSync(settings.https_key)
     }
@@ -1080,7 +1080,7 @@ if (settings.use_https) {
 
     // websocket
     if (settings.use_websocket) {
-      var ws_https_server = Https.createServer(https_options, function(request: IncomingMessage, response: ServerResponse) {
+      let ws_https_server = Https.createServer(https_options, function(request: IncomingMessage, response: ServerResponse) {
         response.writeHead(404)
         response.end()
       })
@@ -1141,14 +1141,9 @@ if (settings.use_websocket) {
       }
     }
     try {
-      var connection = request.accept()
-    } catch (error) {
-      logThis('Bad protocol from connecting client', log_levels.info)
-      return
-    }
-
-    connection.on('message', function(message: IMessage) {
-      if (message.type === 'utf8' && message.utf8Data) {
+      let connection: connection = request.accept()
+      connection.on('message', function(message: IMessage) {
+        if (message.type === 'utf8' && message.utf8Data) {
           //console.log('Received Message: ' + message.utf8Data + ' from ' + remote_ip)
           try {
             let msg: WSMessage = JSON.parse(message.utf8Data)
@@ -1159,7 +1154,7 @@ if (settings.use_websocket) {
                   // check if new unique accounts + existing accounts exceed max limit
                   // get existing tracked accounts
                   let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
-                  var current_tracked_accounts = {} //if not in db, use empty dict
+                  let current_tracked_accounts = {} //if not in db, use empty dict
                   if (current_user !== undefined) {
                     current_tracked_accounts = current_user.tracked_accounts
                   }
@@ -1167,7 +1162,7 @@ if (settings.use_websocket) {
                   // count new accounts that are not already tracked
                   let unique_new = 0
                   msg.options.accounts.forEach(function (address: string) {
-                    var address_exists = false
+                    let address_exists = false
                     for (const [key] of Object.entries(current_tracked_accounts)) {
                       if (key === address) {
                         address_exists = true
@@ -1182,7 +1177,7 @@ if (settings.use_websocket) {
                     websocket_connections.set(remote_ip, connection)
 
                     // mirror the subscription to the real websocket
-                    var tracking_updated = false
+                    let tracking_updated = false
                     msg.options.accounts.forEach(function (address: string) {
                       if (trackAccount(connection.remoteAddress, address)) {
                         tracking_updated = true
@@ -1205,14 +1200,18 @@ if (settings.use_websocket) {
           catch (e) {
             //console.log(e)
           }
-      }
-    })
-    connection.on('close', function(reasonCode, description) {
-      logThis('Websocket disconnected for: ' + remote_ip, log_levels.info)
-      // clean up db and dictionary
-      tracking_db.get('users').remove({ip: remote_ip}).write()
-      websocket_connections.delete(remote_ip)
-    })
+        }
+      })
+      connection.on('close', function(reasonCode, description) {
+        logThis('Websocket disconnected for: ' + remote_ip, log_levels.info)
+        // clean up db and dictionary
+        tracking_db.get('users').remove({ip: remote_ip}).write()
+        websocket_connections.delete(remote_ip)
+      })
+    } catch (error) {
+      logThis('Bad protocol from connecting client', log_levels.info)
+      return
+    }
   })
 }
 
@@ -1233,13 +1232,13 @@ function trackAccount(remote_ip: string, address: string): boolean {
   }
   // get existing tracked accounts
   let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
-  var current_tracked_accounts: Record<string, TrackedAccount> = {} //if not in db, use empty dict
+  let current_tracked_accounts: Record<string, TrackedAccount> = {} //if not in db, use empty dict
   if (current_user !== undefined) {
     current_tracked_accounts = current_user.tracked_accounts
   }
 
   // check if account is not already tracked
-  var address_exists = false
+  let address_exists = false
   for (const [key] of Object.entries(current_tracked_accounts)) {
     if (key === address)  {
       address_exists = true
@@ -1264,7 +1263,7 @@ function trackAccount(remote_ip: string, address: string): boolean {
     }
 
     // check if account is already tracked globally or start tracking
-    var tracking_exists = false
+    let tracking_exists = false
     global_tracked_accounts.forEach(function(tracked_address) {
       if (tracked_address === address) {
         tracking_exists = true
