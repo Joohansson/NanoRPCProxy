@@ -746,6 +746,31 @@ async function getOrFetchDifficulty(): Promise<ActiveDifficultyResponse | undefi
     }
   }
 }
+/** Returns a price lookup from cache, or fetches from third party API */
+async function getOrFetchPrice(): Promise<PriceResponse | undefined> {
+  const cachedValue: PriceResponse | undefined = rpcCache?.get('price')
+  if (cachedValue && Tools.isValidJson(cachedValue)) {
+    logThis("Cache requested: " + 'price', log_levels.info)
+    return cachedValue
+  } else {
+    let endPriceTimer: MaybeTimedCall = promClient?.timePrice()
+    try {
+      let data: PriceResponse = await Tools.getData(price_url, API_TIMEOUT)
+      // Store the price in cache for 10sec
+      if (!rpcCache?.set('price', data, 10)) {
+        logThis(`Failed saving cache for price`, log_levels.warning)
+      }
+      //res.json({"Price USD":data.data["1567"].quote.USD.price}) // sending back json price response (CMC)
+      //res.json({"Price USD":data.quotes.USD.price}) // sending back json price response (Coinpaprika)
+      return data // sending back full json price response (Coinpaprika)
+    } catch (err) {
+      logThis(`Failed looking up price: ${err.toString()}`, log_levels.warning)
+      return undefined
+    } finally {
+      endPriceTimer?.()
+    }
+  }
+}
 
 async function processRequest(query: ProxyRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
   if (query.action !== 'tokenorder_check') {
@@ -791,37 +816,14 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   // Respond directly if non-node-related request
   //  --
   if (query.action === 'price') {
-
-    let endPriceTimer: MaybeTimedCall = undefined
-    try {
-      // Use cached value first
-      const cachedValue: PriceResponse | undefined = rpcCache?.get('price')
-      if (cachedValue && Tools.isValidJson(cachedValue)) {
-        logThis("Cache requested: " + 'price', log_levels.info)
-        if (tokens_left != null) {
-          cachedValue.tokens_total = tokens_left
-        }
-        return res.json(appendRateLimiterStatus(res, cachedValue))
-      }
-
-      endPriceTimer = promClient?.timePrice()
-      let data: PriceResponse = await Tools.getData(price_url, API_TIMEOUT)
-
-      // Store the price in cache for 10sec
-      if (!rpcCache?.set('price', data, 10)) {
-        logThis("Failed saving cache for " + 'price', log_levels.warning)
-      }
-      //res.json({"Price USD":data.data["1567"].quote.USD.price}) // sending back json price response (CMC)
-      //res.json({"Price USD":data.quotes.USD.price}) // sending back json price response (Coinpaprika)
+    const priceResponse: PriceResponse | undefined = await getOrFetchPrice()
+    if(priceResponse) {
       if (tokens_left != null) {
-        data.tokens_total = tokens_left
+        priceResponse.tokens_total = tokens_left
       }
-      return res.json(appendRateLimiterStatus(res, data)) // sending back full json price response (Coinpaprika)
-    }
-    catch(err) {
-      return res.status(500).json({error: err.toString()})
-    } finally {
-      endPriceTimer?.()
+      return res.json(appendRateLimiterStatus(res, priceResponse))
+    } else {
+      return res.status(500).json({error: "Unable to lookup price"})
     }
   }
 
