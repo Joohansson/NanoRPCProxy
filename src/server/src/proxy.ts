@@ -1141,9 +1141,14 @@ if (settings.use_websocket) {
       }
     }
     try {
-      let connection: connection = request.accept()
-      connection.on('message', function(message: IMessage) {
-        if (message.type === 'utf8' && message.utf8Data) {
+      var connection = request.accept()
+    } catch (error) {
+      logThis('Bad protocol from connecting client', log_levels.info)
+      return
+    }
+
+    connection.on('message', function(message: IMessage) {
+      if (message.type === 'utf8' && message.utf8Data) {
           //console.log('Received Message: ' + message.utf8Data + ' from ' + remote_ip)
           try {
             let msg: WSMessage = JSON.parse(message.utf8Data)
@@ -1154,7 +1159,7 @@ if (settings.use_websocket) {
                   // check if new unique accounts + existing accounts exceed max limit
                   // get existing tracked accounts
                   let current_user = tracking_db.get('users').find({ip: remote_ip}).value()
-                  let current_tracked_accounts = {} //if not in db, use empty dict
+                  var current_tracked_accounts = {} //if not in db, use empty dict
                   if (current_user !== undefined) {
                     current_tracked_accounts = current_user.tracked_accounts
                   }
@@ -1162,7 +1167,7 @@ if (settings.use_websocket) {
                   // count new accounts that are not already tracked
                   let unique_new = 0
                   msg.options.accounts.forEach(function (address: string) {
-                    let address_exists = false
+                    var address_exists = false
                     for (const [key] of Object.entries(current_tracked_accounts)) {
                       if (key === address) {
                         address_exists = true
@@ -1177,7 +1182,7 @@ if (settings.use_websocket) {
                     websocket_connections.set(remote_ip, connection)
 
                     // mirror the subscription to the real websocket
-                    let tracking_updated = false
+                    var tracking_updated = false
                     msg.options.accounts.forEach(function (address: string) {
                       if (trackAccount(connection.remoteAddress, address)) {
                         tracking_updated = true
@@ -1200,18 +1205,14 @@ if (settings.use_websocket) {
           catch (e) {
             //console.log(e)
           }
-        }
-      })
-      connection.on('close', function(reasonCode, description) {
-        logThis('Websocket disconnected for: ' + remote_ip, log_levels.info)
-        // clean up db and dictionary
-        tracking_db.get('users').remove({ip: remote_ip}).write()
-        websocket_connections.delete(remote_ip)
-      })
-    } catch (error) {
-      logThis('Bad protocol from connecting client', log_levels.info)
-      return
-    }
+      }
+    })
+    connection.on('close', function(reasonCode, description) {
+      logThis('Websocket disconnected for: ' + remote_ip, log_levels.info)
+      // clean up db and dictionary
+      tracking_db.get('users').remove({ip: remote_ip}).write()
+      websocket_connections.delete(remote_ip)
+    })
   })
 }
 
