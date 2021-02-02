@@ -25,7 +25,7 @@ const sleep = (milliseconds: number) => {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
-var node_url = "" // will be set by main script
+let node_url = "" // will be set by main script
 
 // Functions to be required from another file
 // Generates and provides a payment address while checking for pending tx and collect them
@@ -39,8 +39,8 @@ export async function requestTokenPayment(token_amount: number, token_key: strin
   }
 
   node_url = url
-  var priv_key = ""
-  var address = ""
+  let priv_key = ""
+  let address = ""
   let nano_amount = token_amount*settings.token_price // the Nano to be received
 
   // If token_key was passed it means refill tokens and update db order
@@ -102,9 +102,9 @@ export async function cancelOrder(token_key: string, order_db: OrderDB): Promise
     let seed = genSecureKey().toUpperCase()
     let nanowallet = wallet.generate(seed)
     let accounts = wallet.accounts(nanowallet.seed, 0, 0)
-    var priv_key = accounts[0].privateKey
+    let priv_key = accounts[0].privateKey
     let pub_key: string = Nano.derivePublicKey(priv_key)
-    var address: string = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
+    let address: string = Nano.deriveAddress(pub_key, {useNanoPrefix: true})
 
     // Replace the address and private key and reset status
     if (!order.processing) {
@@ -170,7 +170,7 @@ async function checkPending(address: string, order_db: OrderDB, moveOn: boolean 
 
         if (order) {
           // Save previous hashes to be appended with new discovered hashes
-          var prev_hashes = []
+          let prev_hashes = []
           if ('hashes' in order && Array.isArray(order.hashes)) {
             prev_hashes = order.hashes
           }
@@ -187,7 +187,7 @@ async function checkPending(address: string, order_db: OrderDB, moveOn: boolean 
         logThis("Still need " + (nano_amount - total_received)  + " Nano to finilize the order", log_levels.info)
         if (order) {
           // Save previous hashes to be appended with new discovered hashes
-          var prev_hashes = []
+          let prev_hashes = []
           if ('hashes' in order && Array.isArray(order.hashes)) {
             prev_hashes = order.hashes
           }
@@ -216,7 +216,7 @@ async function checkPending(address: string, order_db: OrderDB, moveOn: boolean 
   const order = order_db.get('orders').find({address: address}).value()
   if (order) {
     // Update the order time left
-    var new_time = order.order_time_left - settings.pending_interval
+    let new_time = order.order_time_left - settings.pending_interval
     if (new_time < 0) {
       new_time = 0
     }
@@ -250,22 +250,22 @@ async function processAccount(privKey: string, order_db: OrderDB): Promise<Statu
     let address: string = Nano.deriveAddress(pubKey, {useNanoPrefix: true})
 
     // get account info required to build the block
-    var command: any = {}
+    let command: any = {}
     command.action = 'account_info'
     command.account = address
     command.representative = true
 
-    var balance: string = "0" // balance will be 0 if open block
-    var adjustedBalance: string = balance.toString()
-    var previous: string | null = null // previous is null if we create open block
+    let balance: string = "0" // balance will be 0 if open block
+    let adjustedBalance: string = balance.toString()
+    let previous: string | null = null // previous is null if we create open block
     order_db.get('orders').find({priv_key: privKey}).assign({previous: previous}).write()
-    var representative = 'nano_1iuz18n4g4wfp9gf7p1s8qkygxw7wx9qfjq6a9aq68uyrdnningdcjontgar'
-    var subType = 'open'
+    let representative = 'nano_1iuz18n4g4wfp9gf7p1s8qkygxw7wx9qfjq6a9aq68uyrdnningdcjontgar'
+    let subType = 'open'
 
     // retrive from RPC
     try {
       let data: AccountInfoResponse = await Tools.postData(command, node_url, API_TIMEOUT)
-      var validResponse = false
+      let validResponse = false
       // if frontier is returned it means the account has been opened and we create a receive block
       if (data.frontier) {
         balance = data.balance
@@ -314,7 +314,7 @@ async function processAccount(privKey: string, order_db: OrderDB): Promise<Statu
 async function createPendingBlocks(order_db: OrderDB, privKey: string, address: string, balance: string, adjustedBalance: string, previous: string | null, subType: string, representative: string, pubKey: string, callback: (previous: string | null, newAdjustedBalance: string) => any, accountCallback: (status: StatusCallback) => any): Promise<void> {
   // check for pending first
   // Solving this with websocket subscription instead of checking pending x times for each order would be nice but since we must check for previous pending that was done before the order initated, it makes it very complicated without rewriting the whole thing..
-  var command: any = {}
+  let command: any = {}
   command.action = 'pending'
   command.account = address
   command.count = 10
@@ -329,12 +329,12 @@ async function createPendingBlocks(order_db: OrderDB, privKey: string, address: 
     // if there are any pending, process them
     if (data.blocks) {
       // sum all raw amounts and create receive blocks for all pending
-      var raw = '0'
-      var keys: string[] = []
-      var blocks: any = {}
+      let raw = '0'
+      let keys: string[] = []
+      let blocks: any = {}
       const order = order_db.get('orders').find({address: address}).value()
       Object.keys(data.blocks).forEach(function(key) {
-        var found = false
+        let found = false
         // Check if the pending hashes have not already been processed
         if (order && 'hashes' in order) {
           order.hashes.forEach(function(hash) {
@@ -396,17 +396,17 @@ async function processPending(order_db: OrderDB, blocks: any, keys: any, keyCoun
 
   // generate local work
   try {
-    var newAdjustedBalance: string = Tools.bigAdd(adjustedBalance,blocks[key].amount)
+    let newAdjustedBalance: string = Tools.bigAdd(adjustedBalance,blocks[key].amount)
     logThis("Started generating PoW...", log_levels.info)
 
     // determine input work hash depending if open block or receive block
-    var workInputHash = previous
+    let workInputHash = previous
     if (subType === 'open') {
       // input hash is the opening address public key
       workInputHash = pubKey
     }
 
-    var command: any = {}
+    let command: any = {}
     command.action = "work_generate"
     command.hash = workInputHash
     command.multiplier = settings.difficulty_multiplier
@@ -482,7 +482,7 @@ async function processSend(order_db: OrderDB, privKey: string, previous: string 
   let address = Nano.deriveAddress(pubKey, {useNanoPrefix: true})
 
   logThis("Final transfer started for: " + address, log_levels.info)
-  var command: any = {}
+  let command: any = {}
   command.action = 'work_generate'
   command.hash = previous
   command.multiplier = settings.difficulty_multiplier
