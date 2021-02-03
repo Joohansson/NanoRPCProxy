@@ -23,6 +23,7 @@ import {multiplierFromDifficulty} from "./tools";
 import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-api/mynano-api";
 import process from 'process'
 import {createPrometheusClient, MaybeTimedCall, PromClient} from "./prom-client";
+import {createProxyAuthorizer, ProxyAuthorizer} from "./authorize-user";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -147,8 +148,9 @@ catch(e) {
 // ---
 const settings: ProxySettings = readProxySettings(configPaths.settings)
 const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
-let userSettings: UserSettings = loadDefaultUserSettings(settings)
+const defaultUserSettings: UserSettings = loadDefaultUserSettings(settings)
 const promClient: PromClient | undefined = settings.enable_prometheus_for_ips.length > 0 ? createPrometheusClient() : undefined
+const userAuthorizer: ProxyAuthorizer = createProxyAuthorizer(settings, user_settings, users)
 
 proxyLogSettings(console.log, settings)
 
@@ -255,7 +257,7 @@ app.use((err: Error, req: Request, res: Response, _next: any) => {
 
 // Define authentication service
 if (settings.use_auth) {
-  app.use(BasicAuth({ authorizer: myAuthorizer }))
+  app.use(BasicAuth({ authorizer: userAuthorizer.authorize }))
 }
 
 // Block IP if requesting too much but skipped if a valid token_key is provided (long interval)
@@ -387,40 +389,6 @@ if (settings.use_cache) {
   rpcCache = new NodeCache( { stdTTL: cache_duration_default, checkperiod: 10 } )
 }
 
-// To verify username and password provided via basicAuth. Support multiple users
-function myAuthorizer(username: string, password: string): boolean {
-  // Set default settings specific for authenticated users
-  userSettings.use_cache = settings.use_cache
-  userSettings.use_output_limiter = settings.use_output_limiter
-  userSettings.allowed_commands = settings.allowed_commands
-  userSettings.cached_commands = settings.cached_commands
-  userSettings.limited_commands = settings.limited_commands
-  userSettings.log_level = settings.log_level
-
-  let valid_user: boolean = false
-  for (const [_, value] of Object.entries(users)) {
-    if (BasicAuth.safeCompare(username, value.user) && BasicAuth.safeCompare(password, value.password)) {
-      valid_user = true
-
-      // Override default settings if exists
-      for (const key in user_settings) {
-        let value: UserSettings = user_settings[key];
-        if(key === username) {
-          userSettings.use_cache = value.use_cache
-          userSettings.use_output_limiter = value.use_output_limiter
-          userSettings.allowed_commands = value.allowed_commands
-          userSettings.cached_commands = value.cached_commands
-          userSettings.limited_commands = value.limited_commands
-          userSettings.log_level = value.log_level
-          break;
-        }
-      }
-      break
-    }
-  }
-  return valid_user
-}
-
 // Deduct token count for given token_key
 function useToken(query: ProxyRPCRequest) {
   let token_key = query.token_key
@@ -473,7 +441,7 @@ function updateTrackedAccounts() {
 }
 
 // Log function
-function logThis(str: string, level: LogLevel) {
+function logThis(str: string, level: LogLevel, userSettings: UserSettings = defaultUserSettings) {
   if (userSettings.log_level == log_levels.info || level == userSettings.log_level) {
     if (level == log_levels.info) {
       console.info(str)
@@ -647,6 +615,12 @@ async function getOrFetchPrice(): Promise<PriceResponse | undefined> {
 }
 
 async function processRequest(query: ProxyRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
+
+  // @ts-ignore
+  const userSettings = (settings.use_auth && req.auth) ?
+      // @ts-ignore
+      (userAuthorizer.getUserSettings(req.auth.user, req.auth.password) || defaultUserSettings) : defaultUserSettings
+
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++
@@ -885,14 +859,8 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   }
 }
 
-function getUserSettings(): UserSettings {
-  return userSettings
-}
-
 module.exports = {
   processRequest: processRequest,
-  myAuthorizer: myAuthorizer,
-  getUserSettings: getUserSettings,
   trackAccount: trackAccount,
   tracking_db: tracking_db,
 }
