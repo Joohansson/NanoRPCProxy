@@ -1,4 +1,4 @@
-import {Credentials, CredentialSettings, readCredentials} from "./credential-settings";
+import {Credentials, readCredentials} from "./credential-settings";
 import ProxySettings, {proxyLogSettings, readProxySettings} from './proxy-settings';
 import {ConfigPaths, log_levels, LogData, LogLevel, readConfigPathsFromENV} from "./common-settings";
 import {loadDefaultUserSettings, readUserSettings, UserSettings, UserSettingsConfig} from "./user-settings";
