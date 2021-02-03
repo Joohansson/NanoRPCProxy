@@ -1,4 +1,4 @@
-import {Credentials, CredentialSettings} from "./credential-settings";
+import {Credentials, CredentialSettings, readCredentials} from "./credential-settings";
 import ProxySettings, {proxyLogSettings, readProxySettings} from './proxy-settings';
 import {ConfigPaths, log_levels, LogData, LogLevel, readConfigPathsFromENV} from "./common-settings";
 import {loadDefaultUserSettings, readUserSettings, UserSettings, UserSettingsConfig} from "./user-settings";
@@ -54,7 +54,6 @@ tracking_db.defaults({users: []}).write()
 tracking_db.update('users', n => []).write() //empty db on each new run
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
-let users: Credentials[] = []                      // a list of base64 user/password credentials
 
 // default vars
 let cache_duration_default: number = 60
@@ -132,25 +131,15 @@ function appendFile(count: number) {
     console.log("Could not write request-stat.json", e)
   }
 }
-// ---
-
-// Read credentials from file
-// ---
-try {
-  const credentials: CredentialSettings = JSON.parse(Fs.readFileSync(configPaths.creds, 'UTF-8'))
-  users = credentials.users
-}
-catch(e) {
-  console.log("Could not read creds.json", e)
-}
-
 // Read settings from file
+
 // ---
+const users: Credentials[] = readCredentials(configPaths.creds)
 const settings: ProxySettings = readProxySettings(configPaths.settings)
 const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
 const defaultUserSettings: UserSettings = loadDefaultUserSettings(settings)
 const promClient: PromClient | undefined = settings.enable_prometheus_for_ips.length > 0 ? createPrometheusClient() : undefined
-const userAuthorizer: ProxyAuthorizer = createProxyAuthorizer(settings, user_settings, users)
+const userAuthorizer: ProxyAuthorizer = createProxyAuthorizer(defaultUserSettings, user_settings, users)
 
 proxyLogSettings(console.log, settings)
 
@@ -257,7 +246,7 @@ app.use((err: Error, req: Request, res: Response, _next: any) => {
 
 // Define authentication service
 if (settings.use_auth) {
-  app.use(BasicAuth({ authorizer: userAuthorizer.authorize }))
+  app.use(BasicAuth({ authorizer: userAuthorizer.myAuthorizer }))
 }
 
 // Block IP if requesting too much but skipped if a valid token_key is provided (long interval)
