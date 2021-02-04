@@ -27,6 +27,7 @@
     "helmet": "^3.23.0",
     "http": "0.0.0",
     "https": "^1.0.0",
+    "ip-range-check": "^0.2.0",
     "lowdb": "^1.0.0",
     "nanocurrency": "^2.4.0",
     "nanocurrency-web": "^1.0.6",
