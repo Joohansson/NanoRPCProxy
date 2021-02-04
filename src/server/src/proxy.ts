@@ -10,7 +10,6 @@ import {OrderDB, OrderSchema, TrackedAccount, User, UserDB, UserSchema} from "./
 import {Request, Response} from "express";
 import {CorsOptions} from "cors";
 import {RateLimiterRes} from "rate-limiter-flexible";
-import {IncomingMessage, ServerResponse} from "http";
 import {connection, IMessage, request as WSRequest, server as WSServer} from "websocket";
 import ReconnectingWebSocket, { ErrorEvent } from "reconnecting-websocket";
 import NodeCache from "node-cache";
@@ -23,6 +22,10 @@ import {multiplierFromDifficulty} from "./tools";
 import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-api/mynano-api";
 import process from 'process'
 import {createPrometheusClient, MaybeTimedCall, PromClient} from "./prom-client";
+import * as core from "express-serve-static-core";
+import {createHttpServer, createHttpsServer, readHttpsOptions, websocketListener} from "./http";
+import * as http from "http";
+import * as https from "https";
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -31,8 +34,6 @@ const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
 const BasicAuth =             require('express-basic-auth')
-const Http =                  require('http')
-const Https =                 require('https')
 const Fs =                    require('fs')
 const Express =               require('express')
 const Cors =                  require('cors')
@@ -205,7 +206,7 @@ async function checkOldOrders() {
 }
 
 // Define the proxy app
-const app = Express()
+const app: core.Express = Express()
 app.set('view engine', 'pug')
 app.use(Helmet())
 
@@ -902,76 +903,26 @@ process.on('SIGINT', () => {
   process.exit(0)
 })
 
-let websocket_servers = []
+const httpsOptions: https.ServerOptions | undefined = settings.use_https ? readHttpsOptions(settings) : undefined;
+
 // Create an HTTP service
 if (settings.use_http && test_override_http) {
-  Http.createServer(app).listen(settings.http_port, function() {
-    console.log("Http server started on port: " + settings.http_port)
-  })
-
-  // websocket
-  if (settings.use_websocket) {
-    let ws_http_server = Http.createServer(function(request: IncomingMessage, response: ServerResponse) {
-      response.writeHead(404)
-      response.end()
-    })
-    ws_http_server.listen(settings.websocket_http_port, function() {
-      console.log('Websocket server is listening on port ' + settings.websocket_http_port)
-    })
-    websocket_servers.push(ws_http_server)
-  }
+  createHttpServer(app, settings.http_port)
+}
+// Create an HTTPS service
+if (settings.use_https && httpsOptions) {
+  createHttpsServer(app, settings.https_port, httpsOptions)
+} else {
+  console.log("Warning: Will not listen on https!")
 }
 
-// Create an HTTPS service
-if (settings.use_https) {
-  // Verify that cert files exists
-  let cert_exists = false
-  let key_exists = false
-  try {
-    if (Fs.existsSync(settings.https_cert)) {
-      cert_exists = true
-    }
-    else {
-      console.log("Warning: Https cert file does not exist!")
-    }
-  } catch(err) {
-    console.log("Warning: Problem reading https cert file!")
+let websocket_servers: (http.Server | https.Server)[] = []
+if(settings.use_websocket) {
+  if(settings.use_http && test_override_http) {
+    websocket_servers.push(createHttpServer(websocketListener, settings.websocket_http_port, "websocket (http)"))
   }
-  try {
-    if (Fs.existsSync(settings.https_key)) {
-      key_exists = true
-    }
-    else {
-      console.log("Warning: Https key file does not exist!")
-    }
-  } catch(err) {
-    console.log("Warning: Problem reading https key file!")
-  }
-
-  if (cert_exists && key_exists) {
-    let https_options = {
-      cert: Fs.readFileSync(settings.https_cert),
-      key: Fs.readFileSync(settings.https_key)
-    }
-
-    Https.createServer(https_options, app).listen(settings.https_port, function() {
-      console.log("Https server started on port: " + settings.https_port)
-    })
-
-    // websocket
-    if (settings.use_websocket) {
-      let ws_https_server = Https.createServer(https_options, function(request: IncomingMessage, response: ServerResponse) {
-        response.writeHead(404)
-        response.end()
-      })
-      ws_https_server.listen(settings.websocket_https_port, function() {
-        console.log('Websocket server is listening on port ' + settings.websocket_https_port)
-      })
-      websocket_servers.push(ws_https_server)
-    }
-  }
-  else {
-    console.log("Warning: Will not listen on https!")
+  if(settings.use_https && httpsOptions) {
+    websocket_servers.push(createHttpsServer(websocketListener, settings.websocket_https_port, httpsOptions, "websocket (https)"))
   }
 }
 
