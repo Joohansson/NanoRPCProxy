@@ -24,6 +24,7 @@ import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-
 import process from 'process'
 import {createPrometheusClient, MaybeTimedCall, PromClient} from "./prom-client";
 import {createProxyAuthorizer, ProxyAuthorizer} from "./authorize-user";
+import ipRangeCheck from "ip-range-check"
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -425,7 +426,7 @@ if (settings.request_path != '/') {
 if(promClient) {
   app.get(promClient.path, async (req: Request, res: Response) => {
     const remoteAddress: string | undefined = req.connection.remoteAddress;
-    if(remoteAddress && settings.enable_prometheus_for_ips.includes(remoteAddress)) {
+    if(remoteAddress && ipRangeCheck(remoteAddress, settings.enable_prometheus_for_ips)) {
       let metrics = await promClient.metrics();
       res.set('content-type', 'text/plain').send(metrics)
     } else {
