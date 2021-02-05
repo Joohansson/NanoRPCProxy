@@ -6,7 +6,6 @@ const defaultUserSettings: UserSettings = {
     allowed_commands: [],
     cached_commands: {},
     limited_commands: {},
-    log_level: 'info',
     use_cache: false,
     use_output_limiter: false
 };
