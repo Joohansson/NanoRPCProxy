@@ -108,7 +108,7 @@ Schedule.scheduleJob('0 0 * * *', () => {
     logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'UTF-8'))
   }
   catch(e) {
-    console.log("Could not read request-stat.json.", e)
+    console.log(`Could not read ${configPaths.request_stat}`, e)
   }
 })
 function appendFile(count: number) {
@@ -121,11 +121,11 @@ function appendFile(count: number) {
     })
 
     // write updated log
-    Fs.writeFileSync('request-stat.json', JSON.stringify(logdata, null, 2))
+    Fs.writeFileSync(configPaths.request_stat, JSON.stringify(logdata, null, 2))
     logThis("The request stat file was updated!", log_levels.info)
   }
   catch(e) {
-    console.log("Could not write request-stat.json", e)
+    console.log(`Could not write ${configPaths.request_stat}`, e)
   }
 }
 // Read settings from file
