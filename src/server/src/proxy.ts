@@ -2,7 +2,7 @@ import {Credentials, CredentialSettings} from "./credential-settings";
 import ProxySettings, {proxyLogSettings, readProxySettings} from './proxy-settings';
 import {ConfigPaths, log_levels, LogData, LogLevel, readConfigPathsFromENV} from "./common-settings";
 import {loadDefaultUserSettings, readUserSettings, UserSettings, UserSettingsConfig} from "./user-settings";
-import {PowSettings} from "./pow-settings";
+import {PowSettings, readPowSettings} from "./pow-settings";
 import SlowDown from "express-slow-down";
 import FileSync from 'lowdb/adapters/FileSync.js';
 import lowdb from 'lowdb'
@@ -72,11 +72,6 @@ const work_token_cost = 10 // work_generate will consume x token points
 let ws: ReconnectingWebSocket | null = null
 let global_tracked_accounts: string[] = [] // the accounts to track in websocket (synced with database)
 let websocket_connections: Map<string, connection> = new Map<string, connection>() // active ws connections
-
-let dpow_user: string | null = null
-let dpow_key: string | null = null
-let bpow_user: string | null = null
-let bpow_key: string | null = null
 
 // track daily requests and save to a log file (daily stat is reset if the server is restarted)
 // ---
@@ -149,31 +144,9 @@ const settings: ProxySettings = readProxySettings(configPaths.settings)
 const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
 let userSettings: UserSettings = loadDefaultUserSettings(settings)
 const promClient: PromClient | undefined = settings.enable_prometheus_for_ips.length > 0 ? createPrometheusClient() : undefined
+const powSettings: PowSettings = readPowSettings(configPaths.pow_creds, settings)
 
 proxyLogSettings(console.log, settings)
-
-// ---
-
-// Read dpow and bpow credentials from file
-// ---
-if (settings.use_dpow || settings.use_bpow) {
-  try {
-    const powcreds: PowSettings = JSON.parse(Fs.readFileSync(configPaths.pow_creds, 'UTF-8'))
-    if (settings.use_dpow && powcreds.dpow) {
-      dpow_user = powcreds.dpow.user
-      dpow_key = powcreds.dpow.key
-    }
-    if (settings.use_bpow && powcreds.bpow) {
-      bpow_user = powcreds.bpow.user
-      bpow_key = powcreds.bpow.key
-    }
-  }
-  catch(e) {
-    console.log("Could not read pow_creds.json", e)
-  }
-}
-// ---
-
 
 // Periodically check, recover and remove old invactive olders
 if (settings.use_tokens) {
@@ -766,10 +739,10 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
       }
 
       // Try bpow first
-      if (settings.use_bpow && bpow_user && bpow_key) {
+      if (powSettings.bpow) {
         logThis("Requesting work using bpow with diff: " + query.difficulty, log_levels.info)
-        query.user = bpow_user
-        query.api_key = bpow_key
+        query.user = powSettings.bpow.user
+        query.api_key = powSettings.bpow.key
 
         try {
           let data: ProcessDataResponse = await Tools.postData(query, bpow_url, work_default_timeout*1000*2)
@@ -801,10 +774,10 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         }
       }
       // Use dpow only if not already used bpow or bpow timed out
-      if (settings.use_dpow && (!settings.use_bpow || bpow_failed) && dpow_user && dpow_key) {
+      if ((!settings.use_bpow || bpow_failed) && powSettings.dpow) {
         logThis("Requesting work using dpow with diff: " + query.difficulty, log_levels.info)
-        query.user = dpow_user
-        query.api_key = dpow_key
+        query.user = powSettings.dpow.user
+        query.api_key = powSettings.dpow.key
 
         try {
           let data: ProcessDataResponse = await Tools.postData(query, dpow_url, work_default_timeout*1000*2)
