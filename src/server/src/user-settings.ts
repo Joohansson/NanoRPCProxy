@@ -1,4 +1,4 @@
-import {CachedCommands, Command, LimitedCommands, LogLevel} from "./common-settings";
+import {CachedCommands, LimitedCommands} from "./common-settings";
 import * as Fs from "fs";
 import ProxySettings from "./proxy-settings";
 
