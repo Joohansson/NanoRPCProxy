@@ -47,6 +47,7 @@ Apart from increased security, NanoRPCProxy solves the scalability issue where a
 * Support for both delegated PoW (dPoW) and BoomPoW (bPoW)
 * Multiple demo clients for developers
 * Available as docker container [https://hub.docker.com/r/nanojson/nanorpcproxy](https://hub.docker.com/r/nanojson/nanorpcproxy)
+* Built-in support for Prometheus data scraping that can be visualized with Grafana
 
 **Possible use cases**
 ![NanoRPCProxy](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/NanoRPCPRoxy.png)
@@ -286,10 +287,11 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **disable_watch_work** Forcefully set watch_work=false for process calls (to block node from doing rework) [true/false]
 * **https_cert:** File path for pub cert file (requires <use_https>) [absolute path string]
 * **https_key:** File path for private key file (requires <use_https>) [absolute path string]
+* **enable_prometheus_for_ips:** IP addresses to enable prometheus for. Typically ["127.0.0.1"] but can also be a combination of ipv4/ipv6 CIDR subnets like ["127.0.0.1", "::1/128", "172.18.0.0/16"] [comma separated list]
 * **allowed_commands:** A list of RPC actions to allow [list]
 * **cached_commands:** A list of commands [key] that will be cached for corresponding duration in seconds as [value]
 * **limited_commands:** A list of commands [key] to limit the output response for with max count as [value]
-* **ip_blacklist:** A list of IPs to always block. If calling from localhost you can test this with 127.0.0.1 (::ffff:127.0.0.1 for ipv6) [comma separated list of IPs]
+* **ip_blacklist:** A list of IPs to always block. Also supports CIDR like ["172.18.0.0/16"]. If calling from localhost you can test this with ["127.0.0.1"] (::ffff:127.0.0.1 for ipv6) [comma separated list]
 * **slow_down:** Contains the settings for slowing down requests. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will start slowing down requests with increments of <delay_increment> [ms] with a maximum total delay defined in <max_delay> [ms]
 * **rate_limiter:** Contains the settings for the rate limiter. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will block the IP until the time slot has passed. Then the IP can start requesting again. To permanently ban IPs they have to be manually added to <ip_blacklist> and activating <use_ip_blacklist>.
 * **proxy_hops** If the NanoRPCProxy is behind other proxies such as apache or cloudflare the source IP will be wrongly detected and the filters will not work as intended. Enter the number of additional proxies here. Example: api.example.com is proxied through Cloudflare to IP 1.1.1.1 and then local Nginx server is proxying api.example.com to localhost:9950. Proxyhops will be 2.
@@ -751,6 +753,168 @@ Exit pipenv: **exit**
 ---
 ---
 ---
+
+## How to use Prometheus and Grafana
+The proxy allows data scraping using Prometheus. That can for example be visualized in Grafana in your browser.
+
+![Grafana Example](https://github.com/Joohansson/NanoRPCProxy/raw/master/media/grafana_01.png)
+
+The following data points are enabled (prom-client.ts):
+
+* **process_request:** Counts processRequest per IP address and action
+* **log:** Counts number of logged events
+* **user_rate_limited:** Counts number of times an IP address is rate limited
+* **user_slow_down:** Counts number of times an IP address is rate limited with slow down
+* **user_ddos:** Counts number of times an IP address is rate limited from DDOS
+* **websocket_subscription:** Counts number of times an IP has subscribed to websocket
+* **websocket_message:** Counts number of times an IP has received a websocket message
+* **time_rpc_call:** Times RPC calls to the Nano backend
+* **time_price_call:** Times external call to get price information
+* **time_verified_call:** Times external call to get verified accounts
+
+You can whitelist Prometheus per IP or subnet via the setting: "enable_prometheus_for_ips"
+If you are using docker it's recommended to whitelist the whole docker subnet since a container IP can change.
+
+Easiest way to get started with Prometheus and Grafana is to use docker-compose. That works fine together with other node or RPCProxy containers you may be running. You can put them all in the same composer or you can use a **local network** as shown below called "mynet" that allow different containers to talk to each other. For example several other proxy servers running in different containers.
+
+For persistant storage you can use docker volumes or local data folders (prom_data and graf_data) as shown below (you need to create them first).
+For access rights in this case you need your user ID, which was "0" in this example. To get ID you can run "id -u in linux".
+
+More info in the section about [docker](#option3-with-docker)
+
+**Node + proxy + prometheus + grafana: docker-compose.yml.**
+    
+    version: "3.7"
+    services:
+      node:
+        image: "nanocurrency/nano:latest"
+        restart: "unless-stopped"
+        ports:
+          - "7075:7075"
+        volumes:
+          - "./nano_node:/root"
+      nanorpcproxy:
+        image: "nanojson/nanorpcproxy:latest"
+        restart: "unless-stopped"
+        ports:
+          - "9950:9950"
+          - "9952:9952"
+        volumes:
+          - ./nano_proxy/settings.json:/usr/src/app/settings.json
+
+      prometheus:
+        image: prom/prometheus
+        user: "0"
+        volumes:
+          - ./prom_data:/prometheus
+          - ./prometheus.yml:/etc/prometheus/prometheus.yml
+        depends_on:
+          - nanorpcproxy
+        ports:
+          - 9090:9090
+
+      grafana:
+        image: grafana/grafana:latest
+        user: "0"
+        volumes:
+          - ./graf_data:/var/lib/grafana
+        depends_on:
+          - prometheus
+        ports:
+          - 3000:3000
+
+**prometheus + grafana using a docker network: docker-compose.yml.**
+
+    version: '3.7'
+
+    services:
+      prometheus:
+        image: prom/prometheus
+        user: "0"
+        volumes:
+          - ./prom_data:/prometheus
+          - ./prometheus.yml:/etc/prometheus/prometheus.yml
+        ports:
+          - 9090:9090
+
+      grafana:
+        image: grafana/grafana:latest
+        user: "0"
+        volumes:
+          - ./graf_data:/var/lib/grafana
+        depends_on:
+          - prometheus
+        ports:
+          - 3000:3000
+
+    networks:
+      default:
+        external:
+          name: mynet
+
+Before you start prometheus you also need a config file. You can have as many different jobs or targets as you like. That can be filtered later in grafana:
+
+prometheus.yml
+
+    global:
+      scrape_interval: 30s
+      scrape_timeout: 10s
+      
+    scrape_configs:
+      - job_name: proxy
+        metrics_path: /prometheus
+        static_configs:
+          - targets:
+              - 'nanorpcproxy:9950'
+
+
+* Prometheus frontend can be accessed at http://localhost:9090
+* Grafana frontend can be accessed at http://localhost:3000
+* Once in grafana you can add the prometheus data source at "http://prometheus:9090"
+
+Then you can add panels and attach to the prometheus data points that are measured by the RPCproxy. Some examples below:
+
+* Requests per hour (1h average) grouped by RPC action (Bar gauge panel):
+
+`sum by (action)(round(rate(process_request{job="proxy"}[1h])*3600))`
+
+* Requests per hour stacked by RPC action (Graph with bars, stacked):
+
+`sum by (action)(increase(process_request{job="proxy"}[1h]))`
+
+* Total RPC requests per hour (Graph):
+
+`sum(rate(process_request{job="proxy"}[1h])*3600)`
+
+* RPC delays per RPC action (Graph):
+
+`sum by (action)(rate(time_rpc_call_sum{job="proxy"}[1h]) / rate(time_rpc_call_count{job="proxy"}[1h]))`
+
+* Websocket messages per hour (Graph):
+
+`sum(rate(websocket_message{job="proxy"}[1h])) * 3600`
+
+* Most active IPs requesting PoW with a threshold of 100 (Graph):
+
+`sum by (ip)(round(increase(process_request{job="proxy", action="work_generate"}[1d]))) > 100`
+
+* IPs DDOSed per hour grouped by IP with threshold of 1 (Graph):
+
+`sum by (ip)(round(rate(user_ddos{job="proxy"}[1h])*3600 + 1)) > 1`
+
+* Top 20 most active IPs counted as requests per day (Bar gauge, instant, horizontal):
+
+`topk(20,sum by (ip)(increase(process_request{job="proxy"}[1d])))`
+
+* Top 20 most slowed downed IPs per week (Bar gauge, instant, horizontal):
+
+`topk(20,sum by (ip)(max_over_time(user_slow_down{job="proxy"}[1w])))`
+
+
+---
+---
+---
+
 ## Developer Donations
 Find this useful? Consider sending me a Nano donation at nano_1gur37mt5cawjg5844bmpg8upo4hbgnbbuwcerdobqoeny4ewoqshowfakfo
 

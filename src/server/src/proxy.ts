@@ -1,8 +1,8 @@
-import {Credentials, CredentialSettings} from "./credential-settings";
+import {Credentials, readCredentials} from "./credential-settings";
 import ProxySettings, {proxyLogSettings, readProxySettings} from './proxy-settings';
 import {ConfigPaths, log_levels, LogData, LogLevel, readConfigPathsFromENV} from "./common-settings";
 import {loadDefaultUserSettings, readUserSettings, UserSettings, UserSettingsConfig} from "./user-settings";
-import {PowSettings} from "./pow-settings";
+import {PowSettings, readPowSettings} from "./pow-settings";
 import SlowDown from "express-slow-down";
 import FileSync from 'lowdb/adapters/FileSync.js';
 import lowdb from 'lowdb'
@@ -26,6 +26,8 @@ import * as core from "express-serve-static-core";
 import {createHttpServer, createHttpsServer, readHttpsOptions, websocketListener} from "./http";
 import * as http from "http";
 import * as https from "https";
+import {createProxyAuthorizer, ProxyAuthorizer} from "./authorize-user";
+import ipRangeCheck from "ip-range-check"
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -54,7 +56,6 @@ tracking_db.defaults({users: []}).write()
 tracking_db.update('users', n => []).write() //empty db on each new run
 
 // Custom VARS. DON'T CHANGE HERE. Change in settings.json file.
-let users: Credentials[] = []                      // a list of base64 user/password credentials
 
 // default vars
 let cache_duration_default: number = 60
@@ -73,11 +74,6 @@ const work_token_cost = 10 // work_generate will consume x token points
 let ws: ReconnectingWebSocket | null = null
 let global_tracked_accounts: string[] = [] // the accounts to track in websocket (synced with database)
 let websocket_connections: Map<string, connection> = new Map<string, connection>() // active ws connections
-
-let dpow_user: string | null = null
-let dpow_key: string | null = null
-let bpow_user: string | null = null
-let bpow_key: string | null = null
 
 // track daily requests and save to a log file (daily stat is reset if the server is restarted)
 // ---
@@ -132,49 +128,18 @@ function appendFile(count: number) {
     console.log("Could not write request-stat.json", e)
   }
 }
-// ---
-
-// Read credentials from file
-// ---
-try {
-  const credentials: CredentialSettings = JSON.parse(Fs.readFileSync(configPaths.creds, 'UTF-8'))
-  users = credentials.users
-}
-catch(e) {
-  console.log("Could not read creds.json", e)
-}
-
 // Read settings from file
+
 // ---
+const users: Credentials[] = readCredentials(configPaths.creds)
 const settings: ProxySettings = readProxySettings(configPaths.settings)
 const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
-let userSettings: UserSettings = loadDefaultUserSettings(settings)
+const defaultUserSettings: UserSettings = loadDefaultUserSettings(settings)
 const promClient: PromClient | undefined = settings.enable_prometheus_for_ips.length > 0 ? createPrometheusClient() : undefined
+const userAuthorizer: ProxyAuthorizer = createProxyAuthorizer(defaultUserSettings, user_settings, users)
+const powSettings: PowSettings = readPowSettings(configPaths.pow_creds, settings)
 
 proxyLogSettings(console.log, settings)
-
-// ---
-
-// Read dpow and bpow credentials from file
-// ---
-if (settings.use_dpow || settings.use_bpow) {
-  try {
-    const powcreds: PowSettings = JSON.parse(Fs.readFileSync(configPaths.pow_creds, 'UTF-8'))
-    if (settings.use_dpow && powcreds.dpow) {
-      dpow_user = powcreds.dpow.user
-      dpow_key = powcreds.dpow.key
-    }
-    if (settings.use_bpow && powcreds.bpow) {
-      bpow_user = powcreds.bpow.user
-      bpow_key = powcreds.bpow.key
-    }
-  }
-  catch(e) {
-    console.log("Could not read pow_creds.json", e)
-  }
-}
-// ---
-
 
 // Periodically check, recover and remove old invactive olders
 if (settings.use_tokens) {
@@ -256,7 +221,7 @@ app.use((err: Error, req: Request, res: Response, _next: any) => {
 
 // Define authentication service
 if (settings.use_auth) {
-  app.use(BasicAuth({ authorizer: myAuthorizer }))
+  app.use(BasicAuth({ authorizer: userAuthorizer.myAuthorizer }))
 }
 
 // Block IP if requesting too much but skipped if a valid token_key is provided (long interval)
@@ -388,40 +353,6 @@ if (settings.use_cache) {
   rpcCache = new NodeCache( { stdTTL: cache_duration_default, checkperiod: 10 } )
 }
 
-// To verify username and password provided via basicAuth. Support multiple users
-function myAuthorizer(username: string, password: string): boolean {
-  // Set default settings specific for authenticated users
-  userSettings.use_cache = settings.use_cache
-  userSettings.use_output_limiter = settings.use_output_limiter
-  userSettings.allowed_commands = settings.allowed_commands
-  userSettings.cached_commands = settings.cached_commands
-  userSettings.limited_commands = settings.limited_commands
-  userSettings.log_level = settings.log_level
-
-  let valid_user: boolean = false
-  for (const [_, value] of Object.entries(users)) {
-    if (BasicAuth.safeCompare(username, value.user) && BasicAuth.safeCompare(password, value.password)) {
-      valid_user = true
-
-      // Override default settings if exists
-      for (const key in user_settings) {
-        let value: UserSettings = user_settings[key];
-        if(key === username) {
-          userSettings.use_cache = value.use_cache
-          userSettings.use_output_limiter = value.use_output_limiter
-          userSettings.allowed_commands = value.allowed_commands
-          userSettings.cached_commands = value.cached_commands
-          userSettings.limited_commands = value.limited_commands
-          userSettings.log_level = value.log_level
-          break;
-        }
-      }
-      break
-    }
-  }
-  return valid_user
-}
-
 // Deduct token count for given token_key
 function useToken(query: ProxyRPCRequest) {
   let token_key = query.token_key
@@ -474,7 +405,7 @@ function updateTrackedAccounts() {
 }
 
 // Log function
-function logThis(str: string, level: LogLevel) {
+function logThis(str: string, level: LogLevel, userSettings: UserSettings = defaultUserSettings) {
   if (userSettings.log_level == log_levels.info || level == userSettings.log_level) {
     if (level == log_levels.info) {
       console.info(str)
@@ -496,7 +427,7 @@ if (settings.request_path != '/') {
 if(promClient) {
   app.get(promClient.path, async (req: Request, res: Response) => {
     const remoteAddress: string | undefined = req.connection.remoteAddress;
-    if(remoteAddress && settings.enable_prometheus_for_ips.includes(remoteAddress)) {
+    if(remoteAddress && ipRangeCheck(remoteAddress, settings.enable_prometheus_for_ips)) {
       let metrics = await promClient.metrics();
       res.set('content-type', 'text/plain').send(metrics)
     } else {
@@ -648,6 +579,12 @@ async function getOrFetchPrice(): Promise<PriceResponse | undefined> {
 }
 
 async function processRequest(query: ProxyRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
+
+  // @ts-ignore
+  const userSettings = (settings.use_auth && req.auth) ?
+      // @ts-ignore
+      (userAuthorizer.getUserSettings(req.auth.user, req.auth.password) || defaultUserSettings) : defaultUserSettings
+
   if (query.action !== 'tokenorder_check') {
     logThis('RPC request received from ' + req.ip + ': ' + query.action, log_levels.info)
     rpcCount++
@@ -767,10 +704,10 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
       }
 
       // Try bpow first
-      if (settings.use_bpow && bpow_user && bpow_key) {
+      if (powSettings.bpow) {
         logThis("Requesting work using bpow with diff: " + query.difficulty, log_levels.info)
-        query.user = bpow_user
-        query.api_key = bpow_key
+        query.user = powSettings.bpow.user
+        query.api_key = powSettings.bpow.key
 
         try {
           let data: ProcessDataResponse = await Tools.postData(query, bpow_url, work_default_timeout*1000*2)
@@ -802,10 +739,10 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         }
       }
       // Use dpow only if not already used bpow or bpow timed out
-      if (settings.use_dpow && (!settings.use_bpow || bpow_failed) && dpow_user && dpow_key) {
+      if ((!settings.use_bpow || bpow_failed) && powSettings.dpow) {
         logThis("Requesting work using dpow with diff: " + query.difficulty, log_levels.info)
-        query.user = dpow_user
-        query.api_key = dpow_key
+        query.user = powSettings.dpow.user
+        query.api_key = powSettings.dpow.key
 
         try {
           let data: ProcessDataResponse = await Tools.postData(query, dpow_url, work_default_timeout*1000*2)
@@ -886,14 +823,8 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   }
 }
 
-function getUserSettings(): UserSettings {
-  return userSettings
-}
-
 module.exports = {
   processRequest: processRequest,
-  myAuthorizer: myAuthorizer,
-  getUserSettings: getUserSettings,
   trackAccount: trackAccount,
   tracking_db: tracking_db,
 }

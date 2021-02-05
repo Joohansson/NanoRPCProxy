@@ -16,12 +16,10 @@
       "chain":                50,
       "frontiers":            50,
       "pending":              50
-    },
-    "log_level":              "info"
+    }
   },
   "user3": {
     "use_cache":              true,
-    "use_output_limiter":     true,
-    "log_level":              "warning"
+    "use_output_limiter":     true
   }
 }
