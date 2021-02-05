@@ -1,28 +1,34 @@
-import {copyConfigFiles, deleteConfigFiles} from "./test-commons";
+import {createProxyAuthorizer} from "../authorize-user";
+import {readUserSettings, UserSettings} from "../user-settings";
+import {readCredentials} from "../credential-settings";
 
-const filePaths = ['creds.json', 'user_settings.json'];
+const defaultUserSettings: UserSettings = {
+    allowed_commands: [],
+    cached_commands: {},
+    limited_commands: {},
+    log_level: 'info',
+    use_cache: false,
+    use_output_limiter: false
+};
 
-beforeAll(() => {
-    copyConfigFiles(filePaths)
-    process.env.OVERRIDE_USE_HTTP = 'false'
-    process.env.CONFIG_CREDS_SETTINGS = 'src/__test__/creds.json'
-    process.env.CONFIG_USER_SETTINGS = 'src/__test__/user_settings.json'
-})
+const authorizer = createProxyAuthorizer(
+    defaultUserSettings,
+    readUserSettings('user_settings.json.default'),
+    readCredentials('creds.json.default')
+)
 
 test('myAuthorizer should authorize existing user', () => {
-    const authorized = require('../proxy').myAuthorizer('user1', 'user1')
+    const authorized = authorizer.myAuthorizer('user1', 'user1')
     expect(authorized).toBeTruthy()
 })
 
 test('myAuthorizer should deny user with wrong password', () => {
-    const authorized = require('../proxy').myAuthorizer('user2', 'wrong_password')
+    const authorized = authorizer.myAuthorizer('user2', 'wrong_password')
     expect(authorized).toBeFalsy()
 })
 
 test('myAuthorizer should override with custom settings', () => {
-    const proxy = require('../proxy')
-    proxy.myAuthorizer('user2', 'user2')
-    expect(proxy.getUserSettings().allowed_commands).toStrictEqual([ 'account_history', 'account_info', 'block_info', 'block_count' ])
+    const userSettings = authorizer.getUserSettings('user2', 'user2')
+    expect(userSettings?.allowed_commands).toStrictEqual([ 'account_history', 'account_info', 'block_info', 'block_count' ])
+    expect(userSettings?.use_cache).toStrictEqual(true)
 })
-
-afterAll(() => deleteConfigFiles(filePaths))
