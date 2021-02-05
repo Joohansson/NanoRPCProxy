@@ -1,4 +1,4 @@
-import {CachedCommands, Command, LimitedCommands, LogLevel} from "./common-settings";
+import {CachedCommands, LimitedCommands} from "./common-settings";
 import * as Fs from "fs";
 import ProxySettings from "./proxy-settings";
 
@@ -8,7 +8,6 @@ export interface UserSettings {
     allowed_commands: string[];
     cached_commands: CachedCommands;
     limited_commands: LimitedCommands;
-    log_level: LogLevel;
 }
 
 export type UserSettingsConfig = Record<string, UserSettings>
@@ -19,7 +18,6 @@ export function loadDefaultUserSettings(settings: ProxySettings): UserSettings {
         allowed_commands: [],
         cached_commands: {},
         limited_commands: {},
-        log_level: 'info',
         use_cache: false,
         use_output_limiter: false
     };
@@ -30,7 +28,6 @@ export function loadDefaultUserSettings(settings: ProxySettings): UserSettings {
             allowed_commands: settings.allowed_commands,
             cached_commands: settings.cached_commands,
             limited_commands: settings.limited_commands,
-            log_level: settings.log_level
         }
     } else {
         return defaultUserSettings

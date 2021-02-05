@@ -405,8 +405,8 @@ function updateTrackedAccounts() {
 }
 
 // Log function
-function logThis(str: string, level: LogLevel, userSettings: UserSettings = defaultUserSettings) {
-  if (userSettings.log_level == log_levels.info || level == userSettings.log_level) {
+function logThis(str: string, level: LogLevel) {
+  if (settings.log_level == log_levels.info || level == settings.log_level) {
     if (level == log_levels.info) {
       console.info(str)
     }
