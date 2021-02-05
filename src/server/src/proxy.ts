@@ -85,17 +85,17 @@ try {
   rpcCount = logdata[logdata.length - 1].count
 }
 catch(e) {
-  console.log("Could not read request-stat.json. Normal for first run.", e)
+  console.log(`Could not read ${configPaths.request_stat}. Normal for first run.`, e)
 }
 
 // save the stat file first time
 if (logdata.length == 0) {
   try {
     // write log file
-    Fs.writeFileSync('request-stat.json', JSON.stringify(logdata, null, 2))
+    Fs.writeFileSync(configPaths.request_stat, JSON.stringify(logdata, null, 2))
   }
   catch(e) {
-    console.log("Could not write request-stat.json", e)
+    console.log(`Could not write ${configPaths.request_stat}`, e)
   }
 }
 
