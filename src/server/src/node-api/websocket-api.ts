@@ -42,4 +42,5 @@ interface WSSubscribe {
 interface WSPong {
     ack: WSAction
     time: string
+    id: string
 }

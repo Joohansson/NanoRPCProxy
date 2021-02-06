@@ -957,7 +957,7 @@ if (settings.use_websocket) {
               }
             }
             else if (msg.action === 'ping') {
-              wsSend(connection, {ack: 'pong', time: new Date().getTime().toString()})
+              wsSend(connection, {ack: 'pong', time: new Date().getTime().toString(), id: 'id' in msg ? msg.id : ""})
             }
           }
           catch (e) {
