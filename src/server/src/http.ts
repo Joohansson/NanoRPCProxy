@@ -18,8 +18,8 @@ export function readHttpsOptions(settings: ProxySettings): https.ServerOptions |
             key: Fs.readFileSync(settings.https_key)
         }
     } catch(err) {
-        console.log("Warning: Problem reading https cert/key file!")
-        console.log(err)
+        console.error("Problem reading https cert/key file. Will not be able to create HTTPS server.")
+        console.error(err)
         return undefined
     }
 }

@@ -834,17 +834,14 @@ process.on('SIGINT', () => {
   process.exit(0)
 })
 
-const httpsOptions: https.ServerOptions | undefined = settings.use_https ? readHttpsOptions(settings) : undefined;
-
 // Create an HTTP service
 if (settings.use_http && test_override_http) {
   createHttpServer(app, settings.http_port)
 }
+const httpsOptions: https.ServerOptions | undefined = settings.use_https ? readHttpsOptions(settings) : undefined;
 // Create an HTTPS service
 if (settings.use_https && httpsOptions) {
   createHttpsServer(app, settings.https_port, httpsOptions)
-} else {
-  console.log("Warning: Will not listen on https!")
 }
 
 let websocket_servers: (http.Server | https.Server)[] = []
