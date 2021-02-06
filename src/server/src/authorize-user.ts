@@ -11,6 +11,12 @@ function validUser({user, password}: Credentials, suppliedUsername: string, supp
     return BasicAuth.safeCompare(suppliedUsername, user) && BasicAuth.safeCompare(suppliedPassword, password)
 }
 
+/** Accepts all requests */
+export const acceptingAuthorizer: ProxyAuthorizer = {
+    getUserSettings: (username, password) => undefined,
+    myAuthorizer: (username, password) => true
+}
+
 export function createProxyAuthorizer(defaultSettings: UserSettings, userSettings: UserSettingsConfig, users: Credentials[]): ProxyAuthorizer {
 
     const findValidUserSettings = (username: string, password: string): UserSettings | undefined => {

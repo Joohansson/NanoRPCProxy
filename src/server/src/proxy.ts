@@ -26,7 +26,7 @@ import * as core from "express-serve-static-core";
 import {createHttpServer, createHttpsServer, readHttpsOptions, websocketListener} from "./http";
 import * as http from "http";
 import * as https from "https";
-import {createProxyAuthorizer, ProxyAuthorizer} from "./authorize-user";
+import {acceptingAuthorizer, createProxyAuthorizer, ProxyAuthorizer} from "./authorize-user";
 import ipRangeCheck from "ip-range-check"
 
 require('dotenv').config() // load variables from .env into the environment
@@ -136,7 +136,7 @@ const settings: ProxySettings = readProxySettings(configPaths.settings)
 const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
 const defaultUserSettings: UserSettings = loadDefaultUserSettings(settings)
 const promClient: PromClient | undefined = settings.enable_prometheus_for_ips.length > 0 ? createPrometheusClient() : undefined
-const userAuthorizer: ProxyAuthorizer = createProxyAuthorizer(defaultUserSettings, user_settings, users)
+const userAuthorizer: ProxyAuthorizer = settings.use_auth ? createProxyAuthorizer(defaultUserSettings, user_settings, users) : acceptingAuthorizer
 const powSettings: PowSettings = readPowSettings(configPaths.pow_creds, settings)
 
 proxyLogSettings(console.log, settings)
@@ -218,11 +218,6 @@ app.use((err: Error, req: Request, res: Response, _next: any) => {
     return res.status(500).json({error: err.status})
   }
 })
-
-// Define authentication service
-if (settings.use_auth) {
-  app.use(BasicAuth({ authorizer: userAuthorizer.myAuthorizer }))
-}
 
 // Block IP if requesting too much but skipped if a valid token_key is provided (long interval)
 if (settings.use_rate_limiter) {
@@ -438,13 +433,13 @@ if(promClient) {
 }
 
 // Process any API requests
-app.get(settings.request_path, (req: Request, res: Response) => {
+app.get(settings.request_path, BasicAuth({ authorizer: userAuthorizer.myAuthorizer }), (req: Request, res: Response) => {
   // @ts-ignore
   processRequest(req.query, req, res)
 })
 
 // Define the request listener
-app.post(settings.request_path, (req: Request, res: Response) => {
+app.post(settings.request_path, BasicAuth({ authorizer: userAuthorizer.myAuthorizer }), (req: Request, res: Response) => {
   processRequest(req.body, req, res)
 })
 
