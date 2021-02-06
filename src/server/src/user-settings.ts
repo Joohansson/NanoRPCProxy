@@ -14,23 +14,12 @@ export type UserSettingsConfig = Record<string, UserSettings>
 
 /** Clone default settings for custom user specific vars, to be used if no auth */
 export function loadDefaultUserSettings(settings: ProxySettings): UserSettings {
-    const defaultUserSettings: UserSettings = {
-        allowed_commands: [],
-        cached_commands: {},
-        limited_commands: {},
-        use_cache: false,
-        use_output_limiter: false
-    };
-    if (!settings.use_auth) {
-        return {
-            use_cache: settings.use_cache,
-            use_output_limiter: settings.use_output_limiter,
-            allowed_commands: settings.allowed_commands,
-            cached_commands: settings.cached_commands,
-            limited_commands: settings.limited_commands,
-        }
-    } else {
-        return defaultUserSettings
+    return {
+        allowed_commands: settings.allowed_commands || [],
+        cached_commands: settings.cached_commands || {},
+        limited_commands: settings.limited_commands || {},
+        use_cache: settings.use_cache || false,
+        use_output_limiter: settings.use_output_limiter || false
     }
 }
 
