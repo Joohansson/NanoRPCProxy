@@ -964,6 +964,9 @@ if (settings.use_websocket) {
                 tracking_db.get('users').find({ip: remote_ip}).assign({'tracked_accounts': []}).write()
               }
             }
+            else if (msg.action === 'ping') {
+              wsSend(connection, {ack: 'pong', time: new Date().getTime().toString()})
+            }
           }
           catch (e) {
             //console.log(e)
@@ -979,7 +982,7 @@ if (settings.use_websocket) {
   })
 }
 
-function wsSend(connection: connection, val: WSSubscribe | WSError): void {
+function wsSend(connection: connection, val: WSSubscribe | WSError | WSPong): void {
   connection.sendUTF(JSON.stringify(val, null, 2))
 }
 
