@@ -1,5 +1,5 @@
 type WSTopic = 'confirmation'
-type WSAction = 'subscribe' | 'unsubscribe'
+type WSAction = 'subscribe' | 'unsubscribe' | 'ping' | 'pong'
 
 interface WSNodeSubscribe {
     action: WSAction
@@ -37,4 +37,9 @@ interface WSError {
 interface WSSubscribe {
     ack: WSAction
     id: string
+}
+
+interface WSPong {
+    ack: WSAction
+    time: string
 }
