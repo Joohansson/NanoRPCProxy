@@ -7,7 +7,7 @@ import SlowDown from "express-slow-down";
 import FileSync from 'lowdb/adapters/FileSync.js';
 import lowdb from 'lowdb'
 import {OrderDB, OrderSchema, TrackedAccount, User, UserDB, UserSchema} from "./lowdb-schema";
-import {Request, Response} from "express";
+import {Handler, Request, Response} from "express";
 import {CorsOptions} from "cors";
 import {RateLimiterRes} from "rate-limiter-flexible";
 import {connection, IMessage, request as WSRequest, server as WSServer} from "websocket";
@@ -26,7 +26,7 @@ import * as core from "express-serve-static-core";
 import {createHttpServer, createHttpsServer, readHttpsOptions, websocketListener} from "./http";
 import * as http from "http";
 import * as https from "https";
-import {acceptingAuthorizer, createProxyAuthorizer, ProxyAuthorizer} from "./authorize-user";
+import {createProxyAuthorizer, ProxyAuthorizer} from "./authorize-user";
 import ipRangeCheck from "ip-range-check"
 
 require('dotenv').config() // load variables from .env into the environment
@@ -136,7 +136,7 @@ const settings: ProxySettings = readProxySettings(configPaths.settings)
 const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
 const defaultUserSettings: UserSettings = loadDefaultUserSettings(settings)
 const promClient: PromClient | undefined = settings.enable_prometheus_for_ips.length > 0 ? createPrometheusClient() : undefined
-const userAuthorizer: ProxyAuthorizer = settings.use_auth ? createProxyAuthorizer(defaultUserSettings, user_settings, users) : acceptingAuthorizer
+const userAuthorizer: ProxyAuthorizer | undefined = settings.use_auth ? createProxyAuthorizer(defaultUserSettings, user_settings, users) : undefined
 const powSettings: PowSettings = readPowSettings(configPaths.pow_creds, settings)
 
 proxyLogSettings(console.log, settings)
@@ -432,14 +432,19 @@ if(promClient) {
   })
 }
 
+let expressHandlers: Handler[] = []
+if(userAuthorizer) {
+  expressHandlers.push(BasicAuth({ authorizer: userAuthorizer.myAuthorizer }))
+}
+
 // Process any API requests
-app.get(settings.request_path, BasicAuth({ authorizer: userAuthorizer.myAuthorizer }), (req: Request, res: Response) => {
+app.get(settings.request_path, expressHandlers, (req: Request, res: Response) => {
   // @ts-ignore
   processRequest(req.query, req, res)
 })
 
 // Define the request listener
-app.post(settings.request_path, BasicAuth({ authorizer: userAuthorizer.myAuthorizer }), (req: Request, res: Response) => {
+app.post(settings.request_path, expressHandlers, (req: Request, res: Response) => {
   processRequest(req.body, req, res)
 })
 
@@ -576,7 +581,7 @@ async function getOrFetchPrice(): Promise<PriceResponse | undefined> {
 async function processRequest(query: ProxyRPCRequest, req: Request, res: Response<ProcessResponse | TokenAPIResponses>): Promise<Response> {
 
   // @ts-ignore
-  const userSettings = (settings.use_auth && req.auth) ?
+  const userSettings = (userAuthorizer && req.auth) ?
       // @ts-ignore
       (userAuthorizer.getUserSettings(req.auth.user, req.auth.password) || defaultUserSettings) : defaultUserSettings
 
