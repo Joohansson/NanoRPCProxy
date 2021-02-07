@@ -827,6 +827,7 @@ module.exports = {
   processRequest: processRequest,
   trackAccount: trackAccount,
   tracking_db: tracking_db,
+  app: app,
 }
 
 process.on('SIGINT', () => {
