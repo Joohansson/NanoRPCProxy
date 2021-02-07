@@ -412,10 +412,14 @@ function logThis(str: string, level: LogLevel) {
   promClient?.incLogging(level)
 }
 
+const renderResponse = (title: string, message: string) => {
+  return `<html><head><title>${title}</title></head><body><h4>${message}</h4><p></p></body></html>`
+}
+
 // Default get requests
 if (settings.request_path != '/') {
   app.get('/', async (req: Request, res: Response) => {
-    res.render('index', { title: 'RPCProxy API', message: 'Bad API path' })
+    res.set('content-type', 'text/html').send(renderResponse('RPCProxy API', 'Bad API path'))
   })
 }
 

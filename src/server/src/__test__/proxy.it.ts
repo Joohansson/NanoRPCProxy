@@ -9,6 +9,9 @@ beforeAll(() => {
     process.env.OVERRIDE_USE_HTTP = 'false'
     process.env.CONFIG_SETTINGS = configSettings
     copyConfigFiles([settingsFilePath])
+    let settings = JSON.parse(Fs.readFileSync(configSettings, 'utf-8'))
+    settings.enable_prometheus_for_ips = ['0.0.0.0/0']
+    Fs.writeFileSync(configSettings, JSON.stringify(settings), 'utf-8')
 })
 
 describe('root request', () => {
@@ -36,10 +39,6 @@ describe('/proxy with default config responds to GET/POST requests', () => {
 
 describe('/prometheus', () => {
     it("GET /prometheus - success", async () => {
-        let settings = JSON.parse(Fs.readFileSync(configSettings, 'utf-8'))
-        settings.enable_prometheus_for_ips = ['0.0.0.0/0']
-        Fs.writeFileSync(configSettings, JSON.stringify(settings), 'utf-8')
-
         const app = require('../proxy').app
         const res = await request(app).get("/prometheus");
         expect(res.text.split('\n').length).toBeGreaterThan(100)
