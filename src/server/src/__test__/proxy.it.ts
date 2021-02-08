@@ -18,7 +18,7 @@ describe('root request', () => {
     it("GET / - success", async () => {
         const app = require('../proxy').app
         const res = await request(app).get("/")
-        expect(res.text).toStrictEqual('<html><head><title>RPCProxy API</title></head><body><h4>Bad API path</h4><p></p></body></html>')
+        expect(res.text).toStrictEqual('<html lang="en"><head><title>RPCProxy API</title></head><body><h4>Bad API path</h4><p></p></body></html>')
     })
 })
 

@@ -172,7 +172,6 @@ async function checkOldOrders() {
 
 // Define the proxy app
 const app: core.Express = Express()
-app.set('view engine', 'pug')
 app.use(Helmet())
 
 // Allow all origin in cors or a whitelist if present
@@ -412,14 +411,14 @@ function logThis(str: string, level: LogLevel) {
   promClient?.incLogging(level)
 }
 
-const renderResponse = (title: string, message: string) => {
-  return `<html><head><title>${title}</title></head><body><h4>${message}</h4><p></p></body></html>`
+const renderRoot = (title: string, message: string) => {
+  return `<html lang="en"><head><title>${title}</title></head><body><h4>${message}</h4><p></p></body></html>`
 }
 
 // Default get requests
 if (settings.request_path != '/') {
   app.get('/', async (req: Request, res: Response) => {
-    res.set('content-type', 'text/html').send(renderResponse('RPCProxy API', 'Bad API path'))
+    res.set('content-type', 'text/html').send(renderRoot('RPCProxy API', 'Bad API path'))
   })
 }
 
