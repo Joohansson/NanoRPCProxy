@@ -40,28 +40,27 @@ const expectedSettingsWithFile = [
     '13 : block_count\n' +
     '14 : block_create\n' +
     '15 : block_confirm\n' +
-    '16 : block_count_type\n' +
-    '17 : blocks_info\n' +
-    '18 : chain\n' +
-    '19 : confirmation_quorum\n' +
-    '20 : delegators\n' +
-    '21 : delegators_count\n' +
-    '22 : frontiers\n' +
-    '23 : key_create\n' +
-    '24 : pending\n' +
-    '25 : pending_exists\n' +
-    '26 : process\n' +
-    '27 : representatives\n' +
-    '28 : representatives_online\n' +
-    '29 : sign\n' +
-    '30 : successors\n' +
-    '31 : price\n' +
-    '32 : mnano_to_raw\n' +
-    '33 : mnano_from_raw\n' +
-    '34 : work_validate\n' +
-    '35 : validate_account_number\n' +
-    '36 : version\n' +
-    '37 : verified_accounts\n',
+    '16 : blocks_info\n' +
+    '17 : chain\n' +
+    '18 : confirmation_quorum\n' +
+    '19 : delegators\n' +
+    '20 : delegators_count\n' +
+    '21 : frontiers\n' +
+    '22 : key_create\n' +
+    '23 : pending\n' +
+    '24 : pending_exists\n' +
+    '25 : process\n' +
+    '26 : representatives\n' +
+    '27 : representatives_online\n' +
+    '28 : sign\n' +
+    '29 : successors\n' +
+    '30 : price\n' +
+    '31 : mnano_to_raw\n' +
+    '32 : mnano_from_raw\n' +
+    '33 : work_validate\n' +
+    '34 : validate_account_number\n' +
+    '35 : version\n' +
+    '36 : verified_accounts\n',
     'Cached commands:\n' +
     '\n' +
     'block_count : 30\n' +

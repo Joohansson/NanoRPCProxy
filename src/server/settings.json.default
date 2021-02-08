@@ -40,7 +40,6 @@
     "block_count",
     "block_create",
     "block_confirm",
-    "block_count_type",
     "blocks_info",
     "chain",
     "confirmation_quorum",
