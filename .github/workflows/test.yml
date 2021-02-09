@@ -1,5 +1,5 @@
 name: Code Test
-on: 
+on:
   push:
   pull_request:
   # Allows you to run this workflow manually from the Actions tab
@@ -11,27 +11,27 @@ jobs:
     steps:
     - name: Check Out Repo
       uses: actions/checkout@v2
-        
+
     - name: Install modules
-      run: npm install --prefix "./src/server/"
+      run: npm install
 
     - name: Runs test
-      run: npm test --prefix "./src/server/"
+      run: npm test
 
     - name: Build typescript
-      run: npm run build --prefix "./src/server/"
+      run: npm run build
 
     - name: Copy settings
       run: |
-        cp ./src/server/creds.json.default ./src/server/dist/creds.json
-        cp ./src/server/pow_creds.json.default ./src/server/dist/pow_creds.json
-        cp ./src/server/settings.json.default ./src/server/dist/settings.json
-        cp ./src/server/token_settings.json.default ./src/server/dist/token_settings.json
-        cp ./src/server/user_settings.json.default ./src/server/dist/user_settings.json
-        cp ./src/server/package.json ./src/server/dist/package.json
-        
+        cp ./creds.json.default ./dist/creds.json
+        cp ./pow_creds.json.default ./dist/pow_creds.json
+        cp ./settings.json.default ./dist/settings.json
+        cp ./token_settings.json.default ./dist/token_settings.json
+        cp ./user_settings.json.default ./dist/user_settings.json
+        cp ./package.json ./dist/package.json
+
     - name: Zip Folder
-      run: cd ./src/server/ && zip -r ../../proxy.zip ./dist -x ./dist/__test__\* && cd -
+      run: zip -r proxy.zip dist/ -x dist/__test__\*
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
