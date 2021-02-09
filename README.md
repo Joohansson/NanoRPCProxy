@@ -66,8 +66,7 @@ Apart from increased security, NanoRPCProxy solves the scalability issue where a
 ## Install and run the proxy server
 ### Setup nodejs and test server
 1. Make sure you have node.js installed. [Windows Guide](https://www.liquidweb.com/kb/install-react-js-windows/) | [Ubuntu Guide](https://medium.com/@DanielSayidi/install-and-setup-react-app-on-ubuntu-18-04-3-lts-fcd2c875885a)
-2. Locate the directory src/server
-3. Copy the default setting files to your own editable ones:
+2. Copy the default setting files to your own editable ones:
 
 These will not be affected if later updating the server via git pull
 
@@ -76,9 +75,9 @@ These will not be affected if later updating the server via git pull
     cp user_settings.json.default user_settings.json
     cp token_settings.json.default token_settings.json
 
-4. Install required libraries: **npm install**
-5. Build Typescript sources: **npm run build**
-6. Start and test the server: **node dist/proxy.js**
+3. Install required libraries: **npm install**
+4. Build Typescript sources: **npm run build**
+5. Start and test the server: **node dist/proxy.js**
 ---
 
 ### Option1: Install as a service using PM2 (Recommended)
@@ -87,7 +86,7 @@ https://pm2.keymetrics.io/docs/usage/quick-start/
 _Make sure you have build the project (npm run build) first as specified in the `Setup nodejs and test server` section._
 __Setting files need to be in the `dist` folder for the proxy to read them properly.__
 
-1. Locate the directory src/server/dist
+1. Locate the directory ./dist
 2. Install pm2: **npm install pm2@latest -g**
 3. Start the server: **pm2 start proxy.js**
 
@@ -127,19 +126,19 @@ __Setting files need to be in the `dist` folder for the proxy to read them prope
     After=network.target
 
     [Service]
-    ExecStart=/usr/local/bin/node /home/NanoRPCProxy/src/server/dist/proxy.js
+    ExecStart=/usr/local/bin/node /home/NanoRPCProxy/dist/proxy.js
     Restart=always
     RestartSec=10 #wait 10sec before restart
     #User=nobody
     #Group=nogroup
     Environment=PATH=/usr/bin:/usr/local/bin
     Environment=NODE_ENV=production
-    WorkingDirectory=/home/NanoRPCProxy/src/server/
+    WorkingDirectory=/home/NanoRPCProxy/
 
     [Install]
     WantedBy=multi-user.target
 
-3. Make the file executable: **sudo chmod +x /home/NanoRPCProxy/src/server/dist/proxy.js**
+3. Make the file executable: **sudo chmod +x /home/NanoRPCProxy/dist/proxy.js**
 4. Make systemd aware: **sudo systemctl daemon-reload**
 5. Test the service: **sudo systemctl start nanorpcproxy**
 6. Check status: **sudo systemctl status nanorpcproxy**
@@ -149,7 +148,7 @@ __Setting files need to be in the `dist` folder for the proxy to read them prope
 ---
 ### Updating the server
 1. Go to the root folder -> git pull
-2. Go to src/server -> npm install
+2. Update dependencies -> npm install
 3. Build sources -> npm run build
 4. Restart the proxy.js
 
@@ -170,8 +169,6 @@ In order to run the latest stable image with default (no) config:
     $ docker run -it nanojson/nanorpcproxy:latest
 
 You can also pull the master branch (:master) or previous release tags. To build and run from source:
-
-Step into the `src/` folder. Build image:
 
     $ docker build . -t nanorpcproxy
 
@@ -205,7 +202,7 @@ All files but settings.json is disabled in the docker-compose file by default.
 
 #### Example docker-compose.yml for running a Nano node and the proxy
 
-1. Copy the server/settings.json.default to a new folder nano_proxy/settings.json (or other setting files mentioned above)
+1. Copy the settings.json.default to a new folder nano_proxy/settings.json (or other setting files mentioned above)
 2. Edit settings.json and make sure "node_url":"http://node:7076" and "node_ws_url":"ws://node:7078". That means the proxy will connect to the node service (name=node) internally.
 3. Create a docker-compose.yml and paste this (at the root of the nano_proxy folder). It will download the latest node and proxy. Then forward the node port 7075, RPC port 9950 and Websocket port 9952. Those will be the ones exposed.
 
