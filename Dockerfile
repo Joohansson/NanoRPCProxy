@@ -5,12 +5,12 @@ RUN chown node:node .
 USER node
 
 # Prepare environment
-COPY ./server/package*.json ./
-COPY ./server/tsconfig.json ./
+COPY ./package*.json ./
+COPY ./tsconfig.json ./
 RUN npm install
 
 # Copy source files
-COPY ./server/src ./src
+COPY ./src ./src
 
 # Typescript → Javascript
 RUN npm run-script build
