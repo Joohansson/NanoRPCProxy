@@ -38,8 +38,9 @@ import { scheduleJob } from 'node-schedule'
 import WebSocketServer from 'websocket'
 import WS from 'ws'
 import Helmet from 'helmet'
+import { config } from 'dotenv'
 
-require('dotenv').config() // load variables from .env into the environment
+config() // load variables from .env into the environment
 require('console-stamp')(console)
 
 const configPaths: ConfigPaths = readConfigPathsFromENV()
