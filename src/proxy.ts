@@ -28,6 +28,7 @@ import * as http from "http";
 import * as https from "https";
 import {createProxyAuthorizer, ProxyAuthorizer} from "./authorize-user";
 import ipRangeCheck from "ip-range-check"
+import BasicAuth from 'express-basic-auth'
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -35,7 +36,6 @@ require('console-stamp')(console)
 const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
-const BasicAuth =             require('express-basic-auth')
 const Fs =                    require('fs')
 const Express =               require('express')
 const Cors =                  require('cors')
