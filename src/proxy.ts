@@ -29,6 +29,7 @@ import * as https from "https";
 import {createProxyAuthorizer, ProxyAuthorizer} from "./authorize-user";
 import ipRangeCheck from "ip-range-check"
 import BasicAuth from 'express-basic-auth'
+import * as Fs from 'fs'
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -36,7 +37,6 @@ require('console-stamp')(console)
 const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
-const Fs =                    require('fs')
 const Express =               require('express')
 const Cors =                  require('cors')
 const IpFilter =              require('express-ipfilter').IpFilter
@@ -81,7 +81,7 @@ let rpcCount: number = 0
 let logdata: LogData[] = []
 try {
   // read latest count from file
-  logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'UTF-8'))
+  logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'utf-8'))
   rpcCount = logdata[logdata.length - 1].count
 }
 catch(e) {
@@ -105,7 +105,7 @@ Schedule.scheduleJob('0 0 * * *', () => {
   rpcCount = 0
   // update latest logdata from file
   try {
-    logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'UTF-8'))
+    logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'utf-8'))
   }
   catch(e) {
     console.log(`Could not read ${configPaths.request_stat}`, e)
