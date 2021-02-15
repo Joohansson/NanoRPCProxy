@@ -39,9 +39,10 @@ import WebSocketServer from 'websocket'
 import WS from 'ws'
 import Helmet from 'helmet'
 import { config } from 'dotenv'
+import consoleStamp from 'console-stamp'
 
 config() // load variables from .env into the environment
-require('console-stamp')(console)
+consoleStamp(console)
 
 const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
