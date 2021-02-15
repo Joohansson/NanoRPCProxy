@@ -2,6 +2,7 @@ import Fetch, {Response} from 'node-fetch'
 import BigInt from 'big-integer'
 import * as Nano from 'nanocurrency'
 const Dec = require('bigdecimal') //https://github.com/iriscouch/bigdecimal.js
+const RemoveTrailingZeros = require('remove-trailing-zeros')
 
 // Custom error class
 class APIError extends Error {
@@ -115,5 +116,5 @@ export function multiplierFromDifficulty(difficulty: string, base_difficulty: st
   let big_diff = Dec.BigDecimal(Dec.BigInteger(difficulty,16))
   let big_base = Dec.BigDecimal(Dec.BigInteger(base_difficulty,16))
   let mode = Dec.RoundingMode.HALF_DOWN()
-  return big64.subtract(big_base).divide(big64.subtract(big_diff),32,mode).toPlainString()
+  return RemoveTrailingZeros(big64.subtract(big_base).divide(big64.subtract(big_diff),32,mode).toPlainString())
 }

@@ -48,8 +48,6 @@ consoleStamp(console)
 const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
-const RemoveTrailingZeros =   require('remove-trailing-zeros')
-
 // lowdb init
 const order_db: OrderDB =  lowdb(new FileSync<OrderSchema>('db.json'))
 const tracking_db: UserDB = lowdb(new FileSync<UserSchema>(configPaths.websocket_path))
@@ -717,7 +715,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         try {
           let data: ProcessDataResponse = await Tools.postData(query, bpow_url, work_default_timeout*1000*2)
           data.difficulty = query.difficulty
-          data.multiplier = RemoveTrailingZeros(multiplierFromDifficulty(data.difficulty, work_threshold_default).toString())
+          data.multiplier = multiplierFromDifficulty(data.difficulty, work_threshold_default)
           if (tokens_left != null) {
             data.tokens_total = tokens_left
           }
@@ -752,7 +750,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         try {
           let data: ProcessDataResponse = await Tools.postData(query, dpow_url, work_default_timeout*1000*2)
           data.difficulty = query.difficulty
-          data.multiplier = RemoveTrailingZeros(multiplierFromDifficulty(data.difficulty, work_threshold_default).toString())
+          data.multiplier = multiplierFromDifficulty(data.difficulty, work_threshold_default)
           if (tokens_left != null) {
             data.tokens_total = tokens_left
           }
