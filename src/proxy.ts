@@ -30,6 +30,7 @@ import {createProxyAuthorizer, ProxyAuthorizer} from "./authorize-user";
 import ipRangeCheck from "ip-range-check"
 import BasicAuth from 'express-basic-auth'
 import * as Fs from 'fs'
+import Express from 'express'
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -37,7 +38,6 @@ require('console-stamp')(console)
 const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
-const Express =               require('express')
 const Cors =                  require('cors')
 const IpFilter =              require('express-ipfilter').IpFilter
 const IpDeniedError =         require('express-ipfilter').IpDeniedError
