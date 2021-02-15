@@ -24,7 +24,7 @@
     "express-ipfilter": "^1.1.2",
     "express-slow-down": "^1.4.0",
     "fs": "0.0.1-security",
-    "helmet": "^3.23.0",
+    "helmet": "^4.1.1",
     "http": "0.0.0",
     "https": "^1.0.0",
     "ip-range-check": "^0.2.0",

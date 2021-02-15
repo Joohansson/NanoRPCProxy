@@ -37,6 +37,7 @@ import { IpDeniedError } from 'express-ipfilter'
 import { scheduleJob } from 'node-schedule'
 import WebSocketServer from 'websocket'
 import WS from 'ws'
+import Helmet from 'helmet'
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -44,7 +45,6 @@ require('console-stamp')(console)
 const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
-const Helmet =                require('helmet')
 const RemoveTrailingZeros =   require('remove-trailing-zeros')
 const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
