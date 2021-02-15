@@ -35,6 +35,7 @@ import Cors from 'cors'
 import { IpFilter } from 'express-ipfilter'
 import { IpDeniedError } from 'express-ipfilter'
 import { scheduleJob } from 'node-schedule'
+import WebSocketServer from 'websocket'
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -42,7 +43,6 @@ require('console-stamp')(console)
 const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
-const WebSocketServer =       require('websocket').server
 const WS =                    require('ws')
 const Helmet =                require('helmet')
 const RemoveTrailingZeros =   require('remove-trailing-zeros')
@@ -861,7 +861,7 @@ if(settings.use_websocket) {
 // WEBSOCKET SERVER
 //---------------------
 if (settings.use_websocket) {
-  let wsServer: WSServer = new WebSocketServer({
+  let wsServer: WSServer = new WebSocketServer.server({
     httpServer: websocket_servers,
     autoAcceptConnections: false
   })
