@@ -40,6 +40,7 @@ import WS from 'ws'
 import Helmet from 'helmet'
 import { config } from 'dotenv'
 import consoleStamp from 'console-stamp'
+import { RateLimiterMemory } from 'rate-limiter-flexible'
 
 config() // load variables from .env into the environment
 consoleStamp(console)
@@ -48,7 +49,6 @@ const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
 const RemoveTrailingZeros =   require('remove-trailing-zeros')
-const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init
 const order_db: OrderDB =  lowdb(new FileSync<OrderSchema>('db.json'))
