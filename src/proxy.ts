@@ -34,6 +34,7 @@ import Express from 'express'
 import Cors from 'cors'
 import { IpFilter } from 'express-ipfilter'
 import { IpDeniedError } from 'express-ipfilter'
+import { scheduleJob } from 'node-schedule'
 
 require('dotenv').config() // load variables from .env into the environment
 require('console-stamp')(console)
@@ -41,7 +42,6 @@ require('console-stamp')(console)
 const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
-const Schedule =              require('node-schedule')
 const WebSocketServer =       require('websocket').server
 const WS =                    require('ws')
 const Helmet =                require('helmet')
@@ -100,7 +100,7 @@ if (logdata.length == 0) {
 }
 
 // Stat file scheduler
-Schedule.scheduleJob('0 0 * * *', () => {
+scheduleJob('0 0 * * *', () => {
   appendFile(rpcCount)
   rpcCount = 0
   // update latest logdata from file
@@ -144,7 +144,7 @@ proxyLogSettings(console.log, settings)
 // Periodically check, recover and remove old invactive olders
 if (settings.use_tokens) {
   // Each hour
-  Schedule.scheduleJob('0 * * * *', () => {
+  scheduleJob('0 * * * *', () => {
     checkOldOrders()
   })
 }
