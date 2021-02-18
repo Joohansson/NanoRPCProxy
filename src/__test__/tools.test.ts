@@ -27,6 +27,6 @@ describe('bigAdd', () => {
 
 describe('multiplierFromDifficulty', () => {
     test('calculates multiplier given base and difficulty', () => {
-        expect(multiplierFromDifficulty('fffffff800000000', 'fffffe0000000000')).toStrictEqual('64.00000000000000000000000000000000')
+        expect(multiplierFromDifficulty('fffffff800000000', 'fffffe0000000000')).toStrictEqual('64')
     })
 })
