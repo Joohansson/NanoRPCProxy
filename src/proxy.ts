@@ -28,25 +28,27 @@ import * as http from "http";
 import * as https from "https";
 import {createProxyAuthorizer, ProxyAuthorizer} from "./authorize-user";
 import ipRangeCheck from "ip-range-check"
+import BasicAuth from 'express-basic-auth'
+import * as Fs from 'fs'
+import Express from 'express'
+import Cors from 'cors'
+import { IpFilter } from 'express-ipfilter'
+import { IpDeniedError } from 'express-ipfilter'
+import { scheduleJob } from 'node-schedule'
+import WebSocketServer from 'websocket'
+import WS from 'ws'
+import Helmet from 'helmet'
+import { config } from 'dotenv'
+import consoleStamp from 'console-stamp'
+import { RateLimiterMemory } from 'rate-limiter-flexible'
 
-require('dotenv').config() // load variables from .env into the environment
-require('console-stamp')(console)
+config() // load variables from .env into the environment
+consoleStamp(console)
 
 const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
-const BasicAuth =             require('express-basic-auth')
-const Fs =                    require('fs')
-const Express =               require('express')
-const Cors =                  require('cors')
-const IpFilter =              require('express-ipfilter').IpFilter
-const IpDeniedError =         require('express-ipfilter').IpDeniedError
-const Schedule =              require('node-schedule')
-const WebSocketServer =       require('websocket').server
-const WS =                    require('ws')
-const Helmet =                require('helmet')
 const RemoveTrailingZeros =   require('remove-trailing-zeros')
-const { RateLimiterMemory, RateLimiterUnion } = require('rate-limiter-flexible')
 
 // lowdb init
 const order_db: OrderDB =  lowdb(new FileSync<OrderSchema>('db.json'))
@@ -81,7 +83,7 @@ let rpcCount: number = 0
 let logdata: LogData[] = []
 try {
   // read latest count from file
-  logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'UTF-8'))
+  logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'utf-8'))
   rpcCount = logdata[logdata.length - 1].count
 }
 catch(e) {
@@ -100,12 +102,12 @@ if (logdata.length == 0) {
 }
 
 // Stat file scheduler
-Schedule.scheduleJob('0 0 * * *', () => {
+scheduleJob('0 0 * * *', () => {
   appendFile(rpcCount)
   rpcCount = 0
   // update latest logdata from file
   try {
-    logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'UTF-8'))
+    logdata = JSON.parse(Fs.readFileSync(configPaths.request_stat, 'utf-8'))
   }
   catch(e) {
     console.log(`Could not read ${configPaths.request_stat}`, e)
@@ -144,7 +146,7 @@ proxyLogSettings(console.log, settings)
 // Periodically check, recover and remove old invactive olders
 if (settings.use_tokens) {
   // Each hour
-  Schedule.scheduleJob('0 * * * *', () => {
+  scheduleJob('0 * * * *', () => {
     checkOldOrders()
   })
 }
@@ -861,7 +863,7 @@ if(settings.use_websocket) {
 // WEBSOCKET SERVER
 //---------------------
 if (settings.use_websocket) {
-  let wsServer: WSServer = new WebSocketServer({
+  let wsServer: WSServer = new WebSocketServer.server({
     httpServer: websocket_servers,
     autoAcceptConnections: false
   })
