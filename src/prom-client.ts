@@ -79,7 +79,7 @@ export function createPrometheusClient(): PromClient {
         registers: [register],
         name: "authorized_attempts",
         help: "Counts basic auth attempts for a given user",
-        labelNames: ["username", "success"]
+        labelNames: ["username", "access"]
     })
 
     let rpcHistogram = new client.Histogram({
