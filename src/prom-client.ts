@@ -13,6 +13,7 @@ export interface PromClient {
     incDDOS: (ip: string) => void,
     incWebsocketSubscription: (ip: string) => void,
     incWebsocketMessage: (ip: string) => void,
+    incAuthorizeAttempt: (username: string, wasAuthorized: boolean) => void
     timeNodeRpc: (action: RPCAction) => MaybeTimedCall,
     timePrice: () => MaybeTimedCall,
     timeVerifiedAccounts: () => MaybeTimedCall,
@@ -74,6 +75,13 @@ export function createPrometheusClient(): PromClient {
         labelNames: ["ip"]
     })
 
+    let countAuthorizedAttempts = new client.Counter({
+        registers: [register],
+        name: "authorized_attempts",
+        help: "Counts basic auth attempts for a given user",
+        labelNames: ["username", "success"]
+    })
+
     let rpcHistogram = new client.Histogram({
         registers: [register],
         name: "time_rpc_call",
@@ -102,6 +110,7 @@ export function createPrometheusClient(): PromClient {
         incDDOS: (ip: string) => countDDOS.labels(ip).inc(),
         incWebsocketSubscription: (ip: string) => countWebsocketSubscription.labels(ip).inc(),
         incWebsocketMessage: (ip: string) => countWebsocketMessage.labels(ip).inc(),
+        incAuthorizeAttempt: (username, wasAuthorized) => countAuthorizedAttempts.labels(username, wasAuthorized ? 'authorized' : 'denied').inc(),
         timeNodeRpc: (action: RPCAction) => rpcHistogram.startTimer({action: action}),
         timePrice: () => priceHistogram.startTimer(),
         timeVerifiedAccounts: () => verifiedAccountsHistogram.startTimer(),

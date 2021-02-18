@@ -136,7 +136,7 @@ const settings: ProxySettings = readProxySettings(configPaths.settings)
 const user_settings: UserSettingsConfig = readUserSettings(configPaths.user_settings)
 const defaultUserSettings: UserSettings = loadDefaultUserSettings(settings)
 const promClient: PromClient | undefined = settings.enable_prometheus_for_ips.length > 0 ? createPrometheusClient() : undefined
-const userAuthorizer: ProxyAuthorizer | undefined = settings.use_auth ? createProxyAuthorizer(defaultUserSettings, user_settings, users) : undefined
+const userAuthorizer: ProxyAuthorizer | undefined = settings.use_auth ? createProxyAuthorizer(defaultUserSettings, user_settings, users, promClient) : undefined
 const powSettings: PowSettings = readPowSettings(configPaths.pow_creds, settings)
 
 proxyLogSettings(console.log, settings)
