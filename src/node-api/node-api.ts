@@ -47,3 +47,7 @@ interface ProcessResponse {
     hash: string
     error: string | null
 }
+
+interface VersionResponse {
+
+}

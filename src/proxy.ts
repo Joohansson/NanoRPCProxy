@@ -17,7 +17,7 @@ import {PriceResponse} from "./price-api/price-api";
 import * as Tools from './tools'
 import * as Tokens from './tokens'
 import {isTokensRequest, TokenAPIResponses} from "./node-api/token-api";
-import {ProxyRPCRequest, VerifiedAccount} from "./node-api/proxy-api";
+import {checksToResponse, ProxyRPCRequest, VerifiedAccount} from "./node-api/proxy-api";
 import {multiplierFromDifficulty} from "./tools";
 import {MynanoVerifiedAccountsResponse, mynanoToVerifiedAccount} from "./mynano-api/mynano-api";
 import process from 'process'
@@ -431,6 +431,17 @@ if(promClient) {
     } else {
       logThis(`Prometheus not enabled for ${remoteAddress}`, log_levels.info)
       res.status(403).send()
+    }
+  })
+}
+if(settings.enable_health) {
+  app.get('/health', async (req: Request, res: Response) => {
+    try {
+      const version = await Tools.getData<VersionResponse>(`${settings.node_url}/?action=version`, API_TIMEOUT)
+      res.status(200).send(JSON.stringify(checksToResponse(version)))
+    } catch (error) {
+      logThis(`unable to health check(s): ${error}`, log_levels.warning)
+      res.status(500).send()
     }
   })
 }

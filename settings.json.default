@@ -94,5 +94,6 @@
   "proxy_hops":               0,
   "websocket_max_accounts":   100,
   "cors_whitelist":           [],
-  "log_level":                "info"
+  "log_level":                "info",
+  "enable_health":            false
 }

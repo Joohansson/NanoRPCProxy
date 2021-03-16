@@ -11,6 +11,7 @@ beforeAll(() => {
     copyConfigFiles([settingsFilePath])
     let settings = JSON.parse(Fs.readFileSync(configSettings, 'utf-8'))
     settings.enable_prometheus_for_ips = ['0.0.0.0/0']
+    settings.enable_health = true
     Fs.writeFileSync(configSettings, JSON.stringify(settings), 'utf-8')
 })
 
@@ -43,6 +44,14 @@ describe('/prometheus', () => {
         const res = await request(app).get("/prometheus");
         expect(res.text.split('\n').length).toBeGreaterThan(100)
         expect(res.status).toStrictEqual(200)
+    })
+})
+
+describe('/health', () => {
+    it("GET /health – returns 500 when node is unavailable", async () => {
+        const app = require('../proxy').app
+        const res = await request(app).get("/health");
+        expect(res.status).toStrictEqual(500)
     })
 })
 

@@ -98,6 +98,8 @@ export default interface ProxySettings {
     disable_watch_work: boolean;
     // IP addresses to enable prometheus for. Typically '127.0.0.1', or '::ffff:127.0.0.1' for IPv6
     enable_prometheus_for_ips: string[];
+    // enable health endpoint
+    enable_health: boolean;
 }
 
 function logObjectEntries(logger: (...data: any[]) => void, title: string, object: any) {
@@ -211,6 +213,7 @@ export function readProxySettings(settingsPath: string): ProxySettings {
         log_level: log_levels.none,
         disable_watch_work: false,
         enable_prometheus_for_ips: [],
+        enable_health: false,
     }
     try {
         const settings: ProxySettings = JSON.parse(Fs.readFileSync(settingsPath, 'utf-8'))

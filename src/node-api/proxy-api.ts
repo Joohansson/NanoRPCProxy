@@ -24,3 +24,15 @@ export interface VerifiedAccount {
     account: string
     alias: string
 }
+
+export interface HealthCheckResponse {
+    checks: Record<string, any>
+}
+
+export function checksToResponse(version: VersionResponse): HealthCheckResponse {
+    return {
+        checks: {
+            'version': 'ok'
+        }
+    }
+}
