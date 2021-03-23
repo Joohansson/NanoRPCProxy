@@ -694,7 +694,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   }
 
   // Handle work generate via dpow and/or bpow
-  if (query.action === 'work_generate' && (settings.use_dpow || settings.use_bpow)) {
+  if (query.action === 'work_generate' && (settings.use_dpow || settings.use_bpow || settings.use_work_peers)) {
     if (query.hash) {
       let bpow_failed = false
       // Only set difficulty from live network if not requested or if it was exactly default
@@ -706,8 +706,13 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         query.timeout = work_default_timeout
       }
 
+      if (settings.use_work_peers && !settings.use_bpow && !settings.use_dpow) {
+        //Only add use_peers when _NOT_ using any of bpow or dpow.
+        query.use_peers = "true"
+      }
+
       // Try bpow first
-      if (powSettings.bpow) {
+      if (settings.use_bpow && powSettings.bpow) {
         logThis("Requesting work using bpow with diff: " + query.difficulty, log_levels.info)
         query.user = powSettings.bpow.user
         query.api_key = powSettings.bpow.key
@@ -742,7 +747,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         }
       }
       // Use dpow only if not already used bpow or bpow timed out
-      if ((!settings.use_bpow || bpow_failed) && powSettings.dpow) {
+      if ((!settings.use_bpow || bpow_failed) && settings.use_dpow && powSettings.dpow) {
         logThis("Requesting work using dpow with diff: " + query.difficulty, log_levels.info)
         query.user = powSettings.dpow.user
         query.api_key = powSettings.dpow.key

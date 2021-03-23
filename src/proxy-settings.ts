@@ -71,6 +71,8 @@ export default interface ProxySettings {
     use_dpow: boolean;
     // if allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
     use_bpow: boolean;
+    // if allow work_generate implicitly add "use_peers": "true" to the request to use work_peers configured in the nano node.
+    use_work_peers: boolean;
     // file path for pub cert file
     https_cert: string;
     // file path for private key file
@@ -134,6 +136,7 @@ export function proxyLogSettings(logger: (...data: any[]) => void, settings: Pro
     logger("Use websocket system: " + settings.use_websocket)
     logger("Use dPoW: " + settings.use_dpow)
     logger("Use bPoW: " + settings.use_bpow)
+    logger("Use work peers: " + settings.use_work_peers)
     logger("Disabled watch_work for process: " + settings.disable_watch_work)
     logger("Listen on http: " + settings.use_http)
     logger("Listen on https: " + settings.use_https)
@@ -196,6 +199,7 @@ export function readProxySettings(settingsPath: string): ProxySettings {
         use_cors: true,
         use_dpow: false,
         use_bpow: false,
+        use_work_peers: false,
         https_cert: '',
         https_key: '',
         allowed_commands: [],
