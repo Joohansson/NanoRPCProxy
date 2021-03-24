@@ -21,6 +21,7 @@
   "use_cors":               true,
   "use_dpow":               false,
   "use_bpow":               false,
+  "use_work_peers":         false,
   "disable_watch_work":     false,
   "enable_prometheus_for_ips": [],
   "allowed_commands":       [
