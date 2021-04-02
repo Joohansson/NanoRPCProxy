@@ -18,6 +18,7 @@ const expectedSettingsWithFile = [
     'Use websocket system: false',
     'Use dPoW: false',
     'Use bPoW: false',
+    'Use work server: false',
     'Use work peers: false',
     'Disabled watch_work for process: false',
     'Listen on http: true',
@@ -95,7 +96,7 @@ test('log proxy settings with default config from file', () => {
     let settings: string[] = []
     const readSettings = readProxySettings(getTestPath(settingsFilePath))
     proxyLogSettings((setting: string) => settings.push(setting), readSettings)
-    expect(settings.length).toBe(29);
+    expect(settings.length).toBe(30);
     expect(settings).toStrictEqual(expectedSettingsWithFile)
 })
 

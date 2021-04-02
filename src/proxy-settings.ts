@@ -67,10 +67,12 @@ export default interface ProxySettings {
     use_websocket: boolean;
     // if handling cors policy here, if not taken care of in upstream proxy (cors_whitelist=[] means allow ANY ORIGIN)
     use_cors: boolean;
-    // if allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
+    // if allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
     use_dpow: boolean;
-    // if allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (bpow will be used primary to dpow) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
+    // if allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
     use_bpow: boolean;
+    // if allow work_generate to be done by external work server instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands)
+    use_work_server: boolean;
     // if allow work_generate implicitly add "use_peers": "true" to the request to use work_peers configured in the nano node.
     use_work_peers: boolean;
     // file path for pub cert file
@@ -136,6 +138,7 @@ export function proxyLogSettings(logger: (...data: any[]) => void, settings: Pro
     logger("Use websocket system: " + settings.use_websocket)
     logger("Use dPoW: " + settings.use_dpow)
     logger("Use bPoW: " + settings.use_bpow)
+    logger("Use work server: " + settings.use_work_server)
     logger("Use work peers: " + settings.use_work_peers)
     logger("Disabled watch_work for process: " + settings.disable_watch_work)
     logger("Listen on http: " + settings.use_http)
@@ -199,6 +202,7 @@ export function readProxySettings(settingsPath: string): ProxySettings {
         use_cors: true,
         use_dpow: false,
         use_bpow: false,
+        use_work_server: false,
         use_work_peers: false,
         https_cert: '',
         https_key: '',

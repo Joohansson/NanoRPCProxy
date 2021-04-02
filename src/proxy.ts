@@ -693,9 +693,10 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   }
 
   // Handle work generate via dpow and/or bpow
-  if (query.action === 'work_generate' && (settings.use_dpow || settings.use_bpow || settings.use_work_peers)) {
+  if (query.action === 'work_generate' && (settings.use_dpow || settings.use_bpow || settings.use_work_server || settings.use_work_peers)) {
     if (query.hash) {
       let bpow_failed = false
+      let dpow_failed = false
       // Only set difficulty from live network if not requested or if it was exactly default
       if (!query.difficulty || query.difficulty === work_threshold_default || query.difficulty === work_threshold_receive_default) {
         query.difficulty = await getLatestDifficulty(query.difficulty)
@@ -705,7 +706,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         query.timeout = work_default_timeout
       }
 
-      if (settings.use_work_peers && !settings.use_bpow && !settings.use_dpow) {
+      if (settings.use_work_peers && !settings.use_bpow && !settings.use_dpow && !settings.use_work_server) {
         //Only add use_peers when _NOT_ using any of bpow or dpow.
         query.use_peers = "true"
       }
@@ -761,10 +762,42 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
           if (data.error) {
             logThis("dPoW failed: " + data.error, log_levels.warning)
           }
+          if ((data.error) || !(data.work)) {
+            dpow_failed = true
+            if (!settings.use_work_server) {
+              return res.json(appendRateLimiterStatus(res, data)) // forward error if not retrying with work server
+            }
+          }
+          else if (data.work) {
+            return res.json(appendRateLimiterStatus(res, data)) // sending back json response (regardless if timeout error)
+          }
+        }
+        catch(err) {
+          dpow_failed = true
+          logThis("Dpow connection error: " + err.toString(), log_levels.warning)
+          if (!settings.use_work_server) {
+            return res.status(500).json({error: err.toString()})
+          }
+        }
+      }
+      // Use work server only if not already used bpow/dpow or bpow/dpow timed out
+      if (((!settings.use_bpow && !settings.use_dpow) || (bpow_failed || dpow_failed)) && settings.use_work_server && powSettings.work_server) {
+        logThis("Requesting work using work server with diff: " + query.difficulty, log_levels.info)
+
+        try {
+          let data: ProcessDataResponse = await Tools.postData(query, powSettings.work_server.url+':'+powSettings.work_server.port, work_default_timeout*1000*2)
+          data.difficulty = query.difficulty
+          data.multiplier = multiplierFromDifficulty(data.difficulty, work_threshold_default)
+          if (tokens_left != null) {
+            data.tokens_total = tokens_left
+          }
+          if (data.error) {
+            logThis("work server failed: " + data.error, log_levels.warning)
+          }
           return res.json(appendRateLimiterStatus(res, data)) // sending back json response (regardless if timeout error)
         }
         catch(err) {
-          logThis("Dpow connection error: " + err.toString(), log_levels.warning)
+          logThis("Work server connection error: " + err.toString(), log_levels.warning)
           return res.status(500).json({error: err.toString()})
         }
       }
