@@ -200,7 +200,7 @@ if (settings.proxy_hops > 0) {
 
 // Set up blacklist and use the proxy number defined in the settings. Log only IP if blocked
 if (settings.use_ip_blacklist) {
-  app.use(IpFilter(settings.ip_blacklist, {log: false, logLevel: 'deny', trustProxy: settings.proxy_hops}))
+  app.use(IpFilter(settings.ip_blacklist, {log: false, logLevel: 'deny', trustProxy: settings.proxy_hops, logF: message => logThis(message, 'info')}))
 }
 
 // Error handling

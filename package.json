@@ -21,7 +21,7 @@
     "esm": "^3.2.25",
     "express": "^4.17.1",
     "express-basic-auth": "^1.2.0",
-    "express-ipfilter": "^1.1.2",
+    "express-ipfilter": "^1.2.0",
     "express-slow-down": "^1.4.0",
     "fs": "0.0.1-security",
     "helmet": "^4.1.1",
