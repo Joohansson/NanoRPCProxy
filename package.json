@@ -1,6 +1,6 @@
 {
   "name": "NanoRPCProxy",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Relay, firewall, rate limiter, ddos protection and cache system between a client and a Nano node RPC interface",
   "main": "src/proxy.js",
   "license": "GPL-3.0",
