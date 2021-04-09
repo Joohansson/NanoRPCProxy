@@ -6,5 +6,9 @@
   "bpow": {
       "user": "user",
       "key": "key"
+  },
+  "work_server": {
+      "url": "http://127.0.0.1",
+      "port": "55555"
   }
 }

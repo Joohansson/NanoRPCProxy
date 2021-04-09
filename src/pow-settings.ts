@@ -6,9 +6,15 @@ interface UserKeyPair {
     key: string;
 }
 
+interface ServerPair {
+    url: string;
+    port: string;
+}
+
 export interface PowSettings {
     dpow?: UserKeyPair
     bpow?: UserKeyPair
+    work_server?: ServerPair
 }
 
 /** Reads proof-of-work settings from file */
@@ -18,6 +24,7 @@ export function readPowSettings(path: string, settings: ProxySettings): PowSetti
         return {
             dpow: settings.use_dpow ? readSettings.dpow : undefined,
             bpow: settings.use_bpow ? readSettings.bpow : undefined,
+            work_server: settings.use_work_server ? readSettings.work_server : undefined,
         }
     }
     catch(e) {
@@ -25,6 +32,7 @@ export function readPowSettings(path: string, settings: ProxySettings): PowSetti
         return {
             dpow: undefined,
             bpow: undefined,
+            work_server: undefined,
         }
     }
 }
