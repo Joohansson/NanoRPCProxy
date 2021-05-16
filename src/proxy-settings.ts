@@ -217,7 +217,7 @@ export function readProxySettings(settingsPath: string): ProxySettings {
         websocket_max_accounts: 100,
         cors_whitelist: [],
         log_level: log_levels.none,
-        disable_watch_work: false,
+        disable_watch_work: true,
         enable_prometheus_for_ips: [],
     }
     try {

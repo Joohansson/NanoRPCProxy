@@ -23,7 +23,7 @@
   "use_bpow":               false,
   "use_work_server":        false,
   "use_work_peers":         false,
-  "disable_watch_work":     false,
+  "disable_watch_work":     true,
   "enable_prometheus_for_ips": [],
   "allowed_commands":       [
     "account_history",

@@ -644,7 +644,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     }
   }
 
-  // Force no watch_work (don't want the node to perform pow)
+  // Force no watch_work (don't want the node to perform pow). Deprecated in node v22 but keep this code for now.
   if (settings.disable_watch_work) {
     if (query.action === 'process') {
       query.watch_work = 'false'
