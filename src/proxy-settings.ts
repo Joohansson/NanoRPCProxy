@@ -67,11 +67,11 @@ export default interface ProxySettings {
     use_websocket: boolean;
     // if handling cors policy here, if not taken care of in upstream proxy (cors_whitelist=[] means allow ANY ORIGIN)
     use_cors: boolean;
-    // if allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
+    // if allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
     use_dpow: boolean;
-    // if allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
+    // if allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
     use_bpow: boolean;
-    // if allow work_generate to be done by external work server instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands)
+    // if allow work_generate to be done by external work server instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands)
     use_work_server: boolean;
     // if allow work_generate implicitly add "use_peers": "true" to the request to use work_peers configured in the nano node.
     use_work_peers: boolean;

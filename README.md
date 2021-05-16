@@ -279,9 +279,9 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **use_tokens** If activating the token system for purchase via Nano [true/false] (more information further down)
 * **use_websocket** If activating the websocket system [true/false] (more information further down)
 * **use_cors** If handling cors policy here, if not taken care of in upstream proxy (cors_whitelist=[] means allow ANY ORIGIN)
-* **use_dpow** If allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
-* **use_bpow** If allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
-* **use_work_server** If allow work_generate to be done by an external work server intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "network current" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and url to be set in pow_creds.json). [true/false]
+* **use_dpow** If allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
+* **use_bpow** If allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
+* **use_work_server** If allow work_generate to be done by an external work server intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and url to be set in pow_creds.json). [true/false]
 * **use_work_peers** If the node is used to generate work (dpow, bpow and work server all set to false) this will set the "use_peers" to true and let the node use its internally configured work peers [true/false]
 * **disable_watch_work** Forcefully set watch_work=false for process calls (to block node from doing rework) [true/false]
 * **https_cert:** File path for pub cert file (requires <use_https>) [absolute path string]
@@ -319,7 +319,7 @@ More info about the token system [in this section](#the-token-system)
 * **pending_interval**: How often to check for deposit during the payment window (may be removed if websocket is implemented)
 * **pending_threshold**: Skip processing pending transactions below this raw amount
 * **pending_count**: The maximum number of pending transactions to process each time a new order comes in
-* **difficulty_multiplier**: The PoW multiplier from base difficulty (may be needed during network saturation)
+* **difficulty_multiplier**: The PoW multiplier from base difficulty
 * **payment_receive_account**: The account to send the incoming money
 * **min_token_amount**: The minimum amount of tokens to allow for purchase
 * **max_token_amount**: The maximum amount of tokens to allow for purchase
