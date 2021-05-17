@@ -15,7 +15,7 @@
   "dependencies": {
     "big-integer": "^1.6.48",
     "bigdecimal": "^0.6.1",
-    "console-stamp": "^0.2.9",
+    "console-stamp": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
     "esm": "^3.2.25",
