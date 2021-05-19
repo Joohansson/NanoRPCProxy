@@ -35,7 +35,7 @@ test('processRequest should fail at unreachable node', async () => {
 
     await proxy.processRequest(body, request, mockResponse)
     expect(mockResponse.statusCode).toBe(500)
-    expect(mockResponse.jsonResponse.error).toContain('Error: Connection error: FetchError: request to http://[::1]:7076/ failed')
+    expect(mockResponse.jsonResponse.error).toContain('Error: Connection error: FetchError')
 })
 
 test('processRequest should fail on invalid command', async () => {

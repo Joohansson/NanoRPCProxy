@@ -27,13 +27,13 @@ describe('/proxy with default config responds to GET/POST requests', () => {
         const app = require('../proxy').app
         const res = await request(app).get("/proxy?action=account_history");
         expect(res.status).toStrictEqual(500)
-        expect(res.text).toContain('Error: Connection error: FetchError: request to http://[::1]:7076/ failed')
+        expect(res.text).toContain('Error: Connection error: FetchError')
     })
     it("POST /proxy - success", async () => {
         const app = require('../proxy').app
         const res = await request(app).post("/proxy").send({action: 'account_history'});
         expect(res.status).toStrictEqual(500)
-        expect(res.text).toContain('Error: Connection error: FetchError: request to http://[::1]:7076/ failed')
+        expect(res.text).toContain('Error: Connection error: FetchError')
     })
 })
 
