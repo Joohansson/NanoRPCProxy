@@ -1,11 +1,4 @@
 /** @see https://docs.nano.org/commands/rpc-protocol/#active_difficulty */
-interface ActiveDifficultyResponse {
-    multiplier: string
-    network_current: string
-    network_minimum: string
-    network_receive_current: string | null
-    network_receive_minimum: string | null
-}
 
 interface ProcessDataResponse {
     difficulty: any

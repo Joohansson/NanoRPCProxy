@@ -513,47 +513,6 @@ async function processTokensRequest(query: ProxyRPCRequest, req: Request, res: R
   }
 }
 
-async function getLatestDifficulty(difficulty: string | undefined) {
-  const activeDifficulty: ActiveDifficultyResponse | undefined = await getOrFetchDifficulty()
-  // Receive-block difficulty
-  if(difficulty === work_threshold_receive_default) {
-    if(activeDifficulty?.network_receive_current) {
-      logThis("Using new difficulty for receive: " + activeDifficulty.network_receive_current, log_levels.info)
-      return activeDifficulty.network_receive_current;
-    } else {
-      logThis("Using default difficulty for receive: " + work_threshold_receive_default, log_levels.info)
-      return work_threshold_receive_default
-    }
-  }
-  // Send-block difficulty if default or not specified
-  else {
-    if(activeDifficulty?.network_current) {
-      logThis("Using new difficulty: " + activeDifficulty.network_current, log_levels.info)
-      return activeDifficulty.network_current;
-    } else {
-      logThis("Using default difficulty: " + work_threshold_default, log_levels.info)
-      return work_threshold_default
-    }
-  }
-}
-
-/** Returns `active_difficulty` from cache, or fetches from network */
-async function getOrFetchDifficulty(): Promise<ActiveDifficultyResponse | undefined> {
-  const difficultyFromCache: ActiveDifficultyResponse | undefined = rpcCache?.get<ActiveDifficultyResponse>('active_difficulty')
-  if(difficultyFromCache) {
-    logThis("Cache requested: " + 'active_difficulty', log_levels.info)
-    return difficultyFromCache
-  } else {
-    const difficultyResponse = await Tools.postData<ActiveDifficultyResponse>({"action":"active_difficulty"}, settings.node_url, API_TIMEOUT)
-    const saved = rpcCache?.set('active_difficulty', difficultyResponse, 60)
-    if(saved) {
-      return difficultyResponse
-    } else {
-      logThis("Failed saving cache for " + 'active_difficulty', log_levels.warning)
-      return undefined
-    }
-  }
-}
 /** Returns a price lookup from cache, or fetches from third party API */
 async function getOrFetchPrice(): Promise<PriceResponse | undefined> {
   const cachedValue: PriceResponse | undefined = rpcCache?.get('price')
@@ -685,7 +644,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     }
   }
 
-  // Force no watch_work (don't want the node to perform pow)
+  // Force no watch_work (don't want the node to perform pow). Deprecated in node v22 but keep this code for now.
   if (settings.disable_watch_work) {
     if (query.action === 'process') {
       query.watch_work = 'false'
@@ -697,9 +656,9 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     if (query.hash) {
       let bpow_failed = false
       let dpow_failed = false
-      // Only set difficulty from live network if not requested or if it was exactly default
-      if (!query.difficulty || query.difficulty === work_threshold_default || query.difficulty === work_threshold_receive_default) {
-        query.difficulty = await getLatestDifficulty(query.difficulty)
+      // Set difficulty to SEND default if it was not defined
+      if (!query.difficulty) {
+        query.difficulty = work_threshold_default;
       }
 
       if (!(query.timeout)) {
