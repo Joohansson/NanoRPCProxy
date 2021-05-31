@@ -63,9 +63,8 @@ const price_url = 'https://api.coinpaprika.com/v1/tickers/nano-nano'
 const mynano_ninja_url = 'https://mynano.ninja/api/accounts/verified'
 //const price_url2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
 //const CMC_API_KEY = 'xxx'
-const API_TIMEOUT: number = 10000 // 10sec timeout for calling http APIs
+const API_TIMEOUT: number = 20000 // 10sec timeout for calling http APIs
 const work_threshold_default: string = 'fffffff800000000'
-const work_threshold_receive_default: string = 'fffffe0000000000'
 const work_default_timeout: number = 10 // x sec timeout before trying next delegated work method (only when use_dpow or use_bpow)
 const bpow_url: string = 'https://bpow.banano.cc/service/'
 const dpow_url: string = 'https://dpow.nanocenter.org/service/'
