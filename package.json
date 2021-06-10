@@ -41,7 +41,7 @@
     "remove-trailing-zeros": "^1.0.3",
     "tweetnacl": "^1.0.1",
     "websocket": "^1.0.31",
-    "ws": "^7.3.0"
+    "ws": "^7.4.6"
   },
   "devDependencies": {
     "@types/console-stamp": "^0.2.33",
