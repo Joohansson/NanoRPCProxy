@@ -18,6 +18,7 @@
   "use_ip_blacklist":       true,
   "use_tokens":             false,
   "use_websocket":          false,
+  "allow_websocket_all":    false,
   "use_cors":               true,
   "use_dpow":               false,
   "use_bpow":               false,

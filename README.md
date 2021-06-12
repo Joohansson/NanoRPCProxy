@@ -278,6 +278,7 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **use_ip_blacklist:** If always blocking certain IPs set in <ip_blacklist> [true/false]
 * **use_tokens** If activating the token system for purchase via Nano [true/false] (more information further down)
 * **use_websocket** If activating the websocket system [true/false] (more information further down)
+* **allow_websocket_all** If allowing users to subscribe to ALL accounts (more traffic) [true/false]
 * **use_cors** If handling cors policy here, if not taken care of in upstream proxy (cors_whitelist=[] means allow ANY ORIGIN)
 * **use_dpow** If allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
 * **use_bpow** If allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)

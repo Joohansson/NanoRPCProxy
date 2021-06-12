@@ -13,6 +13,7 @@ export interface PromClient {
     incDDOS: (ip: string) => void,
     incWebsocketSubscription: (ip: string) => void,
     incWebsocketMessage: (ip: string) => void,
+    incWebsocketMessageAll: (ip: string) => void,
     incAuthorizeAttempt: (username: string, wasAuthorized: boolean) => void
     timeNodeRpc: (action: RPCAction) => MaybeTimedCall,
     timePrice: () => MaybeTimedCall,
@@ -75,6 +76,13 @@ export function createPrometheusClient(): PromClient {
         labelNames: ["ip"]
     })
 
+    let countWebsocketMessageAll = new client.Counter({
+        registers: [register],
+        name: "websocket_message_all",
+        help: "Counts number of times an IP has received a websocket message when subscribed to all",
+        labelNames: ["ip"]
+    })
+
     let countAuthorizedAttempts = new client.Counter({
         registers: [register],
         name: "authorized_attempts",
@@ -110,6 +118,7 @@ export function createPrometheusClient(): PromClient {
         incDDOS: (ip: string) => countDDOS.labels(ip).inc(),
         incWebsocketSubscription: (ip: string) => countWebsocketSubscription.labels(ip).inc(),
         incWebsocketMessage: (ip: string) => countWebsocketMessage.labels(ip).inc(),
+        incWebsocketMessageAll: (ip: string) => countWebsocketMessageAll.labels(ip).inc(),
         incAuthorizeAttempt: (username, wasAuthorized) => countAuthorizedAttempts.labels(username, wasAuthorized ? 'authorized' : 'denied').inc(),
         timeNodeRpc: (action: RPCAction) => rpcHistogram.startTimer({action: action}),
         timePrice: () => priceHistogram.startTimer(),

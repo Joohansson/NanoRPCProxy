@@ -1,15 +1,24 @@
 type WSTopic = 'confirmation'
-type WSAction = 'subscribe' | 'unsubscribe' | 'ping' | 'pong'
+type WSAction = 'subscribe' | 'update' | 'unsubscribe' | 'ping' | 'pong'
 
 interface WSNodeSubscribe {
     action: WSAction
     topic: WSTopic
     ack: boolean
+    id: string
     options: {
         all_local_accounts: boolean
         accounts: string[]
     }
 }
+
+interface WSNodeSubscribeAll {
+    action: WSAction
+    topic: WSTopic
+    ack: boolean
+    id: string
+}
+
 interface WSNodeReceive {
     topic: WSTopic
     message: {
@@ -19,6 +28,7 @@ interface WSNodeReceive {
         }
     }
     ack: WSAction
+    id: string
 }
 
 interface WSMessage {

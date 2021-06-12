@@ -40,6 +40,7 @@ import Helmet from 'helmet'
 import { config } from 'dotenv'
 import consoleStamp from 'console-stamp'
 import { RateLimiterMemory } from 'rate-limiter-flexible'
+import * as crypto from 'crypto'
 
 config() // load variables from .env into the environment
 consoleStamp(console)
@@ -382,18 +383,36 @@ function appendRateLimiterStatus(res: Response, data: any) {
   return data
 }
 
-// Update current list of tracked accounts
-function updateTrackedAccounts() {
-  const confirmation_subscription : WSNodeSubscribe = {
+// Update current list of tracked accounts by resubscribing
+function subscribeTrackedAccounts(update: boolean, id: string, updatedAccounts: string[] = []) {
+  const confirmation_subscription: WSNodeSubscribe = {
+    // update does not seem to work as expected, subscribe will do for now
+    // the acknowledge will be "subscribe"
+    //"action": update ? "update" : "subscribe",
     "action": "subscribe",
     "topic": "confirmation",
-    "ack":true,
+    "ack": true,
+    "id": id,
     "options": { "all_local_accounts": false,
       "accounts": global_tracked_accounts
-    }}
-    if(ws != null) {
-      ws.send(JSON.stringify(confirmation_subscription))
     }
+  }
+  if(ws != null) {
+    ws.send(JSON.stringify(confirmation_subscription))
+  }
+}
+
+// Subscribe to all
+function subscribeAll(id: string) {
+  const confirmation_subscription : WSNodeSubscribeAll = {
+    "action": "subscribe",
+    "topic": "confirmation",
+    "ack": true,
+    "id": id
+  }
+  if(ws != null) {
+    ws.send(JSON.stringify(confirmation_subscription))
+  }
 }
 
 // Log function
@@ -912,8 +931,10 @@ if (settings.use_websocket) {
           try {
             let msg: WSMessage = JSON.parse(message.utf8Data)
             if (msg.topic === 'confirmation') {
+              let newId = crypto.randomBytes(16).toString("hex")
               // New subscription
-              if (msg.action === 'subscribe' && msg.options && msg.options.accounts) {
+              if ((msg.action === 'subscribe' || msg.action === 'update') && msg.options && msg.options.accounts &&
+                msg.options.accounts.length > 0 && msg.options.accounts[0] !== '') {
                 {
                   // check if new unique accounts + existing accounts exceed max limit
                   // get existing tracked accounts
@@ -921,6 +942,10 @@ if (settings.use_websocket) {
                   var current_tracked_accounts = {} //if not in db, use empty dict
                   if (current_user !== undefined) {
                     current_tracked_accounts = current_user.tracked_accounts
+                    // reuse the ID if it exist
+                    if (current_user.rpcId && current_user.rpcId !== '') {
+                      newId = current_user.rpcId
+                    }
                   }
 
                   // count new accounts that are not already tracked
@@ -943,18 +968,41 @@ if (settings.use_websocket) {
                     // mirror the subscription to the real websocket
                     var tracking_updated = false
                     msg.options.accounts.forEach(function (address: string) {
-                      if (trackAccount(connection.remoteAddress, address)) {
+                      if (trackAccount(connection.remoteAddress, address, newId, 'id' in msg ? msg.id : "")) {
                         tracking_updated = true
                       }
                     })
                     if (tracking_updated) {
-                      updateTrackedAccounts() //update the websocket subscription
+                      if (msg.action === 'subscribe') {
+                        subscribeTrackedAccounts(false, newId) //update the websocket subscription (resubscribe)
+                      } else if (msg.action === 'update') {
+                        subscribeTrackedAccounts(true, newId) //update the websocket subscription
+                      }
+                    } else {
+                      // if not updating the tracking because already tracking, acknowledge the user anyway
+                      logThis('Client already subscribed to the node but now updated internally', log_levels.info)
+                      const seconds = Math.round(Date.now() / 1000).toString()
+                      if (msg.action === 'subscribe') {
+                        wsSend(connection, {ack: 'subscribe', time: seconds, id: 'id' in msg ? msg.id : ""})
+                      } else if (msg.action === 'update') {
+                        wsSend(connection, {ack: 'update', time: seconds, id: 'id' in msg ? msg.id : ""})
+                      }
                     }
-                    wsSend(connection, {ack: 'subscribe', id: 'id' in msg ? msg.id : ""})
                   } else {
                     wsSend(connection, {error: 'Too many accounts subscribed. Max is ' + settings.websocket_max_accounts})
                   }
                 }
+
+                // subscribe to all
+              } else if (msg.action === 'subscribe') {
+                if(settings.allow_websocket_all) {
+                  trackAccount(connection.remoteAddress, 'all', newId, 'id' in msg ? msg.id : "")
+                  websocket_connections.set(remote_ip, connection)
+                  subscribeAll(newId)
+                } else {
+                  wsSend(connection, {error: 'Subscribe to ALL not allowed. Please include an array of accounts.'})
+                }
+                
               } else if (msg.action === 'unsubscribe') {
                 logThis('User unsubscribed from confirmation: ' + remote_ip, log_levels.info)
                 tracking_db.get('users').find({ip: remote_ip}).assign({'tracked_accounts': []}).write()
@@ -989,8 +1037,8 @@ function originIsAllowed(origin: string) {
 }
 
 // Start websocket subscription for an address
-function trackAccount(remote_ip: string, address: string): boolean {
-  if (!Tools.validateAddress(address)) {
+function trackAccount(remote_ip: string, address: string, rpcId: string, clientId: string): boolean {
+  if (address !== 'all' && !Tools.validateAddress(address)) {
     return false
   }
   // get existing tracked accounts
@@ -1016,13 +1064,15 @@ function trackAccount(remote_ip: string, address: string): boolean {
     if (current_user === undefined) {
       const userinfo: User = {
         ip : remote_ip,
+        rpcId : rpcId,
+        clientId: clientId,
         tracked_accounts : current_tracked_accounts
       }
       tracking_db.get('users').push(userinfo).write()
     }
     // update existing user
     else {
-      tracking_db.get('users').find({ip: remote_ip}).assign({tracked_accounts: current_tracked_accounts}).write()
+      tracking_db.get('users').find({ip: remote_ip}).assign({tracked_accounts: current_tracked_accounts, rpcId: rpcId, clientId: clientId}).write()
     }
 
     // check if account is already tracked globally or start tracking
@@ -1032,7 +1082,7 @@ function trackAccount(remote_ip: string, address: string): boolean {
         tracking_exists = true
       }
     })
-    if (!tracking_exists) {
+    if (!tracking_exists && address !== 'all') {
       global_tracked_accounts.push(address)
       return true
     }
@@ -1062,31 +1112,55 @@ if (settings.use_websocket) {
       let observed_link = data_json.message.block.link_as_account
 
       // FOR ACCOUNT TRACKING
-      let tracked_accounts = tracking_db.get('users').value()
+      let websocketUsers = tracking_db.get('users').value()
       // loop all existing tracked accounts as subscribed to by users
-      tracked_accounts.forEach(async function(user) {
+      websocketUsers.forEach(async function(user) {
         if (user.tracked_accounts && user.ip) {
-          // loop all existing accounts for that user
+          let allFound = false
+          // user is tracking all accounts
           for (const [key] of Object.entries(user.tracked_accounts)) {
-            if (key === observed_account || key === observed_link) {
-              // send message to each subscribing user for this particular account
-              logThis('A tracked account was pushed to client: ' + key, log_levels.info)
+            if (key === 'all') {
               websocket_connections.get(user.ip)?.sendUTF(msg.data)
-              promClient?.incWebsocketMessage(user.ip)
+              promClient?.incWebsocketMessageAll(user.ip)
+              allFound = true
+              break
+            }
+          }
+
+          // user is tracking all accounts, no need to send account specific messages
+          if (!allFound) {
+            for (const [key] of Object.entries(user.tracked_accounts)) {
+              if (key === observed_account || key === observed_link) {
+                // send message to each subscribing user for this particular account
+                logThis('A tracked account was pushed to client: ' + key, log_levels.info)
+                websocket_connections.get(user.ip)?.sendUTF(msg.data)
+                promClient?.incWebsocketMessage(user.ip)
+              }
             }
           }
         }
       })
     }
-    else if (data_json.ack === "subscribe") {
-      logThis("Websocket subscription updated", log_levels.info)
+    else if (data_json.ack === "subscribe" || data_json.ack === "update") {
+      logThis("Websocket acknowledged " + data_json.ack + " for ID: " + data_json.id, log_levels.info)
+      let tracked_accounts = tracking_db.get('users').value()
+      // loop all users and find correct id
+      tracked_accounts.forEach(async function(user) {
+        if (user.ip && user.rpcId) {
+          // send back acknowledge to the correct user but replace the unique ID with the client ID
+          if (data_json.id === user.rpcId) {
+            data_json.id = user.clientId
+            websocket_connections.get(user.ip)?.sendUTF(JSON.stringify(data_json))
+          }
+        }
+      })
     }
   }
 
   // As soon as we connect, subscribe to confirmations (as of now there are none while we start up the server)
   newWebSocket.onopen = () => {
     logThis("Node websocket is open", log_levels.info)
-    updateTrackedAccounts()
+    subscribeTrackedAccounts(false, 'global')
   }
   newWebSocket.onclose = () => {
     logThis("Node websocket is closed", log_levels.info)
