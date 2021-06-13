@@ -26,6 +26,8 @@ export interface TrackedAccount {
 
 export interface User {
     ip: string
+    rpcId: string
+    clientId: string
     tracked_accounts: Record<string, TrackedAccount>
 }
 

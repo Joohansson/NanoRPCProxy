@@ -7,9 +7,9 @@ function sleep_simple(ms) {
 
 var socket_nano
 
-function callWebsocket() {
+function callWebsocket(update) {
   var nanoWebsocketOffline = false
-  let tracked_accounts = document.getElementById("myInput").value.split(',')
+  let tracked_accounts = document.getElementById("myInput").value.replace(" ", "").split(',')
 
   // Websocket for NANO with automatic reconnect
   async function socket_sleep(sleep=5000) {
@@ -32,11 +32,13 @@ function callWebsocket() {
     nanoWebsocketOffline = false
     //Subscribe
     let msg = {
-            "action": "subscribe",
-            "topic": "confirmation",
-            "options": {
-              "accounts": tracked_accounts
-            }
+              "action": update ? "update" : "subscribe",
+              "topic": "confirmation",
+              "id": "1",
+              "ack": true,
+              "options": {
+                "accounts": tracked_accounts.length > 0 ? tracked_accounts : []
+              }
           }
     socket_nano.send(JSON.stringify(msg))
   }
