@@ -804,16 +804,21 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   // Limit response count (if count parameter is provided)
   if (userSettings.use_output_limiter) {
     const value: number | undefined = userSettings.limited_commands[query.action]
-    if(value !== undefined) {
-      // Handle accounts_frontiers a bit different since it's an array of accounts
-      if (query.action === 'accounts_frontiers' && query.accounts?.length > value) {
+    if (value !== undefined) {
+      // Handle multi-account calls a bit different since it's an array of accounts
+      if ((query.action === 'accounts_frontiers' || query.action === 'accounts_balances' || query.action === 'accounts_pending') && query.accounts?.length > value) {
         query.accounts = query.accounts.slice(0, value)
-        logThis("Input accounts for accounts_frontiers was limited to " + value.toString(), log_levels.info)
+        logThis("Query accounts was limited to " + value.toString(), log_levels.info)
+        // also limit count for accounts_pending
+        if (query.action === 'accounts_pending') {
+          if (query.count > value * 10 || !(query.count)) {
+            query.count = value * 10
+            logThis("Response count was limited to " + (value * 10).toString(), log_levels.info)
+          }
+        }
       } else if (query.count > value || !(query.count)) {
         query.count = value
-        if (query.count > value) {
-          logThis("Response count was limited to " + value.toString(), log_levels.info)
-        }
+        logThis("Response count was limited to " + value.toString(), log_levels.info)
       }
     }
   }

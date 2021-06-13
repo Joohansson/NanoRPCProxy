@@ -14,6 +14,8 @@
     "limited_commands":       {
       "account_history":      50,
       "accounts_frontiers":   50,
+      "accounts_balances":    500,
+      "accounts_pending":     50,
       "chain":                50,
       "frontiers":            50,
       "pending":              50
