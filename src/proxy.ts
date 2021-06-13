@@ -805,7 +805,11 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
   if (userSettings.use_output_limiter) {
     const value: number | undefined = userSettings.limited_commands[query.action]
     if(value !== undefined) {
-      if (query.count > value || !(query.count)) {
+      // Handle accounts_frontiers a bit different since it's an array of accounts
+      if (query.action === 'accounts_frontiers' && query.accounts?.length > value) {
+        query.accounts = query.accounts.slice(0, value)
+        logThis("Input accounts for accounts_frontiers was limited to " + value.toString(), log_levels.info)
+      } else if (query.count > value || !(query.count)) {
         query.count = value
         if (query.count > value) {
           logThis("Response count was limited to " + value.toString(), log_levels.info)

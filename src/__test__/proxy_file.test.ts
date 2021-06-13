@@ -71,6 +71,7 @@ const expectedSettingsWithFile = [
     'Limited commands:\n' +
     '\n' +
     'account_history : 500\n' +
+    'accounts_frontiers : 500\n' +
     'chain : 500\n' +
     'frontiers : 500\n' +
     'pending : 500\n',

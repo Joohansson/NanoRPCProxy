@@ -13,6 +13,7 @@
     },
     "limited_commands":       {
       "account_history":      50,
+      "accounts_frontiers":   50,
       "chain":                50,
       "frontiers":            50,
       "pending":              50
