@@ -45,24 +45,23 @@ const expectedSettingsWithFile = [
     '16 : blocks_info\n' +
     '17 : chain\n' +
     '18 : confirmation_quorum\n' +
-    '19 : delegators\n' +
-    '20 : delegators_count\n' +
-    '21 : frontiers\n' +
-    '22 : key_create\n' +
-    '23 : pending\n' +
-    '24 : pending_exists\n' +
-    '25 : process\n' +
-    '26 : representatives\n' +
-    '27 : representatives_online\n' +
-    '28 : sign\n' +
-    '29 : successors\n' +
-    '30 : price\n' +
-    '31 : mnano_to_raw\n' +
-    '32 : mnano_from_raw\n' +
-    '33 : work_validate\n' +
-    '34 : validate_account_number\n' +
-    '35 : version\n' +
-    '36 : verified_accounts\n',
+    '19 : delegators_count\n' +
+    '20 : frontiers\n' +
+    '21 : key_create\n' +
+    '22 : pending\n' +
+    '23 : pending_exists\n' +
+    '24 : process\n' +
+    '25 : representatives\n' +
+    '26 : representatives_online\n' +
+    '27 : sign\n' +
+    '28 : successors\n' +
+    '29 : price\n' +
+    '30 : mnano_to_raw\n' +
+    '31 : mnano_from_raw\n' +
+    '32 : work_validate\n' +
+    '33 : validate_account_number\n' +
+    '34 : version\n' +
+    '35 : verified_accounts\n',
     'Cached commands:\n' +
     '\n' +
     'block_count : 30\n' +

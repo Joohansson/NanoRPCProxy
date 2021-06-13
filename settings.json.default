@@ -46,7 +46,6 @@
     "blocks_info",
     "chain",
     "confirmation_quorum",
-    "delegators",
     "delegators_count",
     "frontiers",
     "key_create",
