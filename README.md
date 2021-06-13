@@ -290,7 +290,7 @@ The proxy server is configured via the **settings.json** file found in the serve
 * **enable_prometheus_for_ips:** IP addresses to enable prometheus for. Typically ["127.0.0.1"] but can also be a combination of ipv4/ipv6 CIDR subnets like ["127.0.0.1", "::1/128", "172.16.0.0/12"] [comma separated list]
 * **allowed_commands:** A list of RPC actions to allow [list]
 * **cached_commands:** A list of commands [key] that will be cached for corresponding duration in seconds as [value]
-* **limited_commands:** A list of commands [key] to limit the output response for with max count as [value]
+* **limited_commands:** A list of commands [key] to limit the output response for with max count as [value]. Also limits account arrays such as accounts_pending, which also limit the pending count per account as value*10.
 * **ip_blacklist:** A list of IPs to always block. Also supports CIDR like ["172.16.0.0/12"]. If calling from localhost you can test this with ["127.0.0.1"] (::ffff:127.0.0.1 for ipv6) [comma separated list]
 * **slow_down:** Contains the settings for slowing down requests. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will start slowing down requests with increments of <delay_increment> [ms] with a maximum total delay defined in <max_delay> [ms]
 * **rate_limiter:** Contains the settings for the rate limiter. The rolling time slot is defined with <time_window> [ms]. When number of requests in that slot is exceeding <request_limit> it will block the IP until the time slot has passed. Then the IP can start requesting again. To permanently ban IPs they have to be manually added to <ip_blacklist> and activating <use_ip_blacklist>.
