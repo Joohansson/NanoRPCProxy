@@ -14,7 +14,7 @@ test('parseUserSettings should parse to Map', async () => {
     expect(userSettings).toBeDefined()
     expect(userSettings.allowed_commands.length).toBe(4)
     expect(Object.entries(userSettings.cached_commands).length).toBe(1)
-    expect(Object.entries(userSettings.limited_commands).length).toBe(4)
+    expect(Object.entries(userSettings.limited_commands).length).toBe(5)
 })
 
 afterAll(() => deleteConfigFiles(filePaths))
