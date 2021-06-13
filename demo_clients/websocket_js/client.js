@@ -7,7 +7,15 @@ function sleep_simple(ms) {
 
 var socket_nano
 
-function callWebsocket(update) {
+function callWebsocketSubscribe() {
+  callWebsocket('subscribe')
+}
+
+function callWebsocketUpdate() {
+  callWebsocket('update')
+}
+
+function callWebsocket(action) {
   var nanoWebsocketOffline = false
   let tracked_accounts = document.getElementById("myInput").value.replace(" ", "").split(',')
 
@@ -32,7 +40,7 @@ function callWebsocket(update) {
     nanoWebsocketOffline = false
     //Subscribe
     let msg = {
-              "action": update ? "update" : "subscribe",
+              "action": action,
               "topic": "confirmation",
               "id": "1",
               "ack": true,
