@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-websockets = "==8.1"
+websockets = "==9.1"
 
 [dev-packages]
 
