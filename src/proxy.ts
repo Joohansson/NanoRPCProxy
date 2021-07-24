@@ -822,6 +822,10 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         query.count = value
         logThis("Response count was limited to " + value.toString(), log_levels.info)
       }
+      // disallow use of account_filter because it can be misused
+      if (query.account_filter) {
+        delete query.account_filter
+      }
     }
   }
 

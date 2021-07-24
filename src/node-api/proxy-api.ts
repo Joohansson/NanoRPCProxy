@@ -14,6 +14,7 @@ export interface ProxyRPCRequest {
     api_key: string | undefined
     timeout: number
     count: number
+    account_filter?: string[]
     hash: string
     accounts: string[]
 }
