@@ -578,6 +578,11 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     logThis('RPC request is not allowed: ' + query.action, log_levels.info)
     return res.status(500).json({ error: `Action ${query.action} not allowed`})
   }
+  
+  // Block pending on specific account
+  if (query.action === 'pending' && query.account?.toLowerCase().replace('xrb_','nano_') === 'nano_1111111111111111111111111111111111111111111111111111hifc8npp') {
+    return res.status(403).json({error: 'Account not allowed'})
+  }
 
   // Decrease user tokens and block if zero left
   let tokens_left: number | null = null
