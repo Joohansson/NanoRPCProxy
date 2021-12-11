@@ -27,6 +27,7 @@ ENV CONFIG_SETTINGS=/root/settings.json
 ENV CONFIG_TOKEN_SETTINGS=/root/token_settings.json
 ENV CONFIG_USER_SETTINGS=/root/user_settings.json
 ENV CONFIG_WEBSOCKET_PATH=/root/websocket.json
+ENV CONFIG_DB_PATH=/root/db.json
 
 # Install dependencies
 COPY ./package*.json ./

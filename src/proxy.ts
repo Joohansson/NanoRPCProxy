@@ -49,7 +49,7 @@ const configPaths: ConfigPaths = readConfigPathsFromENV()
 const test_override_http = !process.env.OVERRIDE_USE_HTTP
 
 // lowdb init
-const order_db: OrderDB =  lowdb(new FileSync<OrderSchema>('db.json'))
+const order_db: OrderDB =  lowdb(new FileSync<OrderSchema>(configPaths.db_path))
 const tracking_db: UserDB = lowdb(new FileSync<UserSchema>(configPaths.websocket_path))
 order_db.defaults({orders: []}).write()
 tracking_db.defaults({users: []}).write()
