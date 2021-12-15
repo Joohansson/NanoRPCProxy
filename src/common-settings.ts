@@ -29,6 +29,7 @@ export interface ConfigPaths {
     settings: ConfigPath
     user_settings: ConfigPath
     websocket_path: ConfigPath
+    db_path: ConfigPath
 }
 
 export function readConfigPathsFromENV(): ConfigPaths {
@@ -40,5 +41,6 @@ export function readConfigPathsFromENV(): ConfigPaths {
         token_settings: process.env.CONFIG_TOKEN_SETTINGS || 'token_settings.json',
         user_settings: process.env.CONFIG_USER_SETTINGS || 'user_settings.json',
         websocket_path: process.env.CONFIG_WEBSOCKET_PATH || 'websocket.json',
+        db_path: process.env.CONFIG_DB_PATH || 'db.json',
     }
 }
