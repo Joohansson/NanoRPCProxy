@@ -183,15 +183,18 @@ To run with configuration, first copy default settings:
     $ cp user_settings.json.default user_settings.json
     $ cp token_settings.json.default token_settings.json
 
-To run the docker container with configuration you have to map the configuration files inside the container to `/usr/src/app/`.
-Here's an example mounting `settings.json` from the current work directory, to `/usr/src/app/settings.json` in the container: 
+To run the docker container with configuration you have to map the configuration files inside the container to `/root`.
+Here's an example mounting `settings.json` from the current work directory, to `/root/settings.json` in the container: 
 
-    $ docker run -it -p 9950:9950 -v $(pwd)/settings.json:/usr/src/app/settings.json nanojson/nanorpcproxy:latest
+    $ docker run -it -p 9950:9950 -v $(pwd)/:/root nanojson/nanorpcproxy:latest
 
-The same goes for rest of the settings files.
+The same goes for rest of the settings files. You can place them in a separate folder (settings) if you like and map that instead of the base folder.
+
+    $ docker run -it -p 9950:9950 -v $(pwd)/settings:/root nanojson/nanorpcproxy:latest
+
 Here is an example how to run it indefinitely in the background and restart on fail or machine boot (with the name rpcproxy):
 
-    $ docker run -d --restart unless-stopped --name rpcproxy -p 9950:9950 -v $(pwd)/settings.json:/usr/src/app/settings.json nanojson/nanorpcproxy:latest
+    $ docker run -d --restart unless-stopped --name rpcproxy -p 9950:9950 -v $(pwd)/:/root nanojson/nanorpcproxy:latest
 
 There's also a `docker-compose.yml` file present. To run with docker compose,
 first copy files as above. Then run image with:
@@ -224,7 +227,7 @@ docker-compose.yml
           - "9950:9950"
           - "9952:9952"
         volumes:
-          - ./nano_proxy/settings.json:/usr/src/app/settings.json
+          - ./:/root
 
 4. Create a folder called nano_node (same level as the settings folder)
 5. Run this in the same folder as the docker-compose.yml
@@ -800,7 +803,7 @@ More info in the section about [docker](#option3-with-docker)
           - "9950:9950"
           - "9952:9952"
         volumes:
-          - ./nano_proxy/settings.json:/usr/src/app/settings.json
+          - ./:/root
 
       prometheus:
         image: prom/prometheus
