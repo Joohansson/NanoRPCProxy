@@ -1026,6 +1026,8 @@ if (settings.use_websocket) {
               } else if (msg.action === 'unsubscribe') {
                 logThis('User unsubscribed from confirmation: ' + remote_ip, log_levels.info)
                 tracking_db.get('users').find({ip: remote_ip}).assign({'tracked_accounts': []}).write()
+                const seconds = Math.round(Date.now() / 1000).toString()
+                wsSend(connection, {ack: 'unsubscribe', time: seconds, id: 'id' in msg ? msg.id : ""})
               }
             }
             else if (msg.action === 'ping') {
