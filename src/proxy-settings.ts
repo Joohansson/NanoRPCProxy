@@ -69,11 +69,9 @@ export default interface ProxySettings {
     allow_websocket_all: boolean;
     // If allowing users to subscribe to ALL accounts (more traffic)
     use_cors: boolean;
-    // if allow work_generate to be done by dPoW instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
-    use_dpow: boolean;
-    // if allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
+    // if allow work_generate to be done by BoomPoW intead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands and credentials to be set in pow_creds.json)
     use_bpow: boolean;
-    // if allow work_generate to be done by external work server instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > dpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands)
+    // if allow work_generate to be done by external work server instead of local node. Work will consume 10 token points. If "difficulty" is not provided with the work_generate request the "default send difficulty" will be used. (The priority order is bpow > work server. If all three are set to false, it will use the node to generate work) (requires work_generate in allowed_commands)
     use_work_server: boolean;
     // if allow work_generate implicitly add "use_peers": "true" to the request to use work_peers configured in the nano node.
     use_work_peers: boolean;
@@ -139,7 +137,6 @@ export function proxyLogSettings(logger: (...data: any[]) => void, settings: Pro
     logger("Use IP blacklist: " + settings.use_ip_blacklist)
     logger("Use token system: " + settings.use_tokens)
     logger("Use websocket system: " + settings.use_websocket)
-    logger("Use dPoW: " + settings.use_dpow)
     logger("Use bPoW: " + settings.use_bpow)
     logger("Use work server: " + settings.use_work_server)
     logger("Use work peers: " + settings.use_work_peers)
@@ -204,7 +201,6 @@ export function readProxySettings(settingsPath: string): ProxySettings {
         use_websocket: false,
         allow_websocket_all: false,
         use_cors: true,
-        use_dpow: false,
         use_bpow: false,
         use_work_server: false,
         use_work_peers: false,

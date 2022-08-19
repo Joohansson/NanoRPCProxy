@@ -1,8 +1,16 @@
 import Fetch, {Response} from 'node-fetch'
 import BigInt from 'big-integer'
 import * as Nano from 'nanocurrency'
+import { GraphQLClient, gql } from 'graphql-request'
 const Dec = require('bigdecimal') //https://github.com/iriscouch/bigdecimal.js
 const RemoveTrailingZeros = require('remove-trailing-zeros')
+
+// GQLClient
+export const newBoomPowClient = (apikey: string) => new GraphQLClient('https://boompow.banano.cc/graphql', {
+  headers: {
+    Authorization: apikey,
+  },
+})
 
 // Custom error class
 class APIError extends Error {
@@ -59,6 +67,24 @@ export  async function postData<ResponseData>(data: any, server: string, timeout
   })
   return await promise // return promise result when finished instead of returning the promise itself, to avoid nested ".then"
 }
+
+// Post workGenerate mutation
+const workGenerate = gql`
+  mutation workGenerate($hash:String!, $difficultyMultiplier: Int!) {
+    workGenerate(input:{hash:$hash, difficultyMultiplier:$difficultyMultiplier})
+  }
+`
+
+export const workGenerateBoompow = async (client:GraphQLClient, hash: string, difficultyMultiplier: number): Promise<string> => {
+  const variables = {
+    hash,
+    difficultyMultiplier,
+  }
+  const data = await client.request(workGenerate, variables)
+
+  return data?.workGenerate
+}
+
 // Check if a string is a valid JSON
 export function isValidJson(obj: any) {
   if (obj != null) {

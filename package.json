@@ -24,6 +24,8 @@
     "express-ipfilter": "^1.2.0",
     "express-slow-down": "^1.4.0",
     "fs": "0.0.1-security",
+    "graphql": "^16.6.0",
+    "graphql-request": "^4.3.0",
     "helmet": "^4.1.1",
     "http": "0.0.0",
     "https": "^1.0.0",

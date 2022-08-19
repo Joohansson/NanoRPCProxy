@@ -20,7 +20,6 @@
   "use_websocket":          false,
   "allow_websocket_all":    false,
   "use_cors":               true,
-  "use_dpow":               false,
   "use_bpow":               false,
   "use_work_server":        false,
   "use_work_peers":         false,

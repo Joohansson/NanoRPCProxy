@@ -65,10 +65,10 @@ const mynano_ninja_url = 'https://mynano.ninja/api/accounts/verified'
 //const price_url2 = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=1567'
 //const CMC_API_KEY = 'xxx'
 const API_TIMEOUT: number = 20000 // 10sec timeout for calling http APIs
+// Banano base
+const work_threshold_banano: string = 'fffffe0000000000'
 const work_threshold_default: string = 'fffffff800000000'
-const work_default_timeout: number = 10 // x sec timeout before trying next delegated work method (only when use_dpow or use_bpow)
-const bpow_url: string = 'https://bpow.banano.cc/service/'
-const dpow_url: string = 'https://dpow.nanocenter.org/service/'
+const work_default_timeout: number = 10 // x sec timeout before trying next delegated work method (only when use_bpow)
 const work_token_cost = 10 // work_generate will consume x token points
 let ws: ReconnectingWebSocket | null = null
 let global_tracked_accounts: string[] = [] // the accounts to track in websocket (synced with database)
@@ -147,6 +147,8 @@ if (settings.use_tokens) {
     checkOldOrders()
   })
 }
+
+const boompowClient = Tools.newBoomPowClient(powSettings.bpow?.key || '')
 
 async function checkOldOrders() {
   let now = Math.floor(Date.now()/1000)
@@ -674,11 +676,10 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
     }
   }
 
-  // Handle work generate via dpow and/or bpow
-  if (query.action === 'work_generate' && (settings.use_dpow || settings.use_bpow || settings.use_work_server || settings.use_work_peers)) {
+  // Handle work generate via bpow
+  if (query.action === 'work_generate' && (settings.use_bpow || settings.use_work_server || settings.use_work_peers)) {
     if (query.hash) {
       let bpow_failed = false
-      let dpow_failed = false
       // Set difficulty to SEND default if it was not defined
       if (!query.difficulty) {
         query.difficulty = work_threshold_default;
@@ -688,21 +689,29 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         query.timeout = work_default_timeout
       }
 
-      if (settings.use_work_peers && !settings.use_bpow && !settings.use_dpow && !settings.use_work_server) {
-        //Only add use_peers when _NOT_ using any of bpow or dpow.
+      if (settings.use_work_peers && !settings.use_bpow && !settings.use_work_server) {
+        //Only add use_peers when _NOT_ using any of bpow.
         query.use_peers = "true"
       }
 
       // Try bpow first
       if (settings.use_bpow && powSettings.bpow) {
+        // ! TODO v2
         logThis("Requesting work using bpow with diff: " + query.difficulty, log_levels.info)
-        query.user = powSettings.bpow.user
         query.api_key = powSettings.bpow.key
 
         try {
-          let data: ProcessDataResponse = await Tools.postData(query, bpow_url, work_default_timeout*1000*2)
+          const reqDiff = multiplierFromDifficulty(query.difficulty, work_threshold_banano)
+          let resp = await Tools.workGenerateBoompow(boompowClient, query.hash, parseInt(reqDiff))
+          const data: ProcessDataResponse = {
+            work: resp,
+            difficulty: query.difficulty,
+            multiplier: reqDiff,
+            tokens_total: 0
+
+          }
           data.difficulty = query.difficulty
-          data.multiplier = multiplierFromDifficulty(data.difficulty, work_threshold_default)
+          data.multiplier = reqDiff
           if (tokens_left != null) {
             data.tokens_total = tokens_left
           }
@@ -712,9 +721,7 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
           }
           if ((data.error) || !(data.work)) {
             bpow_failed = true
-            if (!settings.use_dpow) {
-              return res.json(appendRateLimiterStatus(res, data)) // forward error if not retrying with dpow
-            }
+            return res.json(appendRateLimiterStatus(res, data))
           }
           else if (data.work) {
             return res.json(appendRateLimiterStatus(res, data)) // sending back successful json response
@@ -723,47 +730,12 @@ async function processRequest(query: ProxyRPCRequest, req: Request, res: Respons
         catch(err) {
           bpow_failed = true
           logThis("Bpow connection error: " + err.toString(), log_levels.warning)
-          if (!settings.use_dpow) {
-            return res.status(500).json({error: err.toString()})
+          return res.status(500).json({error: err.toString()})
           }
         }
       }
-      // Use dpow only if not already used bpow or bpow timed out
-      if ((!settings.use_bpow || bpow_failed) && settings.use_dpow && powSettings.dpow) {
-        logThis("Requesting work using dpow with diff: " + query.difficulty, log_levels.info)
-        query.user = powSettings.dpow.user
-        query.api_key = powSettings.dpow.key
-
-        try {
-          let data: ProcessDataResponse = await Tools.postData(query, dpow_url, work_default_timeout*1000*2)
-          data.difficulty = query.difficulty
-          data.multiplier = multiplierFromDifficulty(data.difficulty, work_threshold_default)
-          if (tokens_left != null) {
-            data.tokens_total = tokens_left
-          }
-          if (data.error) {
-            logThis("dPoW failed: " + data.error, log_levels.warning)
-          }
-          if ((data.error) || !(data.work)) {
-            dpow_failed = true
-            if (!settings.use_work_server) {
-              return res.json(appendRateLimiterStatus(res, data)) // forward error if not retrying with work server
-            }
-          }
-          else if (data.work) {
-            return res.json(appendRateLimiterStatus(res, data)) // sending back json response (regardless if timeout error)
-          }
-        }
-        catch(err) {
-          dpow_failed = true
-          logThis("Dpow connection error: " + err.toString(), log_levels.warning)
-          if (!settings.use_work_server) {
-            return res.status(500).json({error: err.toString()})
-          }
-        }
-      }
-      // Use work server only if not already used bpow/dpow or bpow/dpow timed out
-      if (((!settings.use_bpow && !settings.use_dpow) || (bpow_failed || dpow_failed)) && settings.use_work_server && powSettings.work_server) {
+      // Use work server only if not already used bpow or bpow timed out
+      if (((!settings.use_bpow) || (bpow_failed)) && settings.use_work_server && powSettings.work_server) {
         logThis("Requesting work using work server with diff: " + query.difficulty, log_levels.info)
 
         try {

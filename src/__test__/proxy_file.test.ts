@@ -16,7 +16,6 @@ const expectedSettingsWithFile = [
     'Use IP blacklist: true',
     'Use token system: false',
     'Use websocket system: false',
-    'Use dPoW: false',
     'Use bPoW: false',
     'Use work server: false',
     'Use work peers: false',
