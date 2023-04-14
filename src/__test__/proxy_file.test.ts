@@ -53,15 +53,17 @@ const expectedSettingsWithFile = [
     '24 : process\n' +
     '25 : representatives\n' +
     '26 : representatives_online\n' +
-    '27 : sign\n' +
-    '28 : successors\n' +
-    '29 : price\n' +
-    '30 : mnano_to_raw\n' +
-    '31 : mnano_from_raw\n' +
-    '32 : work_validate\n' +
-    '33 : validate_account_number\n' +
-    '34 : version\n' +
-    '35 : verified_accounts\n',
+    '27 : receivable\n' +
+    '28 : receivable_exists\n' +
+    '29 : sign\n' +
+    '30 : successors\n' +
+    '31 : price\n' +
+    '32 : mnano_to_raw\n' +
+    '33 : mnano_from_raw\n' +
+    '34 : work_validate\n' +
+    '35 : validate_account_number\n' +
+    '36 : version\n' +
+    '37 : verified_accounts\n',
     'Cached commands:\n' +
     '\n' +
     'block_count : 30\n' +
