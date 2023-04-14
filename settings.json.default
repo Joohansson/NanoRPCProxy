@@ -54,6 +54,8 @@
     "process",
     "representatives",
     "representatives_online",
+    "receivable",
+    "receivable_exists",
     "sign",
     "successors",
     "price",
